@@ -1,12 +1,17 @@
 {
-  "name": "app",
+  "name": "fees-management-system",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > src/lib/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
