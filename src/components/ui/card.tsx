@@ -28,7 +28,7 @@ export function Card({
           {actions && <div className="no-print flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className={cn("p-4 sm:p-5", bodyClassName)}>{children}</div>
+      <div className={bodyClassName ?? "p-4 sm:p-5"}>{children}</div>
     </section>
   );
 }

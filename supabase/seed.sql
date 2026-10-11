@@ -275,7 +275,7 @@ begin
   update public.students set status = 'left', left_on = '2026-07-20'
    where id in (select e.student_id from public.enrollments e join public.students st on st.id = e.student_id
                  where e.session_id = s_cur and st.status = 'active' order by st.admission_no offset 57 limit 2);
-  update public.student_charges sc set concession = sc.amount, note = 'Waived: left on 20 Jul 2026'
+  update public.student_charges sc set concession_before_waiver = sc.concession, concession = sc.amount, note = 'Waived: left on 20 Jul 2026'
     from public.installments i, public.students st
    where i.id = sc.installment_id and st.id = sc.student_id and st.status = 'left'
      and i.due_date > st.left_on;
