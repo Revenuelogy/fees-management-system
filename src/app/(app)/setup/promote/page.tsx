@@ -1,0 +1,149 @@
+import { ArrowRight, CalendarRange, Users } from "lucide-react";
+import { requireWriter } from "@/lib/auth";
+import { getActiveSession, getClasses, getSessions, param } from "@/lib/context";
+import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { Empty } from "@/components/ui/empty";
+import { LinkButton } from "@/components/ui/button";
+import { embeddedCount, fetchAll } from "../_lib/fetch-all";
+import { plural } from "../_lib/text";
+import { PromoteForm, SessionPicker, type PromoteRow } from "./promote-form";
+
+export const metadata = { title: "Promote students" };
+
+const CRUMBS = [{ label: "Setup", href: "/setup" }, { label: "Promote students" }];
+const DESCRIPTION =
+  "Move last session's students into the next session's classes in one go. Each class maps to a target class; the final class usually passes out.";
+
+export default async function PromotePage({ searchParams }: PageProps<"/setup/promote">) {
+  await requireWriter();
+  const sp = await searchParams;
+  const [sessions, active, classes] = await Promise.all([getSessions(), getActiveSession(), getClasses()]);
+
+  if (sessions.length < 2) {
+    return (
+      <>
+        <PageHeader title="Promote students" crumbs={CRUMBS} description={DESCRIPTION} />
+        <Card>
+          <Empty title="You need two sessions to promote students" icon={CalendarRange}>
+            Create the new session first (with its installments and fee structure), then come back here.
+            <div className="mt-4">
+              <LinkButton href="/setup/sessions#new-session" variant="primary">
+                Create a session
+              </LinkButton>
+            </div>
+          </Empty>
+        </Card>
+      </>
+    );
+  }
+
+  const asc = [...sessions].sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const to = sessions.find((s) => s.id === param(sp.to)) ?? active ?? asc[asc.length - 1];
+  const toIdx = asc.findIndex((s) => s.id === to.id);
+  const from =
+    sessions.find((s) => s.id === param(sp.from)) ?? (toIdx > 0 ? asc[toIdx - 1] : undefined) ?? asc.find((s) => s.id !== to.id)!;
+
+  const supabase = await createClient();
+  const [fromEnr, toEnr, toInstRes] = await Promise.all([
+    fetchAll<{ student_id: string; class_id: string; students: { status: string } | null }>((f, t) =>
+      supabase.from("enrollments").select("student_id, class_id, students(status)").eq("session_id", from.id).order("id").range(f, t),
+    ),
+    fetchAll<{ student_id: string }>((f, t) =>
+      supabase.from("enrollments").select("student_id").eq("session_id", to.id).order("id").range(f, t),
+    ),
+    supabase.from("installments").select("id").eq("session_id", to.id),
+  ]);
+  const toInstIds = ((toInstRes.data ?? []) as { id: string }[]).map((i) => i.id);
+  const structRes = toInstIds.length
+    ? await supabase.from("classes").select("id, fee_structures(count)").in("fee_structures.installment_id", toInstIds).gt("fee_structures.amount", 0)
+    : { data: [] };
+  const hasStructure = new Set(
+    ((structRes.data ?? []) as { id: string; fee_structures: unknown }[]).filter((c) => embeddedCount(c.fee_structures) > 0).map((c) => c.id),
+  );
+
+  const inTarget = new Set(toEnr.map((e) => e.student_id));
+  const byClass = new Map<string, { active: number; inactive: number; already: number }>();
+  for (const e of fromEnr) {
+    const g = byClass.get(e.class_id) ?? { active: 0, inactive: 0, already: 0 };
+    if (e.students?.status === "active") {
+      g.active += 1;
+      if (inTarget.has(e.student_id)) g.already += 1;
+    } else g.inactive += 1;
+    byClass.set(e.class_id, g);
+  }
+
+  const activeClasses = classes.filter((c) => c.is_active);
+  const rows: PromoteRow[] = classes
+    .filter((c) => byClass.has(c.id))
+    .map((c) => {
+      const next = activeClasses.filter((x) => x.sort_order > c.sort_order).sort((a, b) => a.sort_order - b.sort_order)[0];
+      const g = byClass.get(c.id)!;
+      return {
+        class_id: c.id,
+        class_name: c.name,
+        ...g,
+        defaultTarget: next ? next.id : "passed",
+      };
+    });
+  const activeTotal = rows.reduce((s, r) => s + r.active, 0);
+  const alreadyTotal = rows.reduce((s, r) => s + r.already, 0);
+  const targets = classes
+    .filter((c) => c.is_active)
+    .map((c) => ({ id: c.id, name: c.name, hasStructure: hasStructure.has(c.id) }));
+
+  return (
+    <>
+      <PageHeader title="Promote students" crumbs={CRUMBS} description={DESCRIPTION} />
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Card
+          title={
+            <span className="inline-flex flex-wrap items-center gap-2">
+              {from.name} <ArrowRight className="size-4 text-muted" aria-hidden /> {to.name}
+            </span>
+          }
+          description={
+            from.start_date > to.start_date
+              ? `Careful: ${from.name} is later than ${to.name}.`
+              : `${plural(activeTotal, "active student")} in ${from.name} · ${plural(toEnr.length, "student")} already enrolled in ${to.name}`
+          }
+        >
+          <div className="mb-4">
+            <SessionPicker sessions={asc.map((s) => ({ id: s.id, name: s.name })).reverse()} fromId={from.id} toId={to.id} />
+          </div>
+          {from.id === to.id ? (
+            <p className="text-[13px] text-critical-ink">Choose two different sessions.</p>
+          ) : rows.length === 0 ? (
+            <Empty title={`Nobody is enrolled in ${from.name}`} icon={Users}>
+              Pick another “from” session, or import students instead.
+            </Empty>
+          ) : (
+            <PromoteForm
+              key={`${from.id}:${to.id}`}
+              fromId={from.id}
+              toId={to.id}
+              fromName={from.name}
+              toName={to.name}
+              rows={rows}
+              targets={targets}
+            />
+          )}
+        </Card>
+        <Card title="How promotion works">
+          <ul className="list-disc space-y-2 pl-4 text-[13px] text-ink-2">
+            <li>Only active students are moved. Students who left or already passed out stay where they are.</li>
+            <li>Each student keeps their section; roll numbers start empty in the new session.</li>
+            <li>
+              Students already enrolled in {to.name} ({plural(alreadyTotal, "student")} from these classes) are not changed, so running
+              promotion again is safe.
+            </li>
+            <li>“Passed out” marks the students as having left the school; they no longer appear as active.</li>
+            <li>Unpaid fees from {from.name} stay with each student and show up as previous dues.</li>
+            <li>New admissions are added separately (import or the students page).</li>
+          </ul>
+        </Card>
+      </div>
+    </>
+  );
+}
