@@ -9,7 +9,7 @@ export default async function NoAccessPage() {
   const viewer = await getViewer();
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md rounded-xl border border-line bg-surface p-6 text-center shadow-sm">
+      <div className="max-w-md rounded-[28px] bg-surface p-8 text-center shadow-card">
         <ShieldCheck className="mx-auto mb-3 size-8 text-muted" aria-hidden />
         <h1 className="text-lg font-semibold text-ink">Your account is waiting for access</h1>
         <p className="mt-2 text-sm text-ink-2">

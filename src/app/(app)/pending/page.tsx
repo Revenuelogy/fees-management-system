@@ -1,15 +1,15 @@
+import Link from "next/link";
 import { requireStaff, canWrite } from "@/lib/auth";
 import { flag, getActiveSession, getClasses, param } from "@/lib/context";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAll } from "@/lib/fetch-all";
-import { fmtDate, num, rupeesShort, todayIST } from "@/lib/format";
+import { fmtDate, rupeesShort, todayIST } from "@/lib/format";
 import type { FeeStatus, StudentBalance } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Segmented, withParams } from "@/components/ui/segmented";
-import { Kpi, KpiGrid } from "@/components/ui/kpi";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { FEE_STATUS } from "@/components/ui/status";
+import { FEE_STATUS, STATUS_STYLE } from "@/components/ui/status";
 import { NoSession } from "@/components/no-session";
 import { PrintButton } from "@/components/ui/print-button";
 
@@ -64,33 +64,29 @@ export default async function PendingPage({ searchParams }: PageProps<"/pending"
   ];
   const statusKeys: FeeStatus[] = ["partial", "not_paying", "arrears_only", "paid_up"];
   const columns = [
-    { key: "full_name", label: "Student", href: "/students/{student_id}", sub: "admission_no" },
-    { key: "class_label", label: "Class", sub: "section" },
-    { key: "father_name", label: "Father", hideOnMobile: true },
-    { key: "phone", label: "Phone" },
-    { key: "expected", label: "Session fees", type: "money" as const, total: true, hideOnMobile: true },
-    { key: "received", label: "Paid", type: "money" as const, total: true, hideOnMobile: true },
+    { key: "full_name", label: "Student", type: "person" as const, href: "/students/{student_id}", sub: "who" },
+    { key: "phone", label: "Phone", hideOnMobile: true },
     { key: "show_pending", label: "Pending", type: "money" as const, total: true },
     { key: "show_overdue", label: "Overdue", type: "money" as const, total: true, alertPositive: true },
-    { key: "prev_pending", label: "Prev. dues", type: "money" as const, total: true, dimZero: true },
-    { key: "last_paid_on", label: "Last paid", type: "date" as const, hideOnMobile: true },
-    { key: "days_since_payment", label: "Days silent", type: "number" as const, hideOnMobile: true },
+    { key: "prev_pending", label: "Old dues", type: "money" as const, total: true, dimZero: true, hideOnMobile: true },
+    { key: "days_since_payment", label: "Silent", type: "number" as const, hideOnMobile: true },
     { key: "fee_status", label: "Status", type: "status" as const },
-    ...(canWrite(viewer.role) ? [{ key: "collect", label: "", href: "/collect/{student_id}", sortable: false }] : []),
+    ...(canWrite(viewer.role) ? [{ key: "collect", label: "", type: "action" as const, href: "/collect/{student_id}", sortable: false }] : []),
   ];
+  const statusCounts = statusKeys.map((k) => ({ k, n: rows.filter((r) => r.fee_status === k).length })).filter((x) => x.n > 0);
 
   return (
-    <>
+    <div className="space-y-5">
       <PageHeader
         title="Pending fees"
-        description={`Who owes what in session ${session.name}. Filter, sort, export to Excel (CSV) or print the list for calls.`}
-        crumbs={[{ label: "Fees" }, { label: "Pending fees" }]}
-        actions={<PrintButton label="Print list" />}
+        description={`${session.name} · ${rows.length} students`}
+        info="Who owes what. Filter, sort, export to Excel (CSV) or print the list for calls."
+        actions={<PrintButton label="Print" />}
       >
         <Segmented
           options={[
-            { label: "Current session", href: url({ arrears: undefined }), active: !arrears },
-            { label: "+ previous dues", href: url({ arrears: true }), active: arrears },
+            { label: "This session", href: url({ arrears: undefined }), active: !arrears },
+            { label: "Including old dues", href: url({ arrears: true }), active: arrears },
           ]}
         />
         <Segmented
@@ -102,8 +98,8 @@ export default async function PendingPage({ searchParams }: PageProps<"/pending"
         <Segmented
           options={[
             { label: "Everyone", href: url({ prev: undefined, unassigned: undefined }), active: !prev && !unassigned },
-            { label: "Has previous dues", href: url({ prev: true, arrears: true, unassigned: undefined }), active: prev },
-            { label: "Left / not enrolled", href: url({ unassigned: true, arrears: true, prev: undefined }), active: unassigned },
+            { label: "Has old dues", href: url({ prev: true, arrears: true, unassigned: undefined }), active: prev },
+            { label: "Left school", href: url({ unassigned: true, arrears: true, prev: undefined }), active: unassigned },
           ]}
         />
       </PageHeader>
@@ -112,16 +108,39 @@ export default async function PendingPage({ searchParams }: PageProps<"/pending"
         <b>Pending fees · {session.name}</b> — {meta.join(" · ")}
       </div>
 
-      <KpiGrid cols={4}>
-        <Kpi label="Students" value={num(rows.length)} sub={`of ${num(all.filter((r) => r.class_id).length)} enrolled`} />
-        <Kpi label="Pending" value={rupeesShort(sum((r) => r.show_pending))} />
-        <Kpi label="Overdue" value={rupeesShort(sum((r) => r.show_overdue))} tone="critical" />
-        <Kpi label="Previous dues" value={rupeesShort(sum((r) => r.prev_pending))} sub={arrears ? "included above" : "not included above"} />
-      </KpiGrid>
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[
+          { label: "Pending", value: rupeesShort(sum((r) => r.show_pending)), tone: "text-ink" },
+          { label: "Overdue", value: rupeesShort(sum((r) => r.show_overdue)), tone: "text-critical-ink" },
+          { label: arrears ? "Old dues (included)" : "Old dues (not included)", value: rupeesShort(sum((r) => r.prev_pending)), tone: "text-serious-ink" },
+          { label: "Students", value: String(rows.length), tone: "text-ink" },
+        ].map((x) => (
+          <div key={x.label} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+            <p className="text-footnote font-medium text-ink-2">{x.label}</p>
+            <p className={`figure mt-2 text-[28px] leading-none ${x.tone}`}>{x.value}</p>
+          </div>
+        ))}
+      </section>
 
-      <Card className="mt-4 print-plain">
+      {statusCounts.length > 0 && (
+        <div className="no-print flex flex-wrap gap-2">
+          {statusCounts.map(({ k, n }) => (
+            <Link
+              key={k}
+              href={url({ status: status === k ? undefined : k })}
+              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-footnote font-medium transition-colors ${status === k ? "bg-ink text-surface" : "bg-surface text-ink shadow-card hover:bg-fill-2"}`}
+            >
+              <span className={`size-2 rounded-full ${STATUS_STYLE[k].dot}`} aria-hidden />
+              {FEE_STATUS[k].label}
+              <span className="tabular opacity-70">{n}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <Card className="print-plain">
         <DataTable
-          rows={rows as unknown as Record<string, unknown>[]}
+          rows={rows.map((r) => ({ ...r, who: `${r.class_label}${r.section ? " · " + r.section : ""}${r.father_name ? " · " + r.father_name : ""}`, collect: "Collect" })) as unknown as Record<string, unknown>[]}
           searchKeys={["full_name", "admission_no", "father_name", "phone", "class_label"]}
           filters={[
             {
@@ -132,17 +151,16 @@ export default async function PendingPage({ searchParams }: PageProps<"/pending"
               ),
             },
             { key: "section", label: "Section", options: [...new Set(rows.map((r) => r.section).filter(Boolean))].sort().map((s) => ({ value: s as string, label: s as string })) },
-            { key: "fee_status", label: "Status", options: statusKeys.map((s) => ({ value: s, label: FEE_STATUS[s].label })) },
           ]}
           defaultSort={{ key: "show_overdue", dir: "desc" }}
           totals
-          pageSize={100}
+          pageSize={50}
           exportName={`pending-fees-${session.name}`}
           exportMeta={meta}
           columns={columns}
           empty="No pending fees with these filters."
         />
       </Card>
-    </>
+    </div>
   );
 }

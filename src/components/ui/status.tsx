@@ -1,4 +1,3 @@
-import { AlertTriangle, CheckCircle2, CircleDashed, CircleSlash, Clock, History } from "lucide-react";
 import type { FeeStatus } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
@@ -6,52 +5,52 @@ export const FEE_STATUS: Record<FeeStatus, { label: string; hint: string }> = {
   paid_up: { label: "Paid up", hint: "Nothing due to date" },
   partial: { label: "Partial", hint: "Paid something but behind on dues to date" },
   not_paying: { label: "Not paying", hint: "Nothing paid against this session's fees" },
-  arrears_only: { label: "Arrears only", hint: "This session cleared, old dues remain" },
-  free: { label: "Concession / free", hint: "Expected is zero" },
+  arrears_only: { label: "Old dues", hint: "This session cleared, old dues remain" },
+  free: { label: "Free", hint: "Concession / free seat: expected is zero" },
   no_plan: { label: "No fee plan", hint: "Enrolled but no charges generated" },
 };
 
-const STYLE: Record<FeeStatus, { cls: string; icon: React.ElementType; dot: string }> = {
-  paid_up: { cls: "bg-good-soft text-good-ink", icon: CheckCircle2, dot: "bg-good" },
-  partial: { cls: "bg-warning-soft text-ink", icon: Clock, dot: "bg-warning" },
-  not_paying: { cls: "bg-critical-soft text-critical-ink", icon: AlertTriangle, dot: "bg-critical" },
-  arrears_only: { cls: "bg-serious-soft text-ink", icon: History, dot: "bg-serious" },
-  free: { cls: "bg-surface-3 text-ink-2", icon: CircleSlash, dot: "bg-line-strong" },
-  no_plan: { cls: "bg-surface-3 text-ink-2", icon: CircleDashed, dot: "bg-line-strong" },
+/** Fee status colour tokens: dot, tinted background, text. */
+export const STATUS_STYLE: Record<FeeStatus, { dot: string; pill: string; bar: string }> = {
+  paid_up: { dot: "bg-good", pill: "bg-good-soft text-good-ink", bar: "bg-good" },
+  partial: { dot: "bg-warning", pill: "bg-warning-soft text-warning-ink", bar: "bg-warning" },
+  arrears_only: { dot: "bg-serious", pill: "bg-serious-soft text-serious-ink", bar: "bg-serious" },
+  not_paying: { dot: "bg-critical", pill: "bg-critical-soft text-critical-ink", bar: "bg-critical" },
+  free: { dot: "bg-tile-gray", pill: "bg-fill text-ink-2", bar: "bg-tile-gray" },
+  no_plan: { dot: "bg-tile-gray", pill: "bg-fill text-ink-2", bar: "bg-surface-3" },
 };
 
 export function FeeStatusBadge({ status, className }: { status: FeeStatus | null | undefined; className?: string }) {
   if (!status) return null;
-  const s = STYLE[status];
-  const Icon = s.icon;
+  const s = STATUS_STYLE[status];
   return (
     <span
       title={FEE_STATUS[status].hint}
-      className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[12px] font-medium leading-4", s.cls, className)}
+      className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full py-[3px] pl-2 pr-2.5 text-caption font-semibold leading-4", s.pill, className)}
     >
-      <Icon className="size-3.5 shrink-0" aria-hidden />
+      <span className={cn("size-1.5 rounded-full", s.dot)} aria-hidden />
       {FEE_STATUS[status].label}
     </span>
   );
 }
 
 export function statusDot(status: FeeStatus) {
-  return STYLE[status].dot;
+  return STATUS_STYLE[status].dot;
 }
 
 const PAY_STATUS = {
-  paid: { label: "Paid", cls: "bg-good-soft text-good-ink", icon: CheckCircle2 },
-  partial: { label: "Partial", cls: "bg-warning-soft text-ink", icon: Clock },
-  not_paid: { label: "Not paid", cls: "bg-critical-soft text-critical-ink", icon: AlertTriangle },
-  nothing_due: { label: "Nothing due", cls: "bg-surface-3 text-ink-2", icon: CircleSlash },
+  paid: { label: "Paid", pill: "bg-good-soft text-good-ink", dot: "bg-good" },
+  partial: { label: "Partial", pill: "bg-warning-soft text-warning-ink", dot: "bg-warning" },
+  not_paid: { label: "Not paid", pill: "bg-critical-soft text-critical-ink", dot: "bg-critical" },
+  nothing_due: { label: "Nothing due", pill: "bg-fill text-ink-2", dot: "bg-tile-gray" },
 } as const;
 
 export function PayStatusBadge({ status }: { status: keyof typeof PAY_STATUS }) {
   const s = PAY_STATUS[status];
-  const Icon = s.icon;
+  if (!s) return null;
   return (
-    <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[12px] font-medium leading-4", s.cls)}>
-      <Icon className="size-3.5 shrink-0" aria-hidden />
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full py-[3px] pl-2 pr-2.5 text-caption font-semibold leading-4", s.pill)}>
+      <span className={cn("size-1.5 rounded-full", s.dot)} aria-hidden />
       {s.label}
     </span>
   );

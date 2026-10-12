@@ -65,14 +65,14 @@ export function SessionPanel({
       }
       actions={!session.is_current ? <MakeCurrentButton id={session.id} name={session.name} /> : undefined}
     >
-      <div className={`${ROW} hidden border-b border-line pb-1.5 text-[12px] font-medium uppercase tracking-wide text-muted sm:grid`}>
+      <div className={`${ROW} hidden border-b border-line pb-1.5 text-caption font-medium uppercase tracking-wide text-muted sm:grid`}>
         <span>No.</span>
         <span>Installment name</span>
         <span>Due date</span>
         <span>Billed</span>
         <span className="sr-only">Actions</span>
       </div>
-      {installments.length === 0 && <p className="py-3 text-[13px] text-ink-2">No installments yet. Add the first one below.</p>}
+      {installments.length === 0 && <p className="py-3 text-footnote text-ink-2">No installments yet. Add the first one below.</p>}
       <div className="divide-y divide-line">
         {installments.map((i) => (
           <InstallmentRow key={i.id} inst={i} />
@@ -80,8 +80,8 @@ export function SessionPanel({
       </div>
       <AddInstallmentRow sessionId={session.id} next={nextInstallment} />
 
-      <details className="group mt-4 rounded-lg border border-line">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-[13px] font-medium text-ink-2 hover:text-ink">
+      <details className="group mt-4 rounded-2xl border border-line">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-footnote font-medium text-ink-2 hover:text-ink">
           <Pencil className="size-3.5" aria-hidden /> Edit name and dates, or delete this session
         </summary>
         <div className="space-y-4 border-t border-line p-3">
@@ -116,7 +116,7 @@ function InstallmentRow({ inst }: { inst: InstallmentInfo }) {
   return (
     <form onSubmit={onSubmit} className={`${ROW} py-2`}>
       <input type="hidden" name="installment_id" value={inst.id} />
-      <span className="text-[13px] font-semibold tabular text-ink-2">#{inst.number}</span>
+      <span className="text-footnote font-semibold tabular text-ink-2">#{inst.number}</span>
       <Input name="name" defaultValue={inst.name} aria-label={`Name of installment ${inst.number}`} required />
       <Input
         name="due_date"
@@ -126,7 +126,7 @@ function InstallmentRow({ inst }: { inst: InstallmentInfo }) {
         required
         className="col-start-2 sm:col-start-auto"
       />
-      <span className="col-start-2 text-[12.5px] text-muted sm:col-start-auto" title="Student charge lines billed against this installment">
+      <span className="col-start-2 text-footnote text-muted sm:col-start-auto" title="Student charge lines billed against this installment">
         {inst.charges ? plural(inst.charges, "charge") : "Not billed yet"}
       </span>
       <div className="col-start-2 flex gap-1.5 sm:col-start-auto">
@@ -150,7 +150,7 @@ function InstallmentRow({ inst }: { inst: InstallmentInfo }) {
       {(state.error || state.message) && (
         <div className="col-span-full">
           <FormError message={state.error} />
-          {state.ok && <p className="text-[12.5px] text-good-ink">{state.message}</p>}
+          {state.ok && <p className="text-footnote text-good-ink">{state.message}</p>}
         </div>
       )}
     </form>
@@ -190,7 +190,7 @@ function AddInstallmentRow({ sessionId, next }: { sessionId: string; next: { num
       {(state.error || state.message) && (
         <div className="col-span-full">
           <FormError message={state.error} />
-          {state.ok && <p className="text-[12.5px] text-good-ink">{state.message}</p>}
+          {state.ok && <p className="text-footnote text-good-ink">{state.message}</p>}
         </div>
       )}
     </form>
@@ -232,7 +232,7 @@ function DeleteSessionForm({ session }: { session: SessionInfo }) {
   return (
     <form onSubmit={onSubmit} className="space-y-2 border-t border-line pt-3">
       <input type="hidden" name="session_id" value={session.id} />
-      <p className="text-[12.5px] text-ink-2">
+      <p className="text-footnote text-ink-2">
         {blockers.length
           ? `This session has ${listJoin(blockers)}, so it cannot be deleted. Sessions with data are kept for history.`
           : "This session has no students, payments or charges yet, so it can be deleted. Its installments and fee structure go with it."}

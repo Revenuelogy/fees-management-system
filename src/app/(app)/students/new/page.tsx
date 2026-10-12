@@ -15,7 +15,8 @@ export default async function NewStudentPage() {
       <PageHeader
         title="Add student"
         crumbs={[{ label: "Students", href: "/students" }, { label: "Add student" }]}
-        description="Fields marked * are required. Choosing a class enrols the student in the session and creates their fee plan."
+        description="Fields marked * are required."
+        info="Choosing a class enrols the student in the session and creates their fee plan."
       />
       <StudentForm classes={classes} session={session ? { id: session.id, name: session.name } : null} today={todayIST()} />
     </>

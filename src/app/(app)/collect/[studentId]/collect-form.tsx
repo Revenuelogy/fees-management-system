@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
+import { Banknote, Building2, Check, CreditCard, FileCheck2, MoreHorizontal, Smartphone } from "lucide-react";
 import { collectPayment } from "./actions";
 import type { ActionState } from "@/lib/action-state";
 import type { DueLine, PaymentMode } from "@/lib/types";
-import { MODE_LABELS, fmtDate, parseRupees, pct, rupees } from "@/lib/format";
+import { fmtDate, parseRupees, pct, rupees, rupeesShort } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
+import { Field, FormError, Input, Textarea } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { StackedBar, Legend } from "@/components/ui/bars";
 import { KIND_LEGEND } from "@/components/ui/alloc";
@@ -34,12 +35,14 @@ function autoAllocate(amount: number, dues: DueLine[], order: "oldest_first" | "
   return out;
 }
 
-const REF_LABEL: Partial<Record<PaymentMode, string>> = {
-  cheque: "Cheque number & bank",
-  upi: "UPI transaction ID",
-  bank_transfer: "UTR / NEFT reference",
-  card: "Card slip / approval code",
-};
+const MODES: { value: PaymentMode; label: string; icon: React.ElementType; ref?: string }[] = [
+  { value: "cash", label: "Cash", icon: Banknote },
+  { value: "upi", label: "UPI", icon: Smartphone, ref: "UPI transaction ID" },
+  { value: "cheque", label: "Cheque", icon: FileCheck2, ref: "Cheque number & bank" },
+  { value: "bank_transfer", label: "Bank", icon: Building2, ref: "UTR / NEFT reference" },
+  { value: "card", label: "Card", icon: CreditCard, ref: "Card slip / approval code" },
+  { value: "other", label: "Other", icon: MoreHorizontal, ref: "Reference" },
+];
 
 export function CollectForm({
   studentId,
@@ -64,6 +67,7 @@ export function CollectForm({
   const [mode, setMode] = useState<PaymentMode>("cash");
   const [manual, setManual] = useState(false);
   const [lines, setLines] = useState<Record<string, string>>({});
+  const [showNote, setShowNote] = useState(false);
 
   const paySession = sessions.find((s) => paidOn >= s.start && paidOn <= s.end) ?? null;
   const paySessionStart = paySession?.start ?? "";
@@ -71,6 +75,7 @@ export function CollectForm({
   const totalDue = dues.reduce((a, d) => a + d.remaining, 0);
   const overdueLines = dues.filter((d) => d.is_overdue);
   const totalOverdue = overdueLines.reduce((a, d) => a + d.remaining, 0);
+  const modeInfo = MODES.find((m) => m.value === mode)!;
 
   const allocation = useMemo(() => {
     if (!manual) return autoAllocate(amount, dues, order, paySession?.id ?? null);
@@ -84,11 +89,11 @@ export function CollectForm({
 
   const allocated = [...allocation.values()].reduce((a, v) => a + v, 0);
   const unallocated = Math.max(0, amount - allocated);
-  const kindOf = (d: DueLine) => (d.session_id === paySession?.id ? "current" : d.session_start < paySessionStart ? "arrears" : "advance");
+  const kindOf = (sessionId: string, sessionStart: string) => (sessionId === paySession?.id ? "current" : sessionStart < paySessionStart ? "arrears" : "advance");
   const split = { current: 0, arrears: 0, advance: 0 };
   for (const d of dues) {
     const a = allocation.get(d.charge_id) ?? 0;
-    if (a > 0) split[kindOf(d)] += a;
+    if (a > 0) split[kindOf(d.session_id, d.session_start)] += a;
   }
   if (!manual) split.advance += unallocated;
   const over = manual && allocated > amount;
@@ -119,217 +124,251 @@ export function CollectForm({
   const targets = [...allocation.entries()].map(([charge_id, amt]) => ({ charge_id, amount: amt }));
 
   return (
-    <form action={action} className="grid gap-4 xl:grid-cols-[1fr_380px]">
+    <form action={action} className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
       <input type="hidden" name="student_id" value={studentId} />
       <input type="hidden" name="targets" value={JSON.stringify(targets)} />
+      <input type="hidden" name="mode" value={mode} />
 
-      <section className="rounded-xl border border-line bg-surface">
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+      <section className="rounded-[var(--radius-card)] bg-surface shadow-card">
+        <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5 sm:px-6">
           <div>
-            <h2 className="text-[15px] font-semibold text-ink">Open dues</h2>
-            <p className="text-[13px] text-ink-2">
-              {rupees(totalDue)} unpaid in total · {rupees(totalOverdue)} overdue
-              {advance > 0 && <> · {rupees(advance)} advance already held</>}
+            <h2 className="text-headline font-semibold text-ink">Open dues</h2>
+            <p className="mt-0.5 text-footnote text-ink-2">
+              <span className="font-semibold text-ink">{rupees(totalDue)}</span> unpaid
+              {totalOverdue > 0 && (
+                <>
+                  {" "}· <span className="font-semibold text-critical-ink">{rupees(totalOverdue)}</span> overdue
+                </>
+              )}
+              {advance > 0 && <> · {rupees(advance)} advance held</>}
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {totalOverdue > 0 && (
               <Button type="button" size="sm" onClick={() => fillManual(overdueLines)}>
-                All overdue {rupees(totalOverdue)}
+                Pay overdue
               </Button>
             )}
             {totalDue > 0 && (
               <Button type="button" size="sm" onClick={() => fillManual(dues)}>
-                Everything {rupees(totalDue)}
+                Pay everything
               </Button>
             )}
           </div>
         </header>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-2 px-4 py-2 text-[13px] sm:px-5">
-          <div className="inline-flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="Allocation mode">
-            <button type="button" onClick={() => setManual(false)} aria-pressed={!manual}
-              className={cn("rounded-md px-2.5 py-1", !manual ? "bg-accent-soft font-medium text-accent-strong" : "text-ink-2")}>
-              Automatic ({order === "oldest_first" ? "oldest dues first" : "current session first"})
-            </button>
-            <button
-              type="button"
-              aria-pressed={manual}
-              onClick={() => {
-                if (!manual) {
-                  const seed: Record<string, string> = {};
-                  for (const [k, v] of allocation) seed[k] = String(v / 100);
-                  setLines(seed);
-                }
-                setManual(true);
-              }}
-              className={cn("rounded-md px-2.5 py-1", manual ? "bg-accent-soft font-medium text-accent-strong" : "text-ink-2")}
-            >
-              Choose what it pays for
-            </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 sm:px-6">
+          <div className="inline-flex rounded-[10px] bg-fill p-[2px] text-footnote" role="group" aria-label="Allocation">
+            {[
+              { v: false, label: "Automatic" },
+              { v: true, label: "Choose" },
+            ].map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                aria-pressed={manual === o.v}
+                onClick={() => {
+                  if (o.v && !manual) {
+                    const seed: Record<string, string> = {};
+                    for (const [k, v] of allocation) seed[k] = String(v / 100);
+                    setLines(seed);
+                  }
+                  setManual(o.v);
+                }}
+                className={cn(
+                  "rounded-[8px] px-3 py-[5px] font-medium transition-all",
+                  manual === o.v ? "bg-surface text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)] dark:bg-surface-3" : "text-ink-2",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
-          <Legend items={KIND_LEGEND} />
+          <span className="text-caption text-muted">{manual ? "Type what each fee gets" : order === "oldest_first" ? "Oldest dues are cleared first" : "This session is cleared first"}</span>
         </div>
 
         {dues.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-2">No dues. Any amount collected now is kept as an advance for future fees.</p>
+          <p className="px-6 py-14 text-center text-subhead text-ink-2">No dues. Anything collected now is kept as an advance.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13.5px]">
-              <thead className="text-left text-[12px] uppercase tracking-wide text-muted">
-                <tr className="border-b border-line">
-                  <th className="px-4 py-2 font-medium sm:px-5">Fee</th>
-                  <th className="px-3 py-2 text-right font-medium">Due</th>
-                  <th className="px-3 py-2 text-right font-medium">Paid</th>
-                  <th className="px-3 py-2 text-right font-medium">Pending</th>
-                  <th className="px-4 py-2 text-right font-medium sm:px-5">This payment</th>
-                </tr>
-              </thead>
-              <tbody className="tabular">
-                {groups.map((g) => {
-                  const kind = g.sessionId === paySession?.id ? "current" : g.sessionStart < paySessionStart ? "arrears" : "advance";
-                  const grpPending = g.lines.reduce((a, l) => a + l.remaining, 0);
-                  return (
-                    <GroupRows
-                      key={g.key}
-                      title={`${g.session} · ${g.inst}`}
-                      due={g.due}
-                      overdue={g.overdue}
-                      kind={kind}
-                      pendingTotal={grpPending}
-                      onFill={() => fillManual(g.lines, true)}
+          <div className="space-y-3 p-5 sm:p-6">
+            {groups.map((g) => {
+              const kind = kindOf(g.sessionId, g.sessionStart);
+              const pendingTotal = g.lines.reduce((a, l) => a + l.remaining, 0);
+              const allocatedHere = g.lines.reduce((a, l) => a + (allocation.get(l.charge_id) ?? 0), 0);
+              const full = allocatedHere >= pendingTotal && pendingTotal > 0;
+              const dot = { current: "bg-series-1", arrears: "bg-series-2", advance: "bg-series-3" }[kind];
+              return (
+                <div key={g.key} className={cn("rounded-2xl border p-4 transition-colors", allocatedHere > 0 ? "border-accent/40 bg-accent-soft/40" : "border-line bg-fill-2/60")}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <button
+                      type="button"
+                      onClick={() => fillManual(g.lines, true)}
+                      aria-label={`Pay all of ${g.session} ${g.inst}`}
+                      className={cn(
+                        "inline-flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                        full ? "border-accent bg-accent text-white" : "border-line-strong text-transparent hover:border-accent",
+                      )}
                     >
-                      {g.lines.map((l) => {
-                        const a = allocation.get(l.charge_id) ?? 0;
-                        return (
-                          <tr key={l.charge_id} className="border-t border-line/70">
-                            <td className="px-4 py-1.5 pl-8 text-ink sm:px-5 sm:pl-9">
-                              {l.fee_head}
-                              {l.concession > 0 && <span className="ml-1 text-[12px] text-muted">(−{rupees(l.concession)} concession)</span>}
-                            </td>
-                            <td className="px-3 py-1.5 text-right text-ink-2">{rupees(l.net_amount)}</td>
-                            <td className="px-3 py-1.5 text-right text-ink-2">{l.paid ? rupees(l.paid) : "—"}</td>
-                            <td className="px-3 py-1.5 text-right font-medium">{rupees(l.remaining)}</td>
-                            <td className="px-4 py-1.5 text-right sm:px-5">
-                              {manual ? (
-                                <input
-                                  inputMode="decimal"
-                                  aria-label={`Amount for ${g.inst} ${l.fee_head}`}
-                                  value={lines[l.charge_id] ?? ""}
-                                  onChange={(e) => setLines((s) => ({ ...s, [l.charge_id]: e.target.value }))}
-                                  placeholder="0"
-                                  className="h-8 w-28 rounded-md border border-line-strong bg-surface px-2 text-right text-sm focus:border-accent focus:outline-none"
-                                />
-                              ) : (
-                                <span className={a > 0 ? "font-semibold text-ink" : "text-muted"}>{a > 0 ? rupees(a) : "—"}</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </GroupRows>
-                  );
-                })}
-              </tbody>
-            </table>
+                      <Check className="size-3.5" strokeWidth={3} />
+                    </button>
+                    <span className={cn("size-2 rounded-full", dot)} aria-hidden />
+                    <span className="text-subhead font-semibold text-ink">
+                      {g.session} · Installment {g.instNo}
+                    </span>
+                    {kind === "arrears" && <Badge tone="serious">Old dues</Badge>}
+                    {g.overdue ? <Badge tone="critical">Overdue</Badge> : <Badge>Due {fmtDate(g.due)}</Badge>}
+                    <span className="ml-auto text-subhead tabular">
+                      {allocatedHere > 0 && <span className="mr-2 font-semibold text-accent">{rupees(allocatedHere)}</span>}
+                      <span className={allocatedHere > 0 ? "text-muted" : "font-semibold text-ink"}>{rupees(pendingTotal)}</span>
+                    </span>
+                  </div>
+                  <ul className="mt-3 space-y-1.5 pl-9">
+                    {g.lines.map((l) => {
+                      const a = allocation.get(l.charge_id) ?? 0;
+                      return (
+                        <li key={l.charge_id} className="flex items-center justify-between gap-3 text-subhead">
+                          <span className="min-w-0 truncate text-ink-2">
+                            {l.fee_head}
+                            {l.concession > 0 && <span className="ml-1 text-caption text-muted">(−{rupeesShort(l.concession)})</span>}
+                          </span>
+                          <span className="flex items-center gap-3 tabular">
+                            <span className="text-muted">{rupees(l.remaining)}</span>
+                            {manual ? (
+                              <input
+                                inputMode="decimal"
+                                aria-label={`Amount for ${g.inst} ${l.fee_head}`}
+                                value={lines[l.charge_id] ?? ""}
+                                onChange={(e) => setLines((s) => ({ ...s, [l.charge_id]: e.target.value }))}
+                                placeholder="0"
+                                className="h-8 w-24 rounded-lg bg-surface px-2 text-right text-subhead text-ink shadow-[0_0_0_1px_var(--line-strong)] focus:outline-none focus:ring-4 focus:ring-accent/15"
+                              />
+                            ) : (
+                              <span className={cn("w-20 text-right", a > 0 ? "font-semibold text-accent" : "text-transparent")}>{a > 0 ? rupees(a) : "—"}</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
 
       <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
-        <section className="rounded-xl border border-line bg-surface p-4 sm:p-5">
-          <h2 className="mb-3 text-[15px] font-semibold text-ink">Payment</h2>
-          <div className="space-y-3">
-            <Field label="Amount received (₹)" htmlFor="amount">
-              <Input
-                id="amount"
-                name="amount"
-                inputMode="decimal"
-                autoFocus
-                required
-                value={amountText}
-                onChange={(e) => setAmountText(e.target.value)}
-                placeholder="e.g. 15000"
-                className="h-11 text-lg font-semibold"
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Date" htmlFor="paid_on">
-                <Input id="paid_on" name="paid_on" type="date" max={today} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required />
-              </Field>
-              <Field label="Mode" htmlFor="mode">
-                <Select id="mode" name="mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)}>
-                  {Object.entries(MODE_LABELS).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
+        <section className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card sm:p-6">
+          <label htmlFor="amount" className="text-footnote font-medium text-ink-2">
+            Amount received
+          </label>
+          <div className="relative mt-1.5">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-title1 font-semibold text-muted">₹</span>
+            <input
+              id="amount"
+              name="amount"
+              inputMode="decimal"
+              autoFocus
+              required
+              autoComplete="off"
+              value={amountText}
+              onChange={(e) => setAmountText(e.target.value)}
+              placeholder="0"
+              className="figure h-16 w-full rounded-2xl bg-fill-2 pl-11 pr-4 text-[32px] text-ink placeholder:text-muted/60 focus:bg-surface focus:outline-none focus:ring-4 focus:ring-accent/15"
+            />
+          </div>
+
+          <p className="mb-2 mt-5 text-footnote font-medium text-ink-2">Paid by</p>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Payment mode">
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              const active = m.value === mode;
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setMode(m.value)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-2xl py-2.5 text-caption font-semibold transition-all",
+                    active ? "bg-accent text-accent-ink shadow-[0_2px_8px_rgba(0,113,227,0.3)]" : "bg-fill-2 text-ink-2 hover:bg-fill",
+                  )}
+                >
+                  <Icon className="size-5" strokeWidth={2} />
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3">
             {mode !== "cash" && (
-              <Field label={REF_LABEL[mode] ?? "Reference"} htmlFor="reference_no">
+              <Field label={modeInfo.ref ?? "Reference"} htmlFor="reference_no">
                 <Input id="reference_no" name="reference_no" required={mode !== "card" && mode !== "other"} />
               </Field>
             )}
-            <Field label="Remarks (optional)" htmlFor="remarks">
-              <Textarea id="remarks" name="remarks" rows={2} />
+            <Field label="Date" htmlFor="paid_on">
+              <Input id="paid_on" name="paid_on" type="date" max={today} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required />
             </Field>
+            {showNote ? (
+              <Field label="Remarks" htmlFor="remarks">
+                <Textarea id="remarks" name="remarks" rows={2} autoFocus />
+              </Field>
+            ) : (
+              <button type="button" onClick={() => setShowNote(true)} className="justify-self-start text-footnote font-medium text-accent">
+                + Add a remark
+              </button>
+            )}
           </div>
 
-          <div className="mt-4 rounded-lg bg-surface-2 p-3 text-[13px]">
-            <div className="mb-2 font-medium text-ink">This payment pays for</div>
-            <StackedBar
-              segments={[
-                { value: split.current, className: "bg-series-1", label: "Current year fees", display: rupees(split.current) },
-                { value: split.arrears, className: "bg-series-2", label: "Previous dues", display: rupees(split.arrears) },
-                { value: split.advance, className: "bg-series-3", label: "Advance", display: rupees(split.advance) },
-              ]}
-            />
-            <dl className="mt-2 space-y-0.5 tabular">
-              <div className="flex justify-between"><dt className="text-ink-2">Current-year fees</dt><dd>{rupees(split.current)}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-2">Previous dues</dt><dd>{rupees(split.arrears)}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-2">Advance</dt><dd>{rupees(split.advance)}</dd></div>
-              {manual && unallocated > 0 && (
-                <div className="flex justify-between text-ink-2">
-                  <dt>Not assigned (default rule / advance)</dt>
-                  <dd>{rupees(unallocated)}</dd>
-                </div>
-              )}
-              <div className="mt-1 flex justify-between border-t border-line pt-1 font-medium">
-                <dt>Balance after</dt>
-                <dd>{rupees(Math.max(0, totalDue - Math.min(amount, totalDue)))}</dd>
+          {amount > 0 && (
+            <div className="mt-5 rounded-2xl bg-fill-2 p-4">
+              <StackedBar
+                segments={[
+                  { value: split.current, className: "bg-series-1", label: "This year", display: rupees(split.current) },
+                  { value: split.arrears, className: "bg-series-2", label: "Old dues", display: rupees(split.arrears) },
+                  { value: split.advance, className: "bg-series-3", label: "Advance", display: rupees(split.advance) },
+                ]}
+              />
+              <Legend
+                className="mt-3"
+                items={[
+                  { ...KIND_LEGEND[0], value: rupeesShort(split.current) },
+                  { ...KIND_LEGEND[1], value: rupeesShort(split.arrears) },
+                  { ...KIND_LEGEND[2], value: rupeesShort(split.advance) },
+                ]}
+              />
+              <div className="mt-3 flex items-baseline justify-between border-t border-line pt-3 text-subhead">
+                <span className="text-ink-2">Balance after</span>
+                <span className="font-semibold tabular">{rupees(Math.max(0, totalDue - Math.min(amount, totalDue)))}</span>
               </div>
-              {totalDue > 0 && amount > 0 && (
-                <div className="flex justify-between text-muted">
-                  <dt>Clears</dt>
-                  <dd>{pct((100 * Math.min(amount, totalDue)) / totalDue)} of the outstanding balance</dd>
-                </div>
-              )}
-            </dl>
-          </div>
+              {totalDue > 0 && <p className="mt-0.5 text-right text-caption text-muted">clears {pct((100 * Math.min(amount, totalDue)) / totalDue, 0)} of the balance</p>}
+              {manual && unallocated > 0 && <p className="mt-1 text-caption text-muted">{rupees(unallocated)} not assigned goes to the oldest dues or advance.</p>}
+            </div>
+          )}
 
-          {over && <FormError message={`Allocated ${rupees(allocated)} is more than the amount received (${rupees(amount)}).`} />}
-          {!paySession && <FormError message="No academic session covers this date." />}
-          <div className="mt-3">
+          <div className="mt-4 space-y-2">
+            {over && <FormError message={`You assigned ${rupees(allocated)}, more than the ${rupees(amount)} received.`} />}
+            {!paySession && <FormError message="No academic session covers this date." />}
             <FormError message={state.error} />
           </div>
-          <Button type="submit" variant="primary" className="mt-3 h-11 w-full text-base" disabled={pending || amount <= 0 || over || !paySession}>
-            {pending ? "Saving…" : amount > 0 ? `Save & print receipt · ${rupees(amount)}` : "Save & print receipt"}
+          <Button type="submit" variant="primary" size="lg" className="mt-4 w-full" disabled={pending || amount <= 0 || over || !paySession}>
+            {pending ? "Saving…" : amount > 0 ? `Collect ${rupees(amount)}` : "Enter an amount"}
           </Button>
         </section>
 
         {recent.length > 0 && (
-          <section className="rounded-xl border border-line bg-surface p-4 text-[13px]">
-            <h3 className="mb-2 font-medium text-ink">Recent receipts</h3>
-            <ul className="space-y-1">
+          <section className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+            <h3 className="mb-2 text-footnote font-medium text-ink-2">Recent receipts</h3>
+            <ul className="space-y-1.5 text-subhead">
               {recent.map((r) => (
                 <li key={r.id} className="flex justify-between gap-2">
-                  <Link href={`/payments/${r.id}`} className="text-accent hover:underline">
+                  <Link href={`/payments/${r.id}`} className="text-accent">
                     {r.receipt_no}
                   </Link>
                   <span className="tabular text-ink-2">
-                    {fmtDate(r.paid_on)} · <span className={r.cancelled ? "line-through" : ""}>{rupees(r.amount)}</span>
+                    {fmtDate(r.paid_on)} · <span className={r.cancelled ? "line-through" : "font-medium text-ink"}>{rupees(r.amount)}</span>
                   </span>
                 </li>
               ))}
@@ -338,47 +377,5 @@ export function CollectForm({
         )}
       </aside>
     </form>
-  );
-}
-
-function GroupRows({
-  title,
-  due,
-  overdue,
-  kind,
-  pendingTotal,
-  onFill,
-  children,
-}: {
-  title: string;
-  due: string;
-  overdue: boolean;
-  kind: "current" | "arrears" | "advance";
-  pendingTotal: number;
-  onFill: () => void;
-  children: React.ReactNode;
-}) {
-  const dot = { current: "bg-series-1", arrears: "bg-series-2", advance: "bg-series-3" }[kind];
-  return (
-    <>
-      <tr className="border-t border-line bg-surface-2/50">
-        <td colSpan={3} className="px-4 py-2 sm:px-5">
-          <span className="inline-flex flex-wrap items-center gap-2">
-            <span className={cn("size-2.5 rounded-[3px]", dot)} aria-hidden />
-            <span className="font-medium text-ink">{title}</span>
-            <span className="text-[12px] text-muted">due {fmtDate(due)}</span>
-            {kind === "arrears" && <Badge tone="serious">Previous dues</Badge>}
-            {overdue ? <Badge tone="critical">Overdue</Badge> : <Badge>Upcoming</Badge>}
-          </span>
-        </td>
-        <td className="px-3 py-2 text-right font-semibold">{rupees(pendingTotal)}</td>
-        <td className="px-4 py-2 text-right sm:px-5">
-          <button type="button" onClick={onFill} className="text-[12.5px] font-medium text-accent hover:underline">
-            Pay this
-          </button>
-        </td>
-      </tr>
-      {children}
-    </>
   );
 }

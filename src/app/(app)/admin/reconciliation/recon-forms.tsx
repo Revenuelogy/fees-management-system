@@ -42,7 +42,7 @@ export function MonthCloseForm({ month, closed }: { month: string; closed: boole
         {closed ? <LockOpen className="size-4" aria-hidden /> : <Lock className="size-4" aria-hidden />}
         {pending ? (closed ? "Reopening…" : "Closing…") : closed ? "Reopen" : "Close month"}
       </Button>
-      {state.error && <span className="max-w-[260px] text-right text-[12px] text-critical-ink">{state.error}</span>}
+      {state.error && <span className="max-w-[260px] text-right text-caption text-critical-ink">{state.error}</span>}
     </form>
   );
 }

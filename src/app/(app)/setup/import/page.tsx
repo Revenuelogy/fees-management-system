@@ -26,8 +26,8 @@ export default async function ImportPage({ searchParams }: PageProps<"/setup/imp
     <>
       <PageHeader
         title="Import data"
-        crumbs={[{ label: "Setup", href: "/setup" }, { label: "Import data" }]}
-        description="Bring in students, dues carried over from earlier years and past payments from spreadsheets. Import students first, then opening dues and payments."
+        description="Students first, then old dues and past payments."
+        info="Bring in students, dues carried over from earlier years and past payments from CSV spreadsheets."
       >
         <Segmented
           label="Import"

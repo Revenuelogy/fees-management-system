@@ -1,23 +1,32 @@
 import Link from "next/link";
-import { Target } from "lucide-react";
+import { ChevronRight, Plus, Target } from "lucide-react";
 import { requireStaff, canWrite } from "@/lib/auth";
 import { getActiveSession } from "@/lib/context";
 import { createClient } from "@/lib/supabase/server";
-import { fmtDate, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
+import { fmtDate, rupees, rupeesShort } from "@/lib/format";
 import type { CollectionTarget, InstallmentRow, TargetProgress } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import { Kpi, KpiGrid } from "@/components/ui/kpi";
 import { Badge } from "@/components/ui/badge";
-import { Legend, Meter, StackedBar } from "@/components/ui/bars";
+import { Legend, StackedBar } from "@/components/ui/bars";
+import { Ring } from "@/components/ui/ring";
 import { Empty } from "@/components/ui/empty";
 import { NoSession } from "@/components/no-session";
 import { TargetForm, DeleteTargetButton } from "./target-form";
 
-export const metadata = { title: "Installment analysis" };
+export const metadata = { title: "Installments" };
 
-const STATUS_TONE = { upcoming: "neutral", open: "accent", closed: "neutral" } as const;
-const STATUS_LABEL = { upcoming: "Upcoming", open: "Open", closed: "Closed" } as const;
+const STATUS = {
+  upcoming: { label: "Upcoming", tone: "neutral" },
+  open: { label: "Open", tone: "accent" },
+  closed: { label: "Closed", tone: "neutral" },
+} as const;
+
+const TIMING_LEGEND = [
+  { label: "On time", className: "bg-series-1" },
+  { label: "Late", className: "bg-series-2" },
+  { label: "Missing", className: "bg-series-track" },
+];
 
 export default async function InstallmentsPage() {
   const viewer = await requireStaff();
@@ -37,127 +46,59 @@ export default async function InstallmentsPage() {
       return p as TargetProgress | null;
     }),
   );
-
   const tot = rows.reduce(
     (a, r) => ({ expected: a.expected + r.expected, received: a.received + r.received, on_time: a.on_time + r.on_time, late: a.late + r.late, gap: a.gap + r.gap }),
     { expected: 0, received: 0, on_time: 0, late: 0, gap: 0 },
   );
-  const dueRows = rows.filter((r) => r.status !== "upcoming");
-  const dueExp = dueRows.reduce((a, r) => a + r.expected, 0);
-  const dueGap = dueRows.reduce((a, r) => a + r.gap, 0);
 
   return (
-    <>
+    <div className="space-y-5">
       <PageHeader
-        title="Installment analysis"
-        description={`Session ${session.name}: did each installment bring in what the fee plan said, and who caused the shortfall?`}
-        crumbs={[{ label: session.name, href: "/" }, { label: "Installments" }]}
+        title="Installments"
+        description={`${session.name} · ${rupeesShort(tot.received)} of ${rupeesShort(tot.expected)} collected`}
+        info="Collected = money allocated to each installment, whenever it was paid. Open an installment to see which classes and students make up the gap."
       />
 
       {rows.length === 0 ? (
         <Card>
-          <Empty title="No installments in this session">
-            Add installments under <Link className="text-accent underline" href="/setup/sessions">Setup → Sessions</Link>.
+          <Empty title="No installments yet">
+            Add them in <Link className="text-accent" href="/setup/sessions">Setup → Sessions</Link>.
           </Empty>
         </Card>
       ) : (
         <>
-          <KpiGrid cols={4}>
-            <Kpi label="Planned for the year" value={rupeesShort(tot.expected)} sub={`${rows.length} installments after concessions`} />
-            <Kpi label="Received against installments" value={rupeesShort(tot.received)} meter={ratioPct(tot.received, tot.expected)} sub={`${pct(ratioPct(tot.received, tot.expected))} of the year's plan`} />
-            <Kpi
-              label="Gap in installments already due"
-              value={rupeesShort(dueGap)}
-              tone={dueGap > 0 ? "critical" : "good"}
-              sub={`${pct(ratioPct(dueExp - dueGap, dueExp))} of ${rupeesShort(dueExp)} collected`}
-            />
-            <Kpi label="Paid on time" value={pct(ratioPct(tot.on_time, tot.received))} sub={`${rupeesShort(tot.on_time)} on or before due date · ${rupeesShort(tot.late)} late`} />
-          </KpiGrid>
-
-          <Card className="mt-4" title="Installment summary" description="Received = money allocated to the installment, whenever it was paid. Click an installment for the full gap analysis.">
-            <div className="overflow-x-auto rounded-lg border border-line">
-              <table className="w-full text-[13.5px]">
-                <thead className="bg-surface-2 text-left text-[12px] uppercase tracking-wide text-muted">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Installment</th>
-                    <th className="px-3 py-2 font-medium">Due date</th>
-                    <th className="px-3 py-2 text-right font-medium">Expected</th>
-                    <th className="px-3 py-2 text-right font-medium">Received</th>
-                    <th className="px-3 py-2 text-right font-medium">Gap</th>
-                    <th className="px-3 py-2 font-medium">Collection</th>
-                    <th className="hidden px-3 py-2 text-right font-medium md:table-cell">Students cleared</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="tabular">
-                  {rows.map((r) => (
-                    <tr key={r.id} className="border-t border-line hover:bg-surface-2/60">
-                      <td className="px-3 py-2.5">
-                        <Link href={`/installments/${r.number}`} className="font-medium text-ink hover:text-accent hover:underline">
-                          {r.name}
-                        </Link>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2.5">{fmtDate(r.due_date)}</td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right">{rupees(r.expected)}</td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right">{rupees(r.received)}</td>
-                      <td className={`whitespace-nowrap px-3 py-2.5 text-right ${r.gap > 0 && r.status !== "upcoming" ? "font-medium text-critical-ink" : ""}`}>{rupees(r.gap)}</td>
-                      <td className="min-w-[140px] px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <Meter value={r.collection_pct} className="w-20" />
-                          <span>{pct(r.collection_pct)}</span>
-                        </div>
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right md:table-cell">
-                        {r.students_cleared} / {r.students}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="tabular">
-                  <tr className="border-t-2 border-line-strong bg-surface-2 font-semibold">
-                    <td className="px-3 py-2" colSpan={2}>
-                      Year
-                    </td>
-                    <td className="px-3 py-2 text-right">{rupees(tot.expected)}</td>
-                    <td className="px-3 py-2 text-right">{rupees(tot.received)}</td>
-                    <td className="px-3 py-2 text-right">{rupees(tot.gap)}</td>
-                    <td className="px-3 py-2">{pct(ratioPct(tot.received, tot.expected))}</td>
-                    <td className="hidden md:table-cell" />
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </Card>
-
-          <Card
-            className="mt-4"
-            title="On time, late and missing"
-            description="For each installment: money received by the due date, money received after it, and what is still missing. A growing grey part means the shortfall is being carried forward."
-          >
-            <Legend
-              items={[
-                { label: "Received on time", className: "bg-series-1" },
-                { label: "Received late", className: "bg-series-2" },
-                { label: "Still missing", className: "bg-series-track" },
-              ]}
-            />
-            <ul className="mt-4 space-y-4">
-              {rows.map((r) => (
-                <li key={r.id}>
-                  <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 text-[13px]">
-                    <Link href={`/installments/${r.number}`} className="font-medium text-ink hover:underline">
-                      {r.name} <span className="font-normal text-muted">· due {fmtDate(r.due_date)}</span>
-                    </Link>
-                    <span className="tabular text-ink-2">
-                      {rupeesShort(r.on_time)} on time · {rupeesShort(r.late)} late · <span className="text-ink">{rupeesShort(r.gap)} missing</span>
-                    </span>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {rows.map((r, i) => (
+              <Link
+                key={r.id}
+                href={`/installments/${r.number}`}
+                className="animate-rise group rounded-[var(--radius-card)] bg-surface p-6 shadow-card transition-transform duration-200 hover:-translate-y-0.5"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-headline font-semibold text-ink">Installment {r.number}</p>
+                    <p className="text-footnote text-ink-2">Due {fmtDate(r.due_date)}</p>
                   </div>
+                  <Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge>
+                </div>
+                <div className="mt-6 flex items-center gap-6">
+                  <Ring value={r.collection_pct} size={112} stroke={12} color={r.status === "upcoming" ? "var(--tile-gray)" : "var(--series-1)"}>
+                    <span className="figure text-title2">{Math.round(r.collection_pct ?? 0)}%</span>
+                  </Ring>
+                  <dl className="grid flex-1 gap-2.5 text-footnote">
+                    <div>
+                      <dt className="text-ink-2">Collected</dt>
+                      <dd className="text-title3 font-semibold tabular text-ink">{rupeesShort(r.received)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ink-2">Gap</dt>
+                      <dd className={`text-title3 font-semibold tabular ${r.gap > 0 && r.status !== "upcoming" ? "text-critical-ink" : "text-ink"}`}>{rupeesShort(r.gap)}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <div className="mt-6">
                   <StackedBar
-                    height="h-5"
                     total={r.expected}
                     segments={[
                       { value: r.on_time, className: "bg-series-1", label: "On time", display: rupees(r.on_time) },
@@ -165,70 +106,89 @@ export default async function InstallmentsPage() {
                       { value: r.gap, className: "bg-series-track", label: "Missing", display: rupees(r.gap) },
                     ]}
                   />
-                </li>
-              ))}
-            </ul>
+                  <div className="mt-2.5 flex items-center justify-between text-caption text-muted">
+                    <span>
+                      {r.students_cleared} of {r.students} students cleared
+                    </span>
+                    <span className="inline-flex items-center gap-0.5 font-medium text-accent">
+                      Details <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <Card title="Whole year" description="Money received by each due date, received late, and still missing. A growing grey part means the shortfall is being carried forward.">
+            <StackedBar
+              height="h-4"
+              total={tot.expected}
+              segments={[
+                { value: tot.on_time, className: "bg-series-1", label: "On time", display: rupees(tot.on_time) },
+                { value: tot.late, className: "bg-series-2", label: "Late", display: rupees(tot.late) },
+                { value: tot.gap, className: "bg-series-track", label: "Missing", display: rupees(tot.gap) },
+              ]}
+            />
+            <Legend
+              className="mt-3"
+              items={[
+                { ...TIMING_LEGEND[0], value: rupeesShort(tot.on_time) },
+                { ...TIMING_LEGEND[1], value: rupeesShort(tot.late) },
+                { ...TIMING_LEGEND[2], value: rupeesShort(tot.gap) },
+              ]}
+            />
           </Card>
         </>
       )}
 
-      <Card
-        className="mt-4"
-        title="Collection targets"
-        description="Set a goal such as “90% of fees due by 31 December”. The tracker shows the rupee gap and the smallest list of students whose payment would close it."
-      >
-        {targets.length === 0 && <p className="mb-4 text-sm text-ink-2">No targets yet.</p>}
-        <div className="grid gap-3 md:grid-cols-2">
+      <Card title="Targets" description="Set a goal like “90% of fees due by 31 December”. Each target shows the gap and who would close it.">
+        {targets.length === 0 && <p className="mb-2 text-subhead text-ink-2">No targets yet.</p>}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {targets.map((t, i) => {
             const p = progress[i];
             if (!p) return null;
+            const reached = p.gap <= 0;
             return (
-              <div key={t.id} className="rounded-xl border border-line p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-1.5 font-medium text-ink">
-                      <Target className="size-4 text-muted" aria-hidden /> {t.name}
-                    </div>
-                    <div className="text-[12.5px] text-muted">
-                      {Number(t.target_pct)}% of fees due by {fmtDate(t.target_date)} ({rupeesShort(p.expected)})
-                    </div>
+              <div key={t.id} className="flex items-center gap-5 rounded-2xl bg-fill-2 p-5">
+                <Ring value={p.current_pct} size={92} stroke={10} color={reached ? "var(--good)" : "var(--series-1)"}>
+                  <span className="text-headline font-semibold tabular">{Math.round(p.current_pct ?? 0)}%</span>
+                </Ring>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-subhead font-semibold text-ink">
+                      <Target className="size-4 text-muted" aria-hidden /> {Number(t.target_pct)}% by {fmtDate(t.target_date)}
+                    </p>
+                    {canWrite(viewer.role) && <DeleteTargetButton id={t.id} />}
                   </div>
-                  {canWrite(viewer.role) && <DeleteTargetButton id={t.id} />}
-                </div>
-                <div className="mt-3 flex items-end justify-between gap-2">
-                  <div className="text-2xl font-semibold">{pct(p.current_pct)}</div>
-                  <div className="text-right text-[13px] text-ink-2">
-                    {p.gap > 0 ? (
-                      <>
-                        <b className="text-critical-ink">{rupeesShort(p.gap)}</b> short of {rupeesShort(p.goal)}
-                      </>
+                  <p className="mt-1 text-footnote text-ink-2">
+                    {reached ? (
+                      <span className="font-semibold text-good-ink">Target reached</span>
                     ) : (
-                      <b className="text-good-ink">Target reached</b>
+                      <>
+                        <span className="font-semibold text-critical-ink">{rupeesShort(p.gap)}</span> short of {rupeesShort(p.goal)}
+                      </>
                     )}
-                  </div>
-                </div>
-                <div className="relative mt-2">
-                  <Meter value={p.current_pct} className="h-2" />
-                  <span className="absolute top-[-3px] h-3.5 w-0.5 rounded bg-ink" style={{ left: `${Math.min(100, Number(t.target_pct))}%` }} title={`Target ${t.target_pct}%`} />
-                </div>
-                {p.gap > 0 && (
-                  <p className="mt-3 text-[13px] text-ink-2">
-                    {p.students_to_close.length} students owe enough to close the gap.{" "}
-                    <Link href={`/installments/targets/${t.id}`} className="font-medium text-accent hover:underline">
-                      See who to call →
-                    </Link>
                   </p>
-                )}
+                  {!reached && (
+                    <Link href={`/installments/targets/${t.id}`} className="mt-2 inline-flex items-center gap-0.5 text-footnote font-medium text-accent">
+                      {p.students_to_close.length} students to call <ChevronRight className="size-3.5" />
+                    </Link>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
         {canWrite(viewer.role) && (
-          <div className="mt-4 border-t border-line pt-4">
-            <TargetForm sessionId={session.id} defaultDate={session.end_date} />
-          </div>
+          <details className="group mt-4">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full bg-fill px-3.5 py-1.5 text-footnote font-medium text-ink hover:bg-[rgba(118,118,128,0.18)]">
+              <Plus className="size-3.5" /> New target
+            </summary>
+            <div className="mt-4">
+              <TargetForm sessionId={session.id} defaultDate={session.end_date} />
+            </div>
+          </details>
         )}
       </Card>
-    </>
+    </div>
   );
 }

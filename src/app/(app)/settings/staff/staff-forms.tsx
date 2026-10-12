@@ -23,7 +23,7 @@ export function RoleForm({ id, role, isSelf }: { id: string; role: AppRole | nul
 
   if (isSelf) {
     return (
-      <span className="text-[13px] text-ink-2" title="You cannot remove your own admin role">
+      <span className="text-footnote text-ink-2" title="You cannot remove your own admin role">
         {ROLE_OPTIONS.find((o) => o.value === initial)?.label} · you
       </span>
     );
@@ -37,7 +37,7 @@ export function RoleForm({ id, role, isSelf }: { id: string; role: AppRole | nul
         aria-label="Role"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="h-8 w-auto min-w-[190px] text-[13px]"
+        className="h-8 w-auto min-w-[190px] text-footnote"
       >
         {ROLE_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
@@ -50,8 +50,8 @@ export function RoleForm({ id, role, isSelf }: { id: string; role: AppRole | nul
           {pending ? "Saving…" : "Save"}
         </Button>
       )}
-      {state.error && <span className="w-full text-[12.5px] text-critical-ink">{state.error}</span>}
-      {state.ok && value === initial && <span className="text-[12.5px] text-good-ink">Saved</span>}
+      {state.error && <span className="w-full text-footnote text-critical-ink">{state.error}</span>}
+      {state.ok && value === initial && <span className="text-footnote text-good-ink">Saved</span>}
     </form>
   );
 }

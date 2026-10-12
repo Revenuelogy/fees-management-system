@@ -91,7 +91,7 @@ export function AllocationRuleForm({ current }: { current: SchoolSettings["alloc
           {RULES.map((r) => (
             <label
               key={r.value}
-              className="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"
+              className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"
             >
               <input
                 type="radio"
@@ -104,14 +104,14 @@ export function AllocationRuleForm({ current }: { current: SchoolSettings["alloc
               <span>
                 <span className="block text-sm font-medium text-ink">
                   {r.label}
-                  {r.value === current && <span className="ml-2 text-[12px] font-normal text-muted">(current)</span>}
+                  {r.value === current && <span className="ml-2 text-caption font-normal text-muted">(current)</span>}
                 </span>
-                <span className="mt-0.5 block text-[12.5px] text-ink-2">{r.hint}</span>
+                <span className="mt-0.5 block text-footnote text-ink-2">{r.hint}</span>
               </span>
             </label>
           ))}
         </fieldset>
-        <p className="flex items-start gap-2 rounded-lg border border-line bg-warning-soft px-3 py-2 text-[13px] text-ink">
+        <p className="flex items-start gap-2 rounded-2xl bg-warning-soft px-3 py-2 text-footnote text-ink">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
             Changing the rule re-runs the allocation of <b>every payment ever recorded</b>. Receipts and amounts do not change, but what each

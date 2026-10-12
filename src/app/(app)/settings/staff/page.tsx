@@ -6,15 +6,19 @@ import type { Profile } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { IconTile, type TileColor } from "@/components/ui/kpi";
+import { Ban, Calculator, Crown, Eye, GraduationCap, type LucideIcon } from "lucide-react";
 import { AddStaffForm, RoleForm } from "./staff-forms";
 
 export const metadata = { title: "Staff & roles" };
 
-const ROLE_HELP: { role: string; title: string; text: string }[] = [
-  { role: "admin", title: "Owner / Director (admin)", text: "Everything: fees, data, school settings, staff logins, closing months and re-running allocation." },
-  { role: "accountant", title: "Accountant", text: "Collects fees, issues and cancels receipts, edits students and fee data, sees analytics and reconciliation." },
-  { role: "principal", title: "Principal", text: "Read-only: dashboards, analytics, pending fees and reports. Cannot collect fees or change data." },
-  { role: "teacher", title: "Teacher", text: "Reserved for class-scoped access (own class only), coming later. Currently has no access to fee data." },
+const ROLE_HELP: { role: string; title: string; text: string; icon: LucideIcon; color: TileColor }[] = [
+  { role: "admin", title: "Owner / Director", text: "Everything, including settings and staff.", icon: Crown, color: "indigo" },
+  { role: "accountant", title: "Accountant", text: "Collects fees, edits students and fees.", icon: Calculator, color: "green" },
+  { role: "principal", title: "Principal", text: "View only: dashboards and reports.", icon: Eye, color: "blue" },
+  { role: "teacher", title: "Teacher", text: "Coming later · no access yet.", icon: GraduationCap, color: "orange" },
+  { role: "none", title: "No access", text: "Can sign in but sees nothing.", icon: Ban, color: "gray" },
 ];
 
 function fmtWhen(iso: string | null | undefined, tz: string) {
@@ -43,8 +47,8 @@ export default async function StaffPage() {
     <>
       <PageHeader
         title="Staff & roles"
-        crumbs={[{ label: "School settings", href: "/settings" }, { label: "Staff & roles" }]}
-        description="Who can sign in and what each person can do. New logins get no access until you give them a role."
+        description="Who can sign in, and what they can do."
+        info="New logins get no access until you give them a role."
       />
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -56,38 +60,36 @@ export default async function StaffPage() {
               : `${profiles.length} ${profiles.length === 1 ? "login" : "logins"}`
           }
         >
-          <div className="relative overflow-x-auto rounded-lg border border-line">
-            <table className="w-full min-w-[640px] border-collapse text-left text-[13.5px]">
-              <thead className="bg-surface-2 text-[12px] uppercase tracking-wide text-muted">
-                <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">Name</th>
+          <div className="-mx-5 overflow-x-auto sm:-mx-6">
+            <table className="w-full min-w-[640px] border-collapse text-left text-subhead">
+              <thead className="text-caption font-medium text-muted">
+                <tr className="border-b border-line">
+                  <th scope="col" className="py-2 pl-5 pr-3 font-medium sm:pl-6">Name</th>
                   <th scope="col" className="px-3 py-2 font-medium">Role</th>
                   <th scope="col" className="px-3 py-2 font-medium">Added</th>
-                  {admin && <th scope="col" className="px-3 py-2 font-medium">Last sign-in</th>}
+                  {admin && <th scope="col" className="py-2 pl-3 pr-5 font-medium sm:pr-6">Last sign-in</th>}
                 </tr>
               </thead>
               <tbody>
                 {profiles.map((p) => (
-                  <tr key={p.id} className="border-t border-line align-top">
-                    <td className="px-4 py-2.5">
-                      <span className="font-medium text-ink">{p.full_name || "—"}</span>
-                      {p.role === "admin" && (
-                        <Badge tone="accent" className="ml-2">
-                          admin
-                        </Badge>
-                      )}
-                      {!p.role && (
-                        <Badge tone="warning" className="ml-2">
-                          waiting for a role
-                        </Badge>
-                      )}
-                      <span className="block text-[12.5px] text-muted">{p.email}</span>
+                  <tr key={p.id} className="border-b border-line last:border-0">
+                    <td className="py-3 pl-5 pr-3 sm:pl-6">
+                      <span className="flex items-center gap-3">
+                        <Avatar name={p.full_name || p.email || "?"} />
+                        <span className="min-w-0">
+                          <span className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
+                            {p.full_name || "—"}
+                            {!p.role && <Badge tone="warning">needs a role</Badge>}
+                          </span>
+                          <span className="block truncate text-caption text-muted">{p.email}</span>
+                        </span>
+                      </span>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-3">
                       <RoleForm key={p.id} id={p.id} role={p.role} isSelf={p.id === viewer.user.id} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 text-ink-2">{fmtDate(p.created_at)}</td>
-                    {admin && <td className="whitespace-nowrap px-3 py-2.5 text-ink-2">{fmtWhen(lastSignIn.get(p.id), tz)}</td>}
+                    <td className="whitespace-nowrap px-3 py-3 text-ink-2">{fmtDate(p.created_at)}</td>
+                    {admin && <td className="whitespace-nowrap py-3 pl-3 pr-5 text-ink-2 sm:pr-6">{fmtWhen(lastSignIn.get(p.id), tz)}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -100,7 +102,7 @@ export default async function StaffPage() {
             {admin ? (
               <AddStaffForm />
             ) : (
-              <div className="space-y-2 text-[13px] text-ink-2">
+              <div className="space-y-2 text-footnote text-ink-2">
                 <p>
                   Logins can be created here once the server has the Supabase secret key. Set <code className="rounded bg-surface-3 px-1">SUPABASE_SECRET_KEY</code>{" "}
                   (the <i>secret</i> / service-role key from Supabase → Project Settings → API keys) in the server environment and restart the app.
@@ -113,19 +115,18 @@ export default async function StaffPage() {
             )}
           </Card>
 
-          <Card title="What each role can do">
-            <dl className="space-y-3">
+          <Card title="Roles">
+            <ul className="space-y-3.5">
               {ROLE_HELP.map((r) => (
-                <div key={r.role}>
-                  <dt className="text-[13.5px] font-medium text-ink">{r.title}</dt>
-                  <dd className="text-[13px] text-ink-2">{r.text}</dd>
-                </div>
+                <li key={r.role} className="flex items-center gap-3">
+                  <IconTile icon={r.icon} color={r.color} />
+                  <span className="min-w-0">
+                    <span className="block text-subhead font-medium text-ink">{r.title}</span>
+                    <span className="block text-footnote text-ink-2">{r.text}</span>
+                  </span>
+                </li>
               ))}
-              <div>
-                <dt className="text-[13.5px] font-medium text-ink">No access</dt>
-                <dd className="text-[13px] text-ink-2">Can sign in but sees nothing. Use it to switch off someone who has left.</dd>
-              </div>
-            </dl>
+            </ul>
           </Card>
         </div>
       </div>

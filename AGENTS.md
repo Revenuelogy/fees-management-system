@@ -30,14 +30,20 @@ Next.js 16 (App Router, Turbopack, `src/`), Supabase Postgres, Tailwind v4, Rech
 - `src/lib/context.ts` `getActiveSession()` (session picked in the top bar, cookie `fms_session`),
   `getSessions()`, `getClasses()`, `getSettings()`, `flag()` / `param()` for search params.
 - `src/lib/types.ts` RPC result types. `src/lib/action-state.ts` `ActionState` + `friendlyError()`.
-- UI kit `src/components/ui/*`: `Card`, `Kpi/KpiGrid`, `PageHeader` (with breadcrumbs), `Segmented`
-  + `withParams` (URL toggles), `Button/LinkButton`, `Badge`, `FeeStatusBadge`, `Field/Input/Select/
-  Textarea/FormError/FormSuccess`, `BarList/StackedBar/Legend/Meter`, `AllocLines`, `Empty`,
-  `DataTable` (client; declarative columns with `type: money|pct|date|status|alloc|…`, link templates
-  like `/students/{student_id}`, search, filters, totals, CSV export with filter notes).
+- UI kit `src/components/ui/*`: `Card` (`description` renders as an ⓘ `InfoTip`), `Kpi/KpiGrid/IconTile`,
+  `PageHeader` (`description` = one short line, longer text in `info`), `Segmented` + `withParams` (URL
+  toggles), `Button/LinkButton` (pills), `Badge`, `FeeStatusBadge`, `Field/Input/Select/Textarea/
+  FormError/FormSuccess`, `BarList/StackedBar/Legend/Meter`, `Ring/Donut`, `Avatar`, `AllocLines`, `Empty`,
+  `DataTable` (client; declarative columns with `type: person|action|money|pct|date|status|alloc|…`, link
+  templates like `/students/{student_id}`, search, filters, totals, CSV export with filter notes).
+- Design language (Apple-style, `src/app/globals.css`): `#F5F5F7` canvas, white borderless cards with soft
+  shadow, Inter Variable with the type scale `text-display/large/title1/title2/title3/headline/body/
+  subhead/footnote/caption`. Lead each page with a visual (figure, ring, bar), not paragraphs; put
+  explanations behind ⓘ. Merge classes with `cn()` (tailwind-merge, so a caller's class wins); new
+  `@theme` font-size or shadow tokens must also be registered in `src/lib/cn.ts`.
 - Charts (`src/components/charts/charts.tsx`): validated palette `--series-1/2/3` (blue current-year,
-  orange previous dues, aqua advance), neutral `--series-track` for scheduled amounts. Status colours
-  are reserved for fee status and always come with an icon + label.
+  orange previous dues, aqua advance), neutral `--series-track` for scheduled amounts. Orange always
+  means old dues. Status colours are reserved for fee status and always come with an icon + label.
 
 ## Mutations
 Server actions live next to the page in `actions.ts` ("use server"), return `ActionState`, call

@@ -4,17 +4,20 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { requireStaff } from "@/lib/auth";
 import { flag, param } from "@/lib/context";
 import { createClient } from "@/lib/supabase/server";
-import { addMonths, monthLabel, num, pct, ratioPct, rupeesShort } from "@/lib/format";
+import { addMonths, monthLabel, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
 import type { MonthClassDetail, MonthPayment } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Segmented, withParams } from "@/components/ui/segmented";
-import { Kpi, KpiGrid } from "@/components/ui/kpi";
 import { Card } from "@/components/ui/card";
 import { Legend, StackedBar } from "@/components/ui/bars";
 import { DataTable } from "@/components/ui/data-table";
 import { KIND_LEGEND } from "@/components/ui/alloc";
+import { Ring } from "@/components/ui/ring";
+import { LinkButton } from "@/components/ui/button";
 
 export const metadata = { title: "Class in month" };
+
+const pill = "inline-flex h-9 items-center gap-1 rounded-full bg-fill px-3.5 text-subhead font-medium text-ink transition-colors hover:bg-[rgba(118,118,128,0.18)]";
 
 export default async function MonthClassPage({ params, searchParams }: PageProps<"/monthly/[month]/[classId]">) {
   await requireStaff();
@@ -28,16 +31,15 @@ export default async function MonthClassPage({ params, searchParams }: PageProps
   const monthDate = `${month}-01`;
   const qs = { carry: carry ? undefined : false, arrears: arrears || undefined };
 
-  // Students no longer enrolled in this session: just list their payments.
   if (classId === "none") {
     const { data } = await supabase.rpc("month_payments", { p_month: monthDate, p_unassigned: true });
     const payments = (data ?? []) as MonthPayment[];
     return (
-      <>
+      <div className="space-y-5">
         <PageHeader
-          title={`Not enrolled / left · ${monthLabel(month)}`}
-          description="Payments in this month from students who are not enrolled in the month's session (left the school or passed out)."
-          crumbs={[{ label: "Monthly", href: withParams("/monthly", { month, ...qs }) }, { label: monthLabel(month), href: withParams("/monthly", { month, ...qs }) }, { label: "Not enrolled" }]}
+          title="Left or not enrolled"
+          description={`${monthLabel(month)} · payments from students no longer enrolled`}
+          crumbs={[{ label: "Months", href: withParams("/monthly", { month, ...qs }) }, { label: monthLabel(month), href: withParams("/monthly", { month, ...qs }) }]}
         />
         <Card>
           <DataTable
@@ -45,15 +47,14 @@ export default async function MonthClassPage({ params, searchParams }: PageProps
             totals
             exportName={`month-${month}-not-enrolled`}
             columns={[
-              { key: "paid_on", label: "Date", type: "date" },
-              { key: "receipt_no", label: "Receipt", href: "/payments/{payment_id}" },
-              { key: "full_name", label: "Student", href: "/students/{student_id}", sub: "admission_no" },
+              { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "admission_no" },
               { key: "amount", label: "Amount", type: "money", total: true },
               { key: "allocations", label: "Paid for", type: "alloc" },
+              { key: "paid_on", label: "Date", type: "date" },
             ]}
           />
         </Card>
-      </>
+      </div>
     );
   }
 
@@ -70,126 +71,129 @@ export default async function MonthClassPage({ params, searchParams }: PageProps
   const target = rows.reduce((a, r) => a + r.target, 0);
   const remaining = rows.reduce((a, r) => a + r.target_remaining, 0);
   const payers = rows.filter((r) => r.paid > 0).length;
-  const owing = rows.filter((r) => r.target > 0);
   const notPaid = rows.filter((r) => r.status === "not_paid").length;
+  const unpaidCount = rows.filter((r) => r.status === "not_paid" || r.status === "partial").length;
+  const pctDone = ratioPct(target - remaining, target) ?? 0;
 
-  const filtered =
-    show === "paid" ? rows.filter((r) => r.paid > 0) : show === "unpaid" ? rows.filter((r) => r.status === "not_paid" || r.status === "partial") : rows;
+  const filtered = show === "paid" ? rows.filter((r) => r.paid > 0) : show === "unpaid" ? rows.filter((r) => r.status === "not_paid" || r.status === "partial") : rows;
   const tableRows = filtered.map((r) => ({
     ...r,
-    roll: r.roll_no ? `${r.section ?? ""}-${r.roll_no}` : r.section,
-    receipt_list: r.receipts.map((x) => x.receipt_no).join(", "),
+    who: `Roll ${r.roll_no ?? "—"} · ${r.section ?? ""}`,
   }));
   const url = (extra: Record<string, string | boolean | undefined>) => withParams(`/monthly/${month}/${classId}`, { ...qs, show: show === "all" ? undefined : show, ...extra });
 
   return (
-    <>
+    <div className="space-y-5">
       <PageHeader
-        title={`${d.class.name} · ${d.label}`}
-        description={`Session ${d.session.name}. Every student in the class: what they paid this month, what it paid for, and what they still owe.`}
-        crumbs={[
-          { label: d.session.name, href: "/" },
-          { label: "Monthly", href: withParams("/monthly", { month, ...qs }) },
-          { label: d.label, href: withParams("/monthly", { month, ...qs }) },
-          { label: d.class.name },
-        ]}
+        title={d.class.name}
+        description={`${d.label} · ${rows.length} students`}
+        crumbs={[{ label: "Months", href: withParams("/monthly", { month, ...qs }) }, { label: d.label, href: withParams("/monthly", { month, ...qs }) }]}
         actions={
-          <div className="flex items-center gap-1">
-            <Link href={withParams(`/monthly/${addMonths(month, -1)}/${classId}`, qs)} className="inline-flex h-9 items-center gap-1 rounded-lg border border-line-strong bg-surface px-2.5 text-sm hover:bg-surface-2">
+          <>
+            <Link href={withParams(`/monthly/${addMonths(month, -1)}/${classId}`, qs)} className={pill}>
               <ChevronLeft className="size-4" /> {monthLabel(addMonths(month, -1), false)}
             </Link>
-            <Link href={withParams(`/monthly/${addMonths(month, 1)}/${classId}`, qs)} className="inline-flex h-9 items-center gap-1 rounded-lg border border-line-strong bg-surface px-2.5 text-sm hover:bg-surface-2">
+            <Link href={withParams(`/monthly/${addMonths(month, 1)}/${classId}`, qs)} className={pill}>
               {monthLabel(addMonths(month, 1), false)} <ChevronRight className="size-4" />
             </Link>
-            <Link href={withParams(`/classes/${classId}`, { arrears: arrears || undefined })} className="ml-1 inline-flex h-9 items-center rounded-lg border border-line-strong bg-surface px-2.5 text-sm hover:bg-surface-2">
+            <LinkButton href={withParams(`/classes/${classId}`, { arrears: arrears || undefined })} variant="plain">
               Class view
-            </Link>
-          </div>
+            </LinkButton>
+          </>
         }
       >
         <Segmented
-          label="Expected"
           options={[
             { label: "Due this month", href: url({ carry: false }), active: !carry },
-            { label: "+ carry-over", href: url({ carry: undefined }), active: carry },
+            { label: "All dues so far", href: url({ carry: undefined }), active: carry },
           ]}
         />
         <Segmented
           options={[
-            { label: "Current session", href: url({ arrears: undefined }), active: !arrears },
-            { label: "+ previous dues", href: url({ arrears: true }), active: arrears },
+            { label: "This session", href: url({ arrears: undefined }), active: !arrears },
+            { label: "Including old dues", href: url({ arrears: true }), active: arrears },
           ]}
         />
       </PageHeader>
 
-      <KpiGrid cols={4}>
-        <Kpi label="Received this month" value={rupeesShort(paid)} sub={<>from {payers} of {rows.length} students</>} />
-        <Kpi
-          label="Expected this month"
-          value={rupeesShort(target)}
-          meter={ratioPct(target - remaining, target)}
-          sub={<>{pct(ratioPct(target - remaining, target))} collected · {owing.length} students owed money</>}
-        />
-        <Kpi label="Still unpaid" value={rupeesShort(remaining)} tone={remaining > 0 ? "critical" : "good"} sub={<>{notPaid} students paid nothing</>} />
-        <div className="rounded-xl border border-line bg-surface p-4">
-          <div className="text-[13px] font-medium text-ink-2">Paid for</div>
-          <div className="mt-3">
-            <StackedBar
-              segments={[
-                { value: cur, className: "bg-series-1", label: "Current year fees", display: rupeesShort(cur) },
-                { value: arr, className: "bg-series-2", label: "Previous dues", display: rupeesShort(arr) },
-                { value: adv, className: "bg-series-3", label: "Advance", display: rupeesShort(adv) },
-              ]}
-            />
+      <section className="rounded-[28px] bg-surface p-6 shadow-card sm:p-8">
+        <div className="flex flex-col gap-8 md:flex-row md:items-center">
+          <div className="min-w-0 flex-1">
+            <p className="text-subhead font-medium text-ink-2">Collected this month</p>
+            <p className="figure mt-1 text-[44px] leading-none">{rupeesShort(paid)}</p>
+            <p className="mt-2 text-body text-ink-2">
+              from <span className="font-semibold text-ink">{payers}</span> of {rows.length} students
+            </p>
+            <div className="mt-6 max-w-lg">
+              <StackedBar
+                height="h-3"
+                segments={[
+                  { value: cur, className: "bg-series-1", label: "This year", display: rupees(cur) },
+                  { value: arr, className: "bg-series-2", label: "Old dues", display: rupees(arr) },
+                  { value: adv, className: "bg-series-3", label: "Advance", display: rupees(adv) },
+                ]}
+              />
+              <Legend
+                className="mt-3"
+                items={[
+                  { ...KIND_LEGEND[0], value: rupeesShort(cur) },
+                  { ...KIND_LEGEND[1], value: rupeesShort(arr) },
+                  { ...KIND_LEGEND[2], value: rupeesShort(adv) },
+                ]}
+              />
+            </div>
           </div>
-          <div className="mt-2 text-[12.5px] text-ink-2">
-            {rupeesShort(cur)} current · {rupeesShort(arr)} previous dues · {rupeesShort(adv)} advance
+          <div className="flex items-center gap-6 self-center">
+            <Ring value={pctDone} size={150} stroke={15} label={`${pct(pctDone, 0)} of this month's dues collected`}>
+              <span className="figure text-title1">{Math.round(pctDone)}%</span>
+              <span className="text-caption text-ink-2">of {rupeesShort(target)}</span>
+            </Ring>
+            <div className="space-y-3">
+              <div>
+                <p className="text-footnote text-ink-2">Still unpaid</p>
+                <p className={`text-title3 font-semibold tabular ${remaining > 0 ? "text-critical-ink" : "text-good-ink"}`}>{rupeesShort(remaining)}</p>
+              </div>
+              <div>
+                <p className="text-footnote text-ink-2">Paid nothing</p>
+                <p className="text-title3 font-semibold tabular text-ink">{notPaid}</p>
+              </div>
+            </div>
           </div>
         </div>
-      </KpiGrid>
+      </section>
 
       <Card
-        className="mt-4"
         title="Students"
-        description="% of outstanding = share of the student's total unpaid balance (this and earlier sessions) on the 1st of the month that this month's payments cleared."
+        description="% of balance = share of the student's total unpaid fees (this and earlier sessions) on the 1st that this month's payments cleared."
         actions={
           <Segmented
+            size="sm"
             options={[
-              { label: `All (${rows.length})`, href: url({ show: undefined }), active: show === "all" },
-              { label: `Paid (${payers})`, href: url({ show: "paid" }), active: show === "paid" },
-              { label: `Not paid / partial (${rows.filter((r) => r.status === "not_paid" || r.status === "partial").length})`, href: url({ show: "unpaid" }), active: show === "unpaid" },
+              { label: `All · ${rows.length}`, href: url({ show: undefined }), active: show === "all" },
+              { label: `Paid · ${payers}`, href: url({ show: "paid" }), active: show === "paid" },
+              { label: `Unpaid · ${unpaidCount}`, href: url({ show: "unpaid" }), active: show === "unpaid" },
             ]}
           />
         }
       >
-        <div className="mb-3">
-          <Legend items={KIND_LEGEND} />
-        </div>
         <DataTable
           rows={tableRows as unknown as Record<string, unknown>[]}
           searchKeys={["full_name", "admission_no", "father_name", "roll_no"]}
           totals
           pageSize={100}
           exportName={`${d.class.name}-${month}`}
-          exportMeta={[`${d.class.name} · ${d.label}`, `Session ${d.session.name}`, `Showing: ${show}`, carry ? "Expected includes carry-over" : "Due this month only", arrears ? "Including previous dues" : "Current session only"]}
+          exportMeta={[`${d.class.name} · ${d.label}`, `Session ${d.session.name}`, `Showing: ${show}`]}
           columns={[
-            { key: "roll", label: "Roll", sortable: true },
-            { key: "full_name", label: "Student", href: "/students/{student_id}", sub: "admission_no" },
-            { key: "paid", label: "Paid this month", type: "money", total: true, dimZero: true },
+            { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
+            { key: "paid", label: "Paid", type: "money", total: true, dimZero: true },
             { key: "paid_for", label: "Paid for", type: "alloc" },
-            { key: "pct_of_outstanding", label: "% of outstanding", type: "pct" },
-            { key: "outstanding_start", label: "Owed on 1st", type: "money", total: true, hideOnMobile: true },
-            { key: "balance_after", label: "Balance after", type: "money", total: true },
-            { key: "target_remaining", label: "Month due left", type: "money", total: true, alertPositive: true, hideOnMobile: true },
+            { key: "pct_of_outstanding", label: "% of balance", type: "pct", hideOnMobile: true },
+            { key: "balance_after", label: "Balance now", type: "money", total: true, hideOnMobile: true },
             { key: "status", label: "Status", type: "paystatus" },
-            { key: "receipt_list", label: "Receipts", hideOnMobile: true },
           ]}
           empty="No students in this view."
         />
-        <p className="mt-3 text-[12.5px] text-muted">
-          {num(rows.length)} students enrolled. Totals at the bottom match the class row on the month page.
-        </p>
       </Card>
-    </>
+    </div>
   );
 }

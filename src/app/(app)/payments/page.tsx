@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { IndianRupee } from "lucide-react";
 import { requireStaff, canWrite } from "@/lib/auth";
 import { getActiveSession, getSessions, param } from "@/lib/context";
@@ -7,9 +6,9 @@ import { fetchAll } from "@/lib/fetch-all";
 import { MODE_LABELS, addMonths, fmtDate, num, pct, ratioPct, rupees, rupeesShort, todayIST } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
 import { Segmented, withParams } from "@/components/ui/segmented";
-import { Kpi, KpiGrid } from "@/components/ui/kpi";
 import { Card } from "@/components/ui/card";
-import { BarList } from "@/components/ui/bars";
+import { BarList, Legend, StackedBar } from "@/components/ui/bars";
+import { KIND_LEGEND } from "@/components/ui/alloc";
 import { DataTable } from "@/components/ui/data-table";
 import { LinkButton } from "@/components/ui/button";
 import { DateRangeForm } from "./date-range-form";
@@ -140,11 +139,11 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/payment
   const presetHref = (p: string) => withParams("/payments", { preset: p === "month" ? undefined : p });
 
   return (
-    <>
+    <div className="space-y-5">
       <PageHeader
-        title="Payments & receipts"
-        description={`Every receipt from ${fmtDate(from)} to ${fmtDate(to)}. Cancelled receipts stay on record with a reversing entry.`}
-        crumbs={[{ label: "Fees" }, { label: "Payments" }]}
+        title="Payments"
+        description={`${fmtDate(from)} – ${fmtDate(to)}`}
+        info="Every receipt in the period. Cancelled receipts stay on record with a reversing entry."
         actions={
           canWrite(viewer.role) ? (
             <LinkButton href="/collect" variant="primary">
@@ -159,77 +158,85 @@ export default async function PaymentsPage({ searchParams }: PageProps<"/payment
             { label: "Yesterday", href: presetHref("yesterday"), active: preset === "yesterday" },
             { label: "This month", href: presetHref("month"), active: preset === "month" },
             { label: "Last month", href: presetHref("last_month"), active: preset === "last_month" },
-            { label: session ? `Session ${session.name}` : "Session", href: presetHref("session"), active: preset === "session" },
+            { label: session ? session.name : "Session", href: presetHref("session"), active: preset === "session" },
           ]}
         />
         <DateRangeForm from={from} to={to} />
       </PageHeader>
 
-      <KpiGrid cols={4}>
-        <Kpi label="Received (net)" value={rupeesShort(net)} sub={`${num(receipts)} receipts`} />
-        <Kpi
-          label="Current-year fees"
-          value={rupeesShort(split.current)}
-          sub={`${pct(ratioPct(split.current, net), 0)} of money received`}
-        />
-        <Kpi label="Previous dues recovered" value={rupeesShort(split.arrears)} sub={`${pct(ratioPct(split.arrears, net), 0)} · advance ${rupeesShort(split.advance)}`} />
-        <Kpi
-          label="Cancelled"
-          value={num(reversals.length)}
-          tone={reversals.length ? "critical" : "default"}
-          sub={reversals.length ? `${rupees(reversals.reduce((a, r) => a + r.amount, 0))} reversed` : "No cancellations"}
-        />
-      </KpiGrid>
+      <section className="rounded-[28px] bg-surface p-6 shadow-card sm:p-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+          <div>
+            <p className="text-subhead font-medium text-ink-2">Received</p>
+            <p className="figure mt-1 text-[44px] leading-none">{rupeesShort(net)}</p>
+            <p className="mt-2 text-body text-ink-2">
+              {num(receipts)} receipts
+              {reversals.length > 0 && <span className="text-critical-ink"> · {reversals.length} cancelled ({rupeesShort(-reversals.reduce((a, r) => a + r.amount, 0))})</span>}
+            </p>
+            <div className="mt-6 max-w-xl">
+              <StackedBar
+                height="h-3"
+                segments={[
+                  { value: split.current, className: "bg-series-1", label: "This year", display: rupees(split.current) },
+                  { value: split.arrears, className: "bg-series-2", label: "Old dues", display: rupees(split.arrears) },
+                  { value: split.advance, className: "bg-series-3", label: "Advance", display: rupees(split.advance) },
+                ]}
+              />
+              <Legend
+                className="mt-3"
+                items={[
+                  { ...KIND_LEGEND[0], value: rupeesShort(split.current) },
+                  { ...KIND_LEGEND[1], value: rupeesShort(split.arrears) },
+                  { ...KIND_LEGEND[2], value: rupeesShort(split.advance) },
+                ]}
+              />
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-footnote font-medium text-ink-2">By mode</p>
+            <BarList
+              compact
+              rows={[...byMode.entries()]
+                .sort((a, b) => b[1].amount - a[1].amount)
+                .map(([m, v]) => ({ label: MODE_LABELS[m] ?? m, value: v.amount, display: rupeesShort(v.amount), sub: pct(ratioPct(v.amount, net), 0) }))}
+            />
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_300px]">
-        <Card title={`${num(rows.length)} entries`}>
-          <DataTable
-            rows={table as unknown as Record<string, unknown>[]}
-            searchKeys={["receipt_no", "full_name", "admission_no", "father_name", "reference_no", "class_name"]}
-            searchPlaceholder="Receipt, student, cheque/UTR…"
-            filters={[
-              { key: "mode", label: "Mode", options: Object.entries(MODE_LABELS).map(([value, label]) => ({ value, label })) },
-              { key: "class_name", label: "Class", options: [...new Set(table.map((r) => r.class_name))].sort().map((c) => ({ value: c, label: c })) },
-              {
-                key: "status",
-                label: "Status",
-                options: [
-                  { value: "Cancelled", label: "Cancelled" },
-                  { value: "Cancellation entry", label: "Cancellation entry" },
-                  { value: "Imported", label: "Imported" },
-                ],
-              },
-            ]}
-            totals
-            exportName={`payments-${from}-to-${to}`}
-            exportMeta={[`Payments ${from} to ${to}`]}
-            columns={[
-              { key: "paid_on", label: "Date", type: "date" },
-              { key: "receipt_no", label: "Receipt", href: "/payments/{payment_id}", sub: "status" },
-              { key: "full_name", label: "Student", href: "/students/{student_id}", sub: "admission_no" },
-              { key: "class_name", label: "Class", sub: "section" },
-              { key: "amount", label: "Amount", type: "money", total: true },
-              { key: "current", label: "Current yr", type: "money", total: true, dimZero: true, hideOnMobile: true },
-              { key: "arrears", label: "Prev. dues", type: "money", total: true, dimZero: true, hideOnMobile: true },
-              { key: "advance", label: "Advance", type: "money", total: true, dimZero: true, hideOnMobile: true },
-              { key: "mode", label: "Mode", type: "mode", sub: "reference_no" },
-            ]}
-            empty="No payments in this period."
-          />
-        </Card>
-        <Card title="By mode">
-          <BarList
-            labelWidth="w-24"
-            rows={[...byMode.entries()]
-              .sort((a, b) => b[1].amount - a[1].amount)
-              .map(([m, v]) => ({ label: MODE_LABELS[m] ?? m, value: v.amount, display: rupeesShort(v.amount), sub: `${v.count}` }))}
-          />
-          <p className="mt-4 text-[12.5px] text-muted">
-            Need the month-wise picture? Open <Link href="/monthly" className="text-accent hover:underline">Monthly analysis</Link>.
-          </p>
-          {sessions.length > 1 && <p className="mt-2 text-[12.5px] text-muted">Class shown is the student&apos;s class in the session of each payment.</p>}
-        </Card>
-      </div>
-    </>
+      <Card title="Receipts" subtitle={sessions.length > 1 ? "Class shown is the student's class in the session of each payment" : undefined}>
+        <DataTable
+          rows={table.map((r) => ({ ...r, who: `${r.class_name}${r.section ? " · " + r.section : ""} · ${r.admission_no}`, receipt_sub: [MODE_LABELS[r.mode] ?? r.mode, r.status].filter(Boolean).join(" · ") })) as unknown as Record<string, unknown>[]}
+          searchKeys={["receipt_no", "full_name", "admission_no", "father_name", "reference_no", "class_name"]}
+          searchPlaceholder="Receipt, student, cheque/UTR…"
+          filters={[
+            { key: "mode", label: "Mode", options: Object.entries(MODE_LABELS).map(([value, label]) => ({ value, label })) },
+            { key: "class_name", label: "Class", options: [...new Set(table.map((r) => r.class_name))].sort().map((c) => ({ value: c, label: c })) },
+            {
+              key: "status",
+              label: "Status",
+              options: [
+                { value: "Cancelled", label: "Cancelled" },
+                { value: "Cancellation entry", label: "Cancellation entry" },
+                { value: "Imported", label: "Imported" },
+              ],
+            },
+          ]}
+          totals
+          pageSize={30}
+          exportName={`payments-${from}-to-${to}`}
+          exportMeta={[`Payments ${from} to ${to}`]}
+          columns={[
+            { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
+            { key: "amount", label: "Amount", type: "money", total: true },
+            { key: "current", label: "This year", type: "money", total: true, dimZero: true, hideOnMobile: true },
+            { key: "arrears", label: "Old dues", type: "money", total: true, dimZero: true, hideOnMobile: true },
+            { key: "paid_on", label: "Date", type: "date", hideOnMobile: true },
+            { key: "receipt_no", label: "Receipt", href: "/payments/{payment_id}", sub: "receipt_sub" },
+          ]}
+          empty="No payments in this period."
+        />
+      </Card>
+    </div>
   );
 }

@@ -66,8 +66,8 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
               <CheckCircle2 className="size-4" /> Payment saved
             </p>
           )}
-          <h1 className="text-xl font-semibold text-ink">Receipt {p.receipt_no}</h1>
-          <p className="text-[13px] text-ink-2">
+          <h1 className="text-title1 font-bold text-ink">{p.receipt_no}</h1>
+          <p className="text-footnote text-ink-2">
             <Link href={`/students/${d.student.id}`} className="hover:underline">
               {d.student.full_name}
             </Link>{" "}
@@ -87,7 +87,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
       </div>
 
       {(p.cancelled || p.is_reversal) && (
-        <div className="no-print mb-4 rounded-xl border border-critical/30 bg-critical-soft px-4 py-3 text-[13.5px] text-ink">
+        <div className="no-print mb-4 rounded-2xl bg-critical-soft px-4 py-3 text-subhead text-ink">
           {p.cancelled && reversal.data ? (
             <>
               This receipt was <b>cancelled</b> on {fmtDate((reversal.data as { paid_on: string }).paid_on)} ({(reversal.data as { remarks: string | null }).remarks ?? ""}). Reversal entry{" "}
@@ -117,7 +117,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
           <article
             key={idx}
             className={cn(
-              "relative overflow-hidden rounded-xl border border-line bg-surface p-6 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none",
+              "relative overflow-hidden rounded-[28px] bg-surface p-7 shadow-card sm:p-9 print:rounded-none print:p-0 print:shadow-none",
               idx > 0 && "print:mt-6 print:border-t print:border-dashed print:pt-6",
             )}
           >
@@ -130,23 +130,23 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
             )}
             <header className="flex items-start justify-between gap-4 border-b border-line pb-4">
               <div>
-                <div className="text-lg font-bold text-ink">{settings?.school_name ?? "School"}</div>
-                {settings?.address && <div className="text-[12.5px] text-ink-2">{settings.address}</div>}
-                <div className="text-[12.5px] text-ink-2">
+                <div className="text-title3 font-bold text-ink">{settings?.school_name ?? "School"}</div>
+                {settings?.address && <div className="text-footnote text-ink-2">{settings.address}</div>}
+                <div className="text-footnote text-ink-2">
                   {[settings?.phone, settings?.email].filter(Boolean).join(" · ")}
                 </div>
-                {settings?.affiliation && <div className="text-[12px] text-muted">{settings.affiliation}</div>}
+                {settings?.affiliation && <div className="text-caption text-muted">{settings.affiliation}</div>}
               </div>
               <div className="text-right">
-                <div className="text-[13px] font-semibold uppercase tracking-wider text-ink">{p.is_reversal ? "Cancellation" : "Fee receipt"}</div>
-                {copy && <div className="text-[11.5px] text-muted">{copy}</div>}
-                <div className="mt-1 text-[15px] font-semibold tabular text-ink">{p.receipt_no}</div>
-                <div className="text-[12.5px] text-ink-2">{fmtDate(p.paid_on)}</div>
-                <div className="text-[12px] text-muted">Session {p.session_name}</div>
+                <div className="text-footnote font-semibold uppercase tracking-wider text-ink">{p.is_reversal ? "Cancellation" : "Fee receipt"}</div>
+                {copy && <div className="text-caption text-muted">{copy}</div>}
+                <div className="mt-1 text-headline font-semibold tabular text-ink">{p.receipt_no}</div>
+                <div className="text-footnote text-ink-2">{fmtDate(p.paid_on)}</div>
+                <div className="text-caption text-muted">Session {p.session_name}</div>
               </div>
             </header>
 
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b border-line py-3 text-[13px] sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-1 border-b border-line py-3 text-footnote sm:grid-cols-4">
               <div className="col-span-2">
                 <dt className="text-muted">Student</dt>
                 <dd className="font-semibold text-ink">{d.student.full_name}</dd>
@@ -169,9 +169,9 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
               </div>
             </dl>
 
-            <table className="mt-3 w-full text-[13px]">
+            <table className="mt-3 w-full text-footnote">
               <thead>
-                <tr className="border-b border-line text-left text-[12px] uppercase tracking-wide text-muted">
+                <tr className="border-b border-line text-left text-caption uppercase tracking-wide text-muted">
                   <th className="py-1.5 font-medium">Particulars</th>
                   <th className="py-1.5 font-medium">Paid against</th>
                   <th className="py-1.5 text-right font-medium">Amount</th>
@@ -185,7 +185,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
                       {a.installment ? (
                         <>
                           {a.session} · {a.installment}
-                          {a.kind === "arrears" && <Badge tone="serious" className="ml-1.5 print:border print:border-line">Previous dues</Badge>}
+                          {a.kind === "arrears" && <Badge tone="serious" className="ml-1.5 print:border print:border-line">Old dues</Badge>}
                         </>
                       ) : (
                         "—"
@@ -200,13 +200,13 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
                   <td colSpan={2} className="pt-2 text-right font-semibold">
                     Total {p.amount < 0 ? "reversed" : "received"}
                   </td>
-                  <td className="pt-2 text-right text-[15px] font-bold tabular">{rupees(p.amount)}</td>
+                  <td className="pt-3 text-right text-title2 font-bold tabular">{rupees(p.amount)}</td>
                 </tr>
               </tfoot>
             </table>
-            <p className="mt-1 text-[12.5px] italic text-ink-2">{rupeesInWords(Math.abs(p.amount))}</p>
+            <p className="mt-1 text-footnote italic text-ink-2">{rupeesInWords(Math.abs(p.amount))}</p>
 
-            <div className="mt-4 grid gap-3 rounded-lg bg-surface-2 p-3 text-[13px] sm:grid-cols-3 print:bg-transparent print:p-0">
+            <div className="mt-5 grid gap-3 rounded-2xl bg-fill-2 p-4 text-footnote sm:grid-cols-3 print:bg-transparent print:p-0">
               <div>
                 <div className="text-muted">Mode</div>
                 <div className="font-medium">
@@ -227,12 +227,12 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
                 </>
               )}
             </div>
-            {p.remarks && !p.is_reversal && <p className="mt-2 text-[12.5px] text-ink-2">Remarks: {p.remarks}</p>}
+            {p.remarks && !p.is_reversal && <p className="mt-2 text-footnote text-ink-2">Remarks: {p.remarks}</p>}
             {nowOutstanding !== balanceAfter && !p.is_reversal && (
-              <p className="mt-2 text-[12px] text-muted">Total outstanding as on {fmtDate(d.today)}: {rupees(nowOutstanding)}</p>
+              <p className="mt-2 text-caption text-muted">Total outstanding as on {fmtDate(d.today)}: {rupees(nowOutstanding)}</p>
             )}
 
-            <footer className="mt-8 flex items-end justify-between gap-4 text-[12px] text-muted">
+            <footer className="mt-8 flex items-end justify-between gap-4 text-caption text-muted">
               <div>
                 <div>{settings?.receipt_footer}</div>
                 <div>

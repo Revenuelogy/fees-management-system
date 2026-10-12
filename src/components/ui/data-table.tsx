@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Download, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { MODE_LABELS, fmtDate, num, pct, rupees } from "@/lib/format";
 import { AllocLines, allocText } from "@/components/ui/alloc";
 import { FEE_STATUS, FeeStatusBadge, PAY_STATUS_LABELS, PayStatusBadge } from "@/components/ui/status";
+import { Avatar } from "@/components/ui/avatar";
 import type { AllocationLine, FeeStatus } from "@/lib/types";
 
 export type ColumnType =
+  | "person"
+  | "action"
   | "text"
   | "money"
   | "pct"
@@ -81,7 +84,15 @@ function Cell({ col, row }: { col: Column; row: Row }) {
     case "money": {
       const n = v === null || v === undefined ? null : Number(v);
       content = (
-        <span className={cn(col.dimZero && n === 0 && "text-muted", col.alertPositive && n !== null && n > 0 && "font-medium text-critical-ink")}>
+        <span
+          className={
+            col.alertPositive && n !== null && n > 0
+              ? "font-semibold text-critical-ink"
+              : col.dimZero && n === 0
+                ? "text-muted"
+                : "font-medium text-ink"
+          }
+        >
           {n === null ? "—" : rupees(n)}
         </span>
       );
@@ -108,6 +119,35 @@ function Cell({ col, row }: { col: Column; row: Row }) {
     case "alloc":
       content = <AllocLines lines={(v as AllocationLine[]) ?? []} compact />;
       break;
+    case "action":
+      return col.href ? (
+        <Link
+          href={fill(col.href, row)}
+          className="inline-flex h-7 items-center rounded-full bg-accent-soft px-3 text-caption font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-ink"
+        >
+          {String(v ?? col.label)}
+        </Link>
+      ) : null;
+    case "person": {
+      const name = String(v ?? "");
+      const sub = col.sub ? row[col.sub] : null;
+      const inner = (
+        <span className="flex items-center gap-3">
+          <Avatar name={name} size="sm" />
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-ink">{name}</span>
+            {sub !== null && sub !== undefined && sub !== "" && <span className="block truncate text-caption text-muted">{String(sub)}</span>}
+          </span>
+        </span>
+      );
+      return col.href ? (
+        <Link href={fill(col.href, row)} className="group/p block rounded-lg [&_span.font-medium]:group-hover/p:text-accent">
+          {inner}
+        </Link>
+      ) : (
+        inner
+      );
+    }
     default:
       content = v === null || v === undefined || v === "" ? <span className="text-muted">—</span> : String(v);
   }
@@ -115,12 +155,12 @@ function Cell({ col, row }: { col: Column; row: Row }) {
   const inner = (
     <>
       {content}
-      {sub !== null && sub !== undefined && sub !== "" && <span className="block text-[12px] font-normal text-muted">{String(sub)}</span>}
+      {sub !== null && sub !== undefined && sub !== "" && <span className="block text-caption font-normal text-muted">{String(sub)}</span>}
     </>
   );
   if (col.href) {
     return (
-      <Link href={fill(col.href, row)} className="font-medium text-ink hover:text-accent hover:underline">
+      <Link href={fill(col.href, row)} className="font-medium text-ink transition-colors hover:text-accent">
         {inner}
       </Link>
     );
@@ -219,8 +259,9 @@ export function DataTable({
     if (q) filterNotes.push(`search="${q}"`);
     if (filterNotes.length) lines.push(esc(`# Filters: ${filterNotes.join(", ")}`));
     lines.push(esc(`# Exported ${new Date().toLocaleString("en-IN")} · amounts in rupees`));
-    lines.push(columns.map((c) => esc(c.label + (c.type === "money" ? " (₹)" : c.type === "pct" ? " (%)" : ""))).join(","));
-    for (const r of filtered) lines.push(columns.map((c) => esc(cellText(c, r))).join(","));
+    const cols = columns.filter((c) => c.type !== "action");
+    lines.push(cols.map((c) => esc(c.label + (c.type === "money" ? " (₹)" : c.type === "pct" ? " (%)" : ""))).join(","));
+    for (const r of filtered) lines.push(cols.map((c) => esc(cellText(c, r))).join(","));
     const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -231,14 +272,15 @@ export function DataTable({
   }
 
   const showToolbar = searchKeys?.length || filters.length || exportName || toolbar;
+  const isRight = (c: Column) => c.align === "right" || (c.align === undefined && numericTypes.includes(c.type ?? "text"));
 
   return (
     <div>
       {showToolbar && (
-        <div className="no-print mb-3 flex flex-wrap items-center gap-2">
+        <div className="no-print mb-4 flex flex-wrap items-center gap-2">
           {searchKeys?.length ? (
-            <label className="relative min-w-[200px] flex-1 sm:max-w-xs">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+            <label className="relative min-w-[200px] flex-1 sm:max-w-[280px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
               <input
                 value={q}
                 onChange={(e) => {
@@ -247,7 +289,7 @@ export function DataTable({
                 }}
                 placeholder={searchPlaceholder}
                 aria-label="Search table"
-                className="h-9 w-full rounded-lg border border-line-strong bg-surface pl-8 pr-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                className="h-9 w-full rounded-full bg-fill-2 pl-9 pr-3 text-subhead text-ink placeholder:text-muted transition-colors hover:bg-fill focus:bg-surface focus:outline-none focus:ring-4 focus:ring-accent/15"
               />
             </label>
           ) : null}
@@ -260,9 +302,12 @@ export function DataTable({
                 setActive((a) => ({ ...a, [f.key]: e.target.value }));
                 setPage(0);
               }}
-              className="h-9 rounded-lg border border-line-strong bg-surface px-2.5 pr-8 text-sm text-ink focus:border-accent focus:outline-none"
+              className={cn(
+                "h-9 rounded-full px-3.5 pr-8 text-subhead font-medium focus:outline-none focus:ring-4 focus:ring-accent/15",
+                active[f.key] ? "bg-accent-soft text-accent" : "bg-fill-2 text-ink hover:bg-fill",
+              )}
             >
-              <option value="">{f.label}: all</option>
+              <option value="">{f.label}</option>
               {f.options.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -271,47 +316,48 @@ export function DataTable({
             </select>
           ))}
           {toolbar}
-          <span className="ml-auto text-[12.5px] text-muted">
-            {filtered.length === rows.length ? `${rows.length} rows` : `${filtered.length} of ${rows.length} rows`}
+          <span className="ml-auto text-footnote text-muted tabular">
+            {filtered.length === rows.length ? `${rows.length}` : `${filtered.length} of ${rows.length}`}
           </span>
           {exportName && (
             <button
               type="button"
               onClick={exportCsv}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 text-[13px] font-medium text-ink hover:bg-surface-2"
+              title="Download CSV (opens in Excel)"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-fill-2 px-3.5 text-subhead font-medium text-ink transition-colors hover:bg-fill"
             >
-              <Download className="size-4" aria-hidden /> CSV
+              <Download className="size-4" aria-hidden /> Export
             </button>
           )}
         </div>
       )}
-      <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="w-full border-collapse text-left text-[13.5px]">
-          <thead className="bg-surface-2 text-[12px] uppercase tracking-wide text-muted">
+      <div className="-mx-5 overflow-x-auto sm:-mx-6">
+        <table className="w-full border-collapse text-left text-subhead">
+          <thead className="text-footnote text-muted">
             <tr>
-              {columns.map((c) => {
-                const right = c.align === "right" || (c.align === undefined && numericTypes.includes(c.type ?? "text"));
-                const sortable = c.sortable !== false && c.type !== "alloc";
+              {columns.map((c, ci) => {
+                const right = isRight(c);
+                const sortable = c.sortable !== false && c.type !== "alloc" && c.type !== "action";
                 const isSorted = sort?.key === c.key;
                 return (
                   <th
-                    key={c.key}
+                    key={c.key + ci}
                     scope="col"
-                    className={cn("whitespace-nowrap px-3 py-2 font-medium", right && "text-right", c.hideOnMobile && "hidden md:table-cell")}
+                    className={cn(
+                      "whitespace-nowrap border-b border-line px-3 pb-2.5 pt-1 font-medium first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6",
+                      right && "text-right",
+                      c.hideOnMobile && "hidden md:table-cell",
+                    )}
                     aria-sort={isSorted ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined}
                   >
-                    {sortable ? (
+                    {sortable && c.label ? (
                       <button
                         type="button"
                         onClick={() => toggleSort(c.key)}
-                        className={cn("inline-flex items-center gap-1 uppercase hover:text-ink", right && "flex-row-reverse")}
+                        className={cn("inline-flex items-center gap-1 transition-colors hover:text-ink", isSorted && "text-ink", right && "flex-row-reverse")}
                       >
                         {c.label}
-                        {isSorted ? (
-                          sort!.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
-                        ) : (
-                          <ChevronsUpDown className="no-print size-3 opacity-40" />
-                        )}
+                        {isSorted && (sort!.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
                       </button>
                     ) : (
                       c.label
@@ -324,76 +370,84 @@ export function DataTable({
           <tbody className="tabular">
             {visible.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-8 text-center text-ink-2">
+                <td colSpan={columns.length} className="px-6 py-12 text-center text-subhead text-muted">
                   {empty}
                 </td>
               </tr>
             )}
             {visible.map((r, i) => (
-              <tr key={String(r.payment_id ?? r.id ?? (r.student_id ? `${r.student_id}:${i}` : i))} className="border-t border-line align-top hover:bg-surface-2/60">
-                {columns.map((c) => {
-                  const right = c.align === "right" || (c.align === undefined && numericTypes.includes(c.type ?? "text"));
-                  return (
-                    <td
-                      key={c.key}
-                      className={cn(
-                        dense ? "px-3 py-1.5" : "px-3 py-2",
-                        right && "text-right whitespace-nowrap",
-                        c.type === "alloc" && "min-w-[240px]",
-                        (c.type === "status" || c.type === "paystatus" || c.type === "date") && "whitespace-nowrap",
-                        c.hideOnMobile && "hidden md:table-cell",
-                        c.className,
-                      )}
-                    >
-                      <Cell col={c} row={r} />
-                    </td>
-                  );
-                })}
+              <tr
+                key={String(r.payment_id ?? r.id ?? (r.student_id ? `${r.student_id}:${i}` : i))}
+                className="group/row align-middle transition-colors hover:bg-fill-2"
+              >
+                {columns.map((c, ci) => (
+                  <td
+                    key={c.key + ci}
+                    className={cn(
+                      "border-b border-line px-3 first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6",
+                      dense ? "py-2" : "py-3",
+                      isRight(c) && "whitespace-nowrap text-right",
+                      c.type === "alloc" && "min-w-[240px]",
+                      c.type === "person" && "min-w-[200px]",
+                      (c.type === "status" || c.type === "paystatus" || c.type === "date" || c.type === "action") && "whitespace-nowrap",
+                      c.hideOnMobile && "hidden md:table-cell",
+                      c.className,
+                    )}
+                  >
+                    <Cell col={c} row={r} />
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
           {totalRow && visible.length > 0 && (
             <tfoot className="tabular">
-              <tr className="border-t-2 border-line-strong bg-surface-2 font-semibold">
-                {columns.map((c, i) => {
-                  const right = c.align === "right" || (c.align === undefined && numericTypes.includes(c.type ?? "text"));
-                  return (
-                    <td key={c.key} className={cn("px-3 py-2", right && "text-right whitespace-nowrap", c.hideOnMobile && "hidden md:table-cell")}>
-                      {i === 0
-                        ? `Total (${filtered.length})`
-                        : c.key in totalRow
-                          ? c.type === "money"
-                            ? rupees(totalRow[c.key])
-                            : num(totalRow[c.key])
-                          : ""}
-                    </td>
-                  );
-                })}
+              <tr className="font-semibold text-ink">
+                {columns.map((c, i) => (
+                  <td
+                    key={c.key + i}
+                    className={cn(
+                      "px-3 pb-1 pt-3.5 first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6",
+                      isRight(c) && "whitespace-nowrap text-right",
+                      c.hideOnMobile && "hidden md:table-cell",
+                    )}
+                  >
+                    {i === 0
+                      ? `Total · ${filtered.length}`
+                      : c.key in totalRow
+                        ? c.type === "money"
+                          ? rupees(totalRow[c.key])
+                          : num(totalRow[c.key])
+                        : ""}
+                  </td>
+                ))}
               </tr>
             </tfoot>
           )}
         </table>
       </div>
       {pages > 1 && (
-        <div className="no-print mt-3 flex items-center justify-end gap-2 text-[13px] text-ink-2">
+        <div className="no-print mt-4 flex items-center justify-end gap-1 text-footnote text-ink-2">
+          <span className="mr-2 tabular">
+            {current + 1} / {pages}
+          </span>
           <button
             type="button"
             disabled={current === 0}
             onClick={() => setPage(current - 1)}
-            className="rounded-md border border-line px-2 py-1 disabled:opacity-40"
+            aria-label="Previous page"
+            className="inline-flex size-8 items-center justify-center rounded-full bg-fill-2 transition-colors hover:bg-fill disabled:opacity-30"
           >
-            Previous
+            <ChevronLeft className="size-4" />
           </button>
-          <span>
-            Page {current + 1} of {pages}
-          </span>
           <button
             type="button"
             disabled={current >= pages - 1}
             onClick={() => setPage(current + 1)}
-            className="rounded-md border border-line px-2 py-1 disabled:opacity-40"
+            aria-label="Next page"
+            className="inline-flex size-8 items-center justify-center rounded-full bg-fill-2 transition-colors hover:bg-fill disabled:opacity-30"
           >
-            Next
+            <ChevronRight className="size-4" />
           </button>
         </div>
       )}

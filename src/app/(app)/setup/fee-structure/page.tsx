@@ -15,7 +15,6 @@ import { FeeStructureEditor } from "./editor";
 
 export const metadata = { title: "Fee structure" };
 
-const CRUMBS = [{ label: "Setup", href: "/setup" }, { label: "Fee structure" }];
 
 export default async function FeeStructurePage({ searchParams }: PageProps<"/setup/fee-structure">) {
   await requireWriter();
@@ -37,12 +36,12 @@ export default async function FeeStructurePage({ searchParams }: PageProps<"/set
   const header = (
     <PageHeader
       title="Fee structure"
-      crumbs={CRUMBS}
       description={
         <>
-          What each class pays in session <b className="text-ink">{session.name}</b>, per installment and fee head. Switch session in the top bar.
+          What each class pays in <b className="text-ink">{session.name}</b>.
         </>
       }
+      info="Amounts per installment and fee head. Switch session in the top bar."
     />
   );
 
@@ -119,7 +118,7 @@ export default async function FeeStructurePage({ searchParams }: PageProps<"/set
               aria-current={on ? "page" : undefined}
               title={done ? `${c.name}: amounts set` : `${c.name}: no amounts yet`}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] font-medium transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-footnote font-medium transition-colors",
                 on ? "border-accent bg-accent text-accent-ink" : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink",
               )}
             >

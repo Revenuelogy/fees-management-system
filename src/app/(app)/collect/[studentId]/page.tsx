@@ -4,7 +4,8 @@ import { getSessions, getSettings } from "@/lib/context";
 import { createClient } from "@/lib/supabase/server";
 import { todayIST } from "@/lib/format";
 import type { DueLine, Student360 } from "@/lib/types";
-import { PageHeader } from "@/components/ui/page-header";
+import { Breadcrumbs } from "@/components/ui/page-header";
+import { Avatar } from "@/components/ui/avatar";
 import { FeeStatusBadge } from "@/components/ui/status";
 import { LinkButton } from "@/components/ui/button";
 import { CollectForm } from "./collect-form";
@@ -32,23 +33,19 @@ export default async function CollectStudentPage({ params }: PageProps<"/collect
 
   return (
     <>
-      <PageHeader
-        title={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            Collect fee · {st.full_name} <FeeStatusBadge status={d.fee_status} />
-          </span>
-        }
-        description={
-          <>
-            {st.admission_no}
-            {enr && <> · {enr.class_name}-{enr.section}{enr.roll_no ? `, roll ${enr.roll_no}` : ""}</>}
-            {st.father_name && <> · Father {st.father_name}</>}
-            {st.phone && <> · {st.phone}</>}
-          </>
-        }
-        crumbs={[{ label: "Collect fee", href: "/collect" }, { label: st.full_name }]}
-        actions={<LinkButton href={`/students/${studentId}`}>Student 360</LinkButton>}
-      />
+      <Breadcrumbs items={[{ label: "Collect fee", href: "/collect" }]} />
+      <section className="mb-6 flex flex-wrap items-center gap-4">
+        <Avatar name={st.full_name} size="lg" />
+        <div className="min-w-0 flex-1">
+          <h1 className="flex flex-wrap items-center gap-2 text-title1 font-bold text-ink">
+            {st.full_name} <FeeStatusBadge status={d.fee_status} />
+          </h1>
+          <p className="text-subhead text-ink-2">
+            {[enr ? `${enr.class_name} · ${enr.section}${enr.roll_no ? ` · Roll ${enr.roll_no}` : ""}` : null, st.admission_no, st.father_name, st.phone].filter(Boolean).join("  ·  ")}
+          </p>
+        </div>
+        <LinkButton href={`/students/${studentId}`}>View profile</LinkButton>
+      </section>
       <CollectForm
         studentId={studentId}
         dues={dues}

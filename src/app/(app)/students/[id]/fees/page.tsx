@@ -168,7 +168,7 @@ export default async function StudentFeesPage({ params, searchParams }: PageProp
       </KpiGrid>
 
       {(advance !== 0 || otherSessions.some((o) => o.remaining > 0)) && (
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-ink-2">
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-footnote text-ink-2">
           {advance !== 0 && (
             <span>
               Advance held (not matched to any fee line): <b className="tabular text-ink">{rupees(advance)}</b>

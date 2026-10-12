@@ -90,9 +90,9 @@ export function FeeStructureEditor({
           <input type="hidden" name="session_id" value={sessionId} />
           <input type="hidden" name="class_id" value={cls.id} />
           <input type="hidden" name="cells" value={JSON.stringify(cells)} />
-          <div className="overflow-x-auto rounded-lg border border-line">
-            <table className="w-full min-w-[520px] border-collapse text-[13.5px]">
-              <thead className="bg-surface-2 text-[12px] text-muted">
+          <div className="overflow-x-auto rounded-2xl border border-line">
+            <table className="w-full min-w-[520px] border-collapse text-subhead">
+              <thead className="bg-surface-2 text-caption text-muted">
                 <tr>
                   <th scope="col" className="sticky left-0 z-10 bg-surface-2 px-3 py-2 text-left font-medium uppercase tracking-wide">
                     Fee head
@@ -129,7 +129,7 @@ export function FeeStructureEditor({
                             aria-label={`${h.name}, installment ${i.number} (rupees)`}
                             aria-invalid={bad || undefined}
                             className={cn(
-                              "h-8 w-full min-w-[84px] rounded-md border bg-surface px-2 text-right text-[13.5px] tabular text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25",
+                              "h-8 w-full min-w-[84px] rounded-md border bg-surface px-2 text-right text-subhead tabular text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25",
                               bad ? "border-critical bg-critical-soft" : changed ? "border-accent bg-accent-soft/50" : "border-line-strong",
                             )}
                           />
@@ -164,7 +164,7 @@ export function FeeStructureEditor({
               <RotateCcw className="size-4" aria-hidden /> Undo changes
             </Button>
             {invalid.length > 0 ? (
-              <span className="text-[12.5px] text-critical-ink">Fix the highlighted amounts (numbers only, up to 2 decimals).</span>
+              <span className="text-footnote text-critical-ink">Fix the highlighted amounts (numbers only, up to 2 decimals).</span>
             ) : dirty ? (
               <Badge tone="warning">Unsaved changes</Badge>
             ) : null}
@@ -178,7 +178,7 @@ export function FeeStructureEditor({
         <form onSubmit={copy.onSubmit} className="mt-4 border-t border-line pt-4">
           <input type="hidden" name="session_id" value={sessionId} />
           <input type="hidden" name="class_id" value={cls.id} />
-          <label htmlFor="copy-from" className="block text-[13px] font-medium text-ink-2">
+          <label htmlFor="copy-from" className="block text-footnote font-medium text-ink-2">
             Copy amounts from another class
           </label>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -212,7 +212,7 @@ export function FeeStructureEditor({
         title="Apply to students"
         description="Turns the saved structure into each enrolled student's charges. Only active students get charges."
       >
-        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-ink-2">
+        <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-footnote text-ink-2">
           <span className="inline-flex items-center gap-1.5">
             <Users className="size-4 text-muted" aria-hidden />
             <b className="text-ink">{stats.enrolled}</b> active {stats.enrolled === 1 ? "student" : "students"} in {cls.name}
@@ -233,17 +233,17 @@ export function FeeStructureEditor({
           <input type="hidden" name="session_id" value={sessionId} />
           <input type="hidden" name="class_id" value={cls.id} />
           <input type="hidden" name="class_name" value={cls.name} />
-          <label className="flex items-start gap-2 text-[13px] text-ink">
+          <label className="flex items-start gap-2 text-footnote text-ink">
             <input type="checkbox" name="overwrite" className="mt-0.5 size-4 accent-[var(--accent)]" />
             <span>
               Also update existing charges generated from the structure
-              <span className="block text-[12px] text-muted">
+              <span className="block text-caption text-muted">
                 Changes amounts that differ from the structure and removes structure charges no longer in it. Concessions are kept (capped
                 at the new amount); manually added charges such as transport are never touched.
               </span>
             </span>
           </label>
-          {dirty && <p className="text-[12.5px] text-critical-ink">Save your changes first: applying uses the saved amounts.</p>}
+          {dirty && <p className="text-footnote text-critical-ink">Save your changes first: applying uses the saved amounts.</p>}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" name="intent" value="class" variant="primary" disabled={apply.pending || dirty || stats.enrolled === 0}>
               {apply.pending ? "Applying…" : `Apply to ${cls.name}`}
@@ -261,7 +261,7 @@ export function FeeStructureEditor({
           <FormError message={apply.state.error} />
           <FormSuccess message={apply.state.ok ? apply.state.message : null} />
         </form>
-        <p className="mt-4 border-t border-line pt-3 text-[12.5px] text-muted">
+        <p className="mt-4 border-t border-line pt-3 text-footnote text-muted">
           Without the tick, applying only adds charges students are missing (new students, new installments or fee heads), so it is
           always safe to run again. Concessions and transport are set per student on the student&apos;s fee page.
         </p>

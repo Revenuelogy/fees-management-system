@@ -18,9 +18,9 @@ export function CancelReceipt({ paymentId, receiptNo }: { paymentId: string; rec
       </Button>
     );
   return (
-    <form action={action} className="w-full space-y-2 rounded-lg border border-critical/30 bg-critical-soft p-3">
+    <form action={action} className="w-full space-y-3 rounded-2xl bg-critical-soft p-4">
       <input type="hidden" name="payment_id" value={paymentId} />
-      <p className="text-[13px] text-ink">
+      <p className="text-footnote text-ink">
         Cancelling <b>{receiptNo}</b> adds a reversing entry dated today. The original stays on record and the dues it cleared become unpaid again.
       </p>
       <Input name="reason" placeholder="Reason (cheque bounced, wrong student, duplicate entry…)" required autoFocus />

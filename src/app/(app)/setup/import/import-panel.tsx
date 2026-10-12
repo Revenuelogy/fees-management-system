@@ -228,8 +228,8 @@ export function ImportPanel({
               )}
             >
               <FileSpreadsheet className="size-7 text-muted" aria-hidden />
-              <span className="text-[14px] font-medium text-ink">{parsed ? parsed.fileName : "Choose a CSV file"}</span>
-              <span className="text-[12.5px] text-ink-2">
+              <span className="text-subhead font-medium text-ink">{parsed ? parsed.fileName : "Choose a CSV file"}</span>
+              <span className="text-footnote text-ink-2">
                 {parsed ? "Click to choose a different file" : "Save your spreadsheet as CSV (UTF-8). First row = column names."}
               </span>
               <input
@@ -245,7 +245,7 @@ export function ImportPanel({
 
             {parsed && (
               <>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-ink-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-footnote text-ink-2">
                   <span>
                     <b className="text-ink">{parsed.rows.length.toLocaleString("en-IN")}</b> rows
                   </span>
@@ -267,7 +267,7 @@ export function ImportPanel({
                   <FormError message={`Missing required ${missing.length === 1 ? "column" : "columns"}: ${missing.join(", ")}. Check the first row of the file against the template.`} />
                 )}
                 {warnings.length > 0 && (
-                  <ul className="space-y-1.5 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2.5 text-[13px] text-ink">
+                  <ul className="space-y-1.5 rounded-2xl bg-warning-soft px-3 py-2.5 text-footnote text-ink">
                     {warnings.map((w, i) => (
                       <li key={i} className="flex gap-2">
                         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
@@ -278,12 +278,12 @@ export function ImportPanel({
                 )}
 
                 <div>
-                  <p className="mb-1.5 text-[12.5px] text-muted">
+                  <p className="mb-1.5 text-footnote text-muted">
                     Preview of the first {Math.min(10, parsed.rows.length)} of {parsed.rows.length.toLocaleString("en-IN")} rows
                   </p>
-                  <div className="max-h-[360px] overflow-auto rounded-lg border border-line">
-                    <table className="w-full border-collapse text-left text-[12.5px]">
-                      <thead className="sticky top-0 bg-surface-2 text-[11.5px] uppercase tracking-wide text-muted">
+                  <div className="max-h-[360px] overflow-auto rounded-2xl border border-line">
+                    <table className="w-full border-collapse text-left text-footnote">
+                      <thead className="sticky top-0 bg-surface-2 text-caption uppercase tracking-wide text-muted">
                         <tr>
                           <th className="px-2 py-1.5 text-right font-medium">Line</th>
                           {present.map((k) => (
@@ -325,7 +325,7 @@ export function ImportPanel({
                         <option value="">Do not enrol (student details only)</option>
                       </Select>
                     </Field>
-                    <label className="flex items-start gap-2 self-center text-[13px] text-ink sm:pt-5">
+                    <label className="flex items-start gap-2 self-center text-footnote text-ink sm:pt-5">
                       <input
                         type="checkbox"
                         checked={generate && !!sessionId}
@@ -335,7 +335,7 @@ export function ImportPanel({
                       />
                       <span>
                         Generate charges from the fee structure
-                        <span className="block text-[12px] text-muted">Adds missing charges for everyone enrolled in the session.</span>
+                        <span className="block text-caption text-muted">Adds missing charges for everyone enrolled in the session.</span>
                       </span>
                     </label>
                   </div>
@@ -351,7 +351,7 @@ export function ImportPanel({
                     Clear
                   </Button>
                   {progress && (
-                    <span className="text-[13px] text-ink-2" role="status">
+                    <span className="text-footnote text-ink-2" role="status">
                       Importing rows {(progress.done + 1).toLocaleString("en-IN")}–
                       {Math.min(progress.total, progress.done + MAX_ROWS).toLocaleString("en-IN")} of {progress.total.toLocaleString("en-IN")}…
                     </span>
@@ -375,18 +375,18 @@ export function ImportPanel({
           </Button>
         }
       >
-        <ul className="divide-y divide-line text-[13px]">
+        <ul className="divide-y divide-line text-footnote">
           {spec.columns.map((c) => (
             <li key={c.key} className="flex items-baseline justify-between gap-3 py-1.5">
-              <span className="font-mono text-[12.5px] text-ink">
+              <span className="font-mono text-footnote text-ink">
                 {c.key}
-                {c.required && <span className="ml-1 font-sans text-[11.5px] font-medium text-critical-ink">required</span>}
+                {c.required && <span className="ml-1 font-sans text-caption font-medium text-critical-ink">required</span>}
               </span>
-              {c.hint && <span className="text-right text-[12px] text-muted">{c.hint}</span>}
+              {c.hint && <span className="text-right text-caption text-muted">{c.hint}</span>}
             </li>
           ))}
         </ul>
-        <p className="mt-3 border-t border-line pt-3 text-[12.5px] text-ink-2">
+        <p className="mt-3 border-t border-line pt-3 text-footnote text-ink-2">
           Dates: <b>YYYY-MM-DD</b> or <b>DD-MM-YYYY</b> (DD/MM/YYYY also works; the day comes first). Amounts in rupees; commas and ₹ are
           fine. Large files are sent in batches of up to 1,000 rows.
         </p>
@@ -426,7 +426,7 @@ function ResultView({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-[14px] font-medium text-ink">
+      <div className="flex items-center gap-2 text-subhead font-medium text-ink">
         {result.errors.length === 0 && !runError ? (
           <CheckCircle2 className="size-5 text-good" aria-hidden />
         ) : (
@@ -437,8 +437,8 @@ function ResultView({
       <FormError message={runError} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-lg border border-line bg-surface-2 px-3 py-2">
-            <div className="text-[12.5px] text-ink-2">{t.label}</div>
+          <div key={t.label} className="rounded-2xl bg-fill-2 px-3 py-2">
+            <div className="text-footnote text-ink-2">{t.label}</div>
             <div className={cn("text-xl font-semibold tabular", t.tone === "critical" ? "text-critical-ink" : "text-ink")}>
               {t.value.toLocaleString("en-IN")}
             </div>
@@ -446,21 +446,21 @@ function ResultView({
         ))}
       </div>
       {kind === "students" && result.generated && (
-        <p className="text-[13px] text-ink-2">Charges were generated from the fee structure for students enrolled in the session.</p>
+        <p className="text-footnote text-ink-2">Charges were generated from the fee structure for students enrolled in the session.</p>
       )}
       {result.errors.length > 0 && (
         <div>
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[12.5px] text-muted">
+            <p className="text-footnote text-muted">
               Line numbers match your file (line 1 is the column names). Fix these rows and import just them again.
             </p>
             <Button type="button" size="sm" onClick={onDownloadErrors}>
               <Download className="size-4" aria-hidden /> Error list
             </Button>
           </div>
-          <div className="max-h-[360px] overflow-auto rounded-lg border border-line">
-            <table className="w-full border-collapse text-left text-[13px]">
-              <thead className="sticky top-0 bg-surface-2 text-[11.5px] uppercase tracking-wide text-muted">
+          <div className="max-h-[360px] overflow-auto rounded-2xl border border-line">
+            <table className="w-full border-collapse text-left text-footnote">
+              <thead className="sticky top-0 bg-surface-2 text-caption uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-3 py-1.5 text-right font-medium">Line</th>
                   <th className="px-3 py-1.5 font-medium">Admission no</th>
@@ -479,7 +479,7 @@ function ResultView({
             </table>
           </div>
           {result.errors.length > shown.length && (
-            <p className="mt-1 text-[12px] text-muted">Showing the first {shown.length}; download the list for all {result.errors.length}.</p>
+            <p className="mt-1 text-caption text-muted">Showing the first {shown.length}; download the list for all {result.errors.length}.</p>
           )}
         </div>
       )}

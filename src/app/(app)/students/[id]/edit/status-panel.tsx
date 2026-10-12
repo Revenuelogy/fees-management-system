@@ -68,7 +68,7 @@ function WithdrawCard({ studentId, today, onDone }: { studentId: string; today: 
           <input type="checkbox" name="waive" defaultChecked className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span>
             Waive installments due after this date
-            <span className="block text-[12px] text-muted">
+            <span className="block text-caption text-muted">
               Their full amount becomes a concession, so they no longer count as pending. Dues already past stay payable.
             </span>
           </span>
@@ -113,7 +113,7 @@ function ReactivateCard({
             <input type="checkbox" name="restore" defaultChecked className="mt-0.5 size-4 accent-[var(--accent)]" />
             <span>
               Restore the {waivedLines} fee {waivedLines === 1 ? "line" : "lines"} waived when the student left
-              <span className="block text-[12px] text-muted">
+              <span className="block text-caption text-muted">
                 Any concession they had before leaving (for example a sibling discount) comes back too.
               </span>
             </span>
@@ -135,7 +135,7 @@ function DeleteCard({ studentId, admissionNo, paymentCount }: { studentId: strin
   if (paymentCount > 0) {
     return (
       <Card title="Delete student">
-        <p className="text-[13px] text-ink-2">
+        <p className="text-footnote text-ink-2">
           This student has {paymentCount} payment {paymentCount === 1 ? "receipt" : "receipts"}. Receipts are permanent, so the student
           cannot be deleted. Mark them as left instead.
         </p>

@@ -10,7 +10,7 @@ import { Field, FormError, FormSuccess, Input } from "@/components/ui/form";
 export function TargetForm({ sessionId, defaultDate }: { sessionId: string; defaultDate: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(createTarget, {});
   return (
-    <form action={action} className="grid items-end gap-3 sm:grid-cols-[1fr_120px_170px_auto]">
+    <form action={action} className="grid items-end gap-3 sm:grid-cols-[1fr_110px_170px_auto]">
       <input type="hidden" name="session_id" value={sessionId} />
       <Field label="Target name (optional)" htmlFor="t-name">
         <Input id="t-name" name="name" placeholder="e.g. 90% of fees due by 31 December" />
@@ -41,7 +41,7 @@ export function DeleteTargetButton({ id }: { id: string }) {
       onClick={() => {
         if (confirm("Delete this target?")) start(async () => void (await deleteTarget(id)));
       }}
-      className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-critical-ink"
+      className="rounded-full p-1.5 text-muted transition-colors hover:bg-fill hover:text-critical-ink"
       aria-label="Delete target"
     >
       <Trash2 className="size-4" />

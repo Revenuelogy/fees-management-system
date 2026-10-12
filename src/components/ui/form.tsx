@@ -1,10 +1,10 @@
 import { cn } from "@/lib/cn";
 
 const field =
-  "block w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-60";
+  "block w-full rounded-xl border border-transparent bg-fill-2 px-3.5 py-2 text-body text-ink placeholder:text-muted transition-colors hover:bg-fill focus:border-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-accent/15 disabled:opacity-50";
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(field, "h-9 py-0", className)} {...props} />;
+  return <input className={cn(field, "h-10 py-0", className)} {...props} />;
 }
 
 export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -13,7 +13,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
 
 export function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={cn(field, "h-9 py-0 pr-8", className)} {...props}>
+    <select className={cn(field, "h-10 py-0 pr-9", className)} {...props}>
       {children}
     </select>
   );
@@ -33,12 +33,12 @@ export function Field({
   htmlFor?: string;
 }) {
   return (
-    <div className={cn("space-y-1", className)}>
-      <label htmlFor={htmlFor} className="block text-[13px] font-medium text-ink-2">
+    <div className={cn("space-y-1.5", className)}>
+      <label htmlFor={htmlFor} className="block text-footnote font-medium text-ink-2">
         {label}
       </label>
       {children}
-      {hint && <p className="text-[12px] text-muted">{hint}</p>}
+      {hint && <p className="text-caption text-muted">{hint}</p>}
     </div>
   );
 }
@@ -46,7 +46,7 @@ export function Field({
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-lg border border-critical/30 bg-critical-soft px-3 py-2 text-[13px] text-critical-ink">
+    <p role="alert" className="rounded-xl bg-critical-soft px-3.5 py-2.5 text-footnote font-medium text-critical-ink">
       {message}
     </p>
   );
@@ -55,7 +55,7 @@ export function FormError({ message }: { message?: string | null }) {
 export function FormSuccess({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p role="status" className="rounded-lg border border-good/30 bg-good-soft px-3 py-2 text-[13px] text-good-ink">
+    <p role="status" className="rounded-xl bg-good-soft px-3.5 py-2.5 text-footnote font-medium text-good-ink">
       {message}
     </p>
   );

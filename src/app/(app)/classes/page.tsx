@@ -6,8 +6,8 @@ import { pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
 import type { ClassSummaryRow } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Segmented, withParams } from "@/components/ui/segmented";
-import { Card } from "@/components/ui/card";
-import { Legend, Meter, StackedBar } from "@/components/ui/bars";
+import { Legend, StackedBar } from "@/components/ui/bars";
+import { Ring } from "@/components/ui/ring";
 import { FEE_STATUS } from "@/components/ui/status";
 import { NoSession } from "@/components/no-session";
 
@@ -18,7 +18,7 @@ const STATUS: { key: keyof ClassSummaryRow["status"]; cls: string; label: string
   { key: "partial", cls: "bg-warning", label: FEE_STATUS.partial.label },
   { key: "arrears_only", cls: "bg-serious", label: FEE_STATUS.arrears_only.label },
   { key: "not_paying", cls: "bg-critical", label: FEE_STATUS.not_paying.label },
-  { key: "free", cls: "bg-line-strong", label: FEE_STATUS.free.label },
+  { key: "free", cls: "bg-tile-gray", label: FEE_STATUS.free.label },
 ];
 
 export default async function ClassesPage({ searchParams }: PageProps<"/classes">) {
@@ -31,108 +31,70 @@ export default async function ClassesPage({ searchParams }: PageProps<"/classes"
   const { data, error } = await supabase.rpc("class_summary", { p_session: session.id, p_include_arrears: arrears });
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as ClassSummaryRow[];
-  const tot = rows.reduce(
-    (a, r) => ({
-      students: a.students + r.students,
-      expected: a.expected + r.expected,
-      received: a.received + r.received,
-      pending: a.pending + r.pending,
-      overdue: a.overdue + r.overdue,
-    }),
-    { students: 0, expected: 0, received: 0, pending: 0, overdue: 0 },
-  );
+  const tot = rows.reduce((a, r) => ({ expected: a.expected + r.expected, received: a.received + r.received, pending: a.pending + r.pending }), { expected: 0, received: 0, pending: 0 });
 
   return (
-    <>
+    <div className="space-y-5">
       <PageHeader
         title="Classes"
-        description={`Session ${session.name}: the same analysis as the school dashboard, one row per class. Open a class for its students, months and installments.`}
-        crumbs={[{ label: session.name, href: "/" }, { label: "Classes" }]}
+        description={`${session.name} · ${rupeesShort(tot.pending)} pending across ${rows.filter((r) => r.class_id).length} classes`}
+        info="Ring = share of the class's fees collected. Bar = students by fee status."
       >
         <Segmented
           options={[
-            { label: "Current session only", href: "/classes", active: !arrears },
-            { label: "Including previous dues", href: "/classes?arrears=1", active: arrears },
+            { label: "This session", href: "/classes", active: !arrears },
+            { label: "Including old dues", href: "/classes?arrears=1", active: arrears },
           ]}
         />
+        <Legend className="ml-auto" items={STATUS.slice(0, 4).map((s) => ({ label: s.label, className: s.cls }))} />
       </PageHeader>
-      <Card>
-        <div className="mb-3">
-          <Legend items={STATUS.map((s) => ({ label: s.label, className: s.cls }))} />
-        </div>
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-[13.5px]">
-            <thead className="bg-surface-2 text-left text-[12px] uppercase tracking-wide text-muted">
-              <tr>
-                <th className="px-3 py-2 font-medium">Class</th>
-                <th className="px-3 py-2 text-right font-medium">Students</th>
-                <th className="px-3 py-2 text-right font-medium">Expected</th>
-                <th className="px-3 py-2 text-right font-medium">Received</th>
-                <th className="px-3 py-2 font-medium">Collection</th>
-                <th className="px-3 py-2 text-right font-medium">Pending</th>
-                <th className="px-3 py-2 text-right font-medium">Overdue</th>
-                <th className="hidden px-3 py-2 text-right font-medium md:table-cell">Share of pending</th>
-                <th className="hidden min-w-[160px] px-3 py-2 font-medium lg:table-cell">Students by status</th>
-              </tr>
-            </thead>
-            <tbody className="tabular">
-              {rows.map((r) => (
-                <tr key={r.class_id ?? "none"} className="border-t border-line hover:bg-surface-2/60">
-                  <td className="px-3 py-2.5">
-                    {r.class_id ? (
-                      <Link href={withParams(`/classes/${r.class_id}`, { arrears: arrears || undefined })} className="font-medium text-ink hover:text-accent hover:underline">
-                        {r.class_name}
-                      </Link>
-                    ) : (
-                      <Link href="/pending?arrears=1&unassigned=1" className="font-medium text-ink-2 hover:underline">
-                        {r.class_name}
-                      </Link>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">{r.students}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right">{rupees(r.expected)}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right">{rupees(r.received)}</td>
-                  <td className="min-w-[130px] px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <Meter value={r.collection_pct} className="w-16" />
-                      {pct(r.collection_pct)}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-right">{rupees(r.pending)}</td>
-                  <td className={`whitespace-nowrap px-3 py-2.5 text-right ${r.overdue > 0 ? "text-critical-ink" : "text-muted"}`}>{rupees(r.overdue)}</td>
-                  <td className="hidden px-3 py-2.5 text-right md:table-cell">{pct(r.share_of_pending)}</td>
-                  <td className="hidden px-3 py-2.5 lg:table-cell">
-                    <StackedBar
-                      segments={STATUS.map((s) => ({
-                        value: r.status[s.key] ?? 0,
-                        className: s.cls,
-                        label: s.label,
-                        display: String(r.status[s.key] ?? 0),
-                      }))}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="tabular">
-              <tr className="border-t-2 border-line-strong bg-surface-2 font-semibold">
-                <td className="px-3 py-2">School</td>
-                <td className="px-3 py-2 text-right">{tot.students}</td>
-                <td className="px-3 py-2 text-right">{rupees(tot.expected)}</td>
-                <td className="px-3 py-2 text-right">{rupees(tot.received)}</td>
-                <td className="px-3 py-2">{pct(ratioPct(tot.received, tot.expected))}</td>
-                <td className="px-3 py-2 text-right">{rupees(tot.pending)}</td>
-                <td className="px-3 py-2 text-right">{rupees(tot.overdue)}</td>
-                <td className="hidden px-3 py-2 text-right md:table-cell">100%</td>
-                <td className="hidden lg:table-cell" />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <p className="mt-3 text-[12.5px] text-muted">
-          Totals reconcile with the dashboard: {rupeesShort(tot.pending)} pending across all classes.
-        </p>
-      </Card>
-    </>
+
+      <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        {rows.map((r, i) => {
+          const href = r.class_id ? withParams(`/classes/${r.class_id}`, { arrears: arrears || undefined }) : "/pending?arrears=1&unassigned=1";
+          return (
+            <Link
+              key={r.class_id ?? "none"}
+              href={href}
+              className="animate-rise group rounded-[var(--radius-card)] bg-surface p-5 shadow-card transition-transform duration-200 hover:-translate-y-0.5"
+              style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+              title={`${r.class_name}: ${rupees(r.received)} of ${rupees(r.expected)} collected, ${rupees(r.pending)} pending`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-headline font-semibold text-ink group-hover:text-accent">{r.class_name}</p>
+                  <p className="text-footnote text-ink-2">{r.students} students</p>
+                </div>
+                <Ring value={r.collection_pct} size={58} stroke={7}>
+                  <span className="text-caption font-semibold tabular">{Math.round(r.collection_pct ?? 0)}%</span>
+                </Ring>
+              </div>
+              <div className="mt-4 flex items-end justify-between gap-2">
+                <div>
+                  <p className="text-caption text-muted">Pending</p>
+                  <p className="figure text-title2 text-ink">{rupeesShort(r.pending)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-caption text-muted">Overdue</p>
+                  <p className={`text-headline font-semibold tabular ${r.overdue > 0 ? "text-critical-ink" : "text-good-ink"}`}>{rupeesShort(r.overdue)}</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <StackedBar
+                  height="h-2"
+                  segments={STATUS.map((s) => ({ value: r.status[s.key] ?? 0, className: s.cls, label: s.label, display: String(r.status[s.key] ?? 0) }))}
+                />
+                <p className="mt-2 text-caption text-muted">
+                  {r.status.paid_up} paid up · {r.status.not_paying + r.status.partial} behind · {pct(r.share_of_pending, 0)} of school pending
+                </p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+      <p className="text-center text-caption text-muted">
+        School: {rupeesShort(tot.received)} of {rupeesShort(tot.expected)} collected ({pct(ratioPct(tot.received, tot.expected), 0)})
+      </p>
+    </div>
   );
 }

@@ -61,15 +61,15 @@ export default async function SessionsPage() {
     <>
       <PageHeader
         title="Sessions & installments"
-        crumbs={[{ label: "Setup", href: "/setup" }, { label: "Sessions & installments" }]}
-        description="Each academic session has its own installments (the dates fees fall due). Change names and due dates here at any time; an installment can only be removed while nobody is billed against it."
+        description="Academic years and the dates fees fall due."
+        info="Each session has its own installments. Names and due dates can change at any time; an installment can only be removed while nobody is billed against it."
         actions={
           <LinkButton href="#new-session" variant="primary">
             <Plus className="size-4" aria-hidden /> New session
           </LinkButton>
         }
       />
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
         <div className="space-y-4">
           {sessions.length === 0 ? (
             <Card>

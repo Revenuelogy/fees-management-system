@@ -15,7 +15,7 @@ export type FeeHeadInfo = { id: string; name: string; priority: number; is_activ
 
 function ActiveToggle({ defaultChecked, label }: { defaultChecked: boolean; label: string }) {
   return (
-    <label className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+    <label className="inline-flex items-center gap-1.5 text-footnote text-ink-2">
       <input type="checkbox" name="is_active" defaultChecked={defaultChecked} aria-label={label} className="size-4 accent-[var(--accent)]" />
       Active
     </label>
@@ -27,7 +27,7 @@ function RowMessage({ error, message, ok }: { error?: string; message?: string; 
   return (
     <div className="col-span-full">
       <FormError message={error} />
-      {ok && message && <p className="text-[12.5px] text-good-ink">{message}</p>}
+      {ok && message && <p className="text-footnote text-good-ink">{message}</p>}
     </div>
   );
 }
@@ -45,7 +45,7 @@ export function ClassRow({ cls, sessionName }: { cls: ClassInfo; sessionName: st
       <input type="hidden" name="class_id" value={cls.id} />
       <div className="min-w-0">
         <Input name="name" defaultValue={cls.name} required aria-label="Class name" />
-        <p className="mt-0.5 truncate text-[12px] text-muted">{usage || "No students yet"}</p>
+        <p className="mt-0.5 truncate text-caption text-muted">{usage || "No students yet"}</p>
       </div>
       <div className={NUM_CELL}>
         <Input name="sort_order" defaultValue={cls.sort_order} inputMode="numeric" aria-label={`Sort order of ${cls.name}`} className="text-right" />
@@ -109,7 +109,7 @@ export function FeeHeadRow({ head }: { head: FeeHeadInfo }) {
       <input type="hidden" name="fee_head_id" value={head.id} />
       <div className="min-w-0">
         <Input name="name" defaultValue={head.name} required aria-label="Fee head name" />
-        <p className="mt-0.5 truncate text-[12px] text-muted">{usage || "Not used yet"}</p>
+        <p className="mt-0.5 truncate text-caption text-muted">{usage || "Not used yet"}</p>
       </div>
       <div className={NUM_CELL}>
         <Input

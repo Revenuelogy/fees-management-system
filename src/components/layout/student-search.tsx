@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { IndianRupee, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Avatar } from "@/components/ui/avatar";
 import type { SearchResult } from "@/lib/types";
 
 /**
@@ -85,7 +86,7 @@ export function StudentSearch({
 
   return (
     <div className={cn("relative", className)}>
-      <Search className={cn("pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted", large ? "size-5" : "size-4")} aria-hidden />
+      <Search className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted", large ? "left-4 size-5" : "left-3 size-4")} aria-hidden />
       <input
         ref={inputRef}
         value={q}
@@ -114,36 +115,39 @@ export function StudentSearch({
         aria-label="Search students"
         placeholder={placeholder}
         className={cn(
-          "w-full rounded-lg border border-line-strong bg-surface text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25",
-          large ? "h-12 pl-10 pr-4 text-base" : "h-9 pl-9 pr-3 text-sm sm:pr-14",
+          "w-full text-ink placeholder:text-muted transition-colors focus:outline-none",
+          large
+            ? "h-14 rounded-2xl bg-surface pl-12 pr-4 text-title3 shadow-card focus:ring-4 focus:ring-accent/15"
+            : "h-9 rounded-full bg-fill-2 pl-9 pr-3 text-subhead hover:bg-fill focus:bg-surface focus:ring-4 focus:ring-accent/15 sm:pr-14",
         )}
       />
       {!large && mode === "profile" && (
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 text-[11px] text-muted sm:block">
-          Ctrl K
+        <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md bg-surface px-1.5 py-px font-sans text-[11px] font-medium text-muted shadow-[0_0_0_1px_var(--line)] sm:block">
+          ⌘K
         </kbd>
       )}
       {open && q.trim() && (
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[60vh] overflow-y-auto rounded-xl border border-line bg-surface py-1 shadow-lg"
+          className="animate-rise absolute left-0 right-0 top-full z-50 mt-2 max-h-[60vh] overflow-y-auto rounded-2xl bg-glass p-1.5 shadow-pop backdrop-blur-2xl"
         >
           {shown.length === 0 && (
-            <li className="px-3 py-3 text-[13px] text-ink-2">{loading ? "Searching…" : "No student found"}</li>
+            <li className="px-3 py-3 text-subhead text-ink-2">{loading ? "Searching…" : "No student found"}</li>
           )}
           {shown.map((r, i) => (
             <li key={r.id} role="option" aria-selected={i === hi}>
-              <div className={cn("flex items-center gap-2 px-3 py-2", i === hi && "bg-surface-2")} onMouseEnter={() => setHi(i)}>
+              <div className={cn("flex items-center gap-3 rounded-xl px-2.5 py-2", i === hi && "bg-fill")} onMouseEnter={() => setHi(i)}>
+                <Avatar name={r.full_name} size="md" />
                 <Link href={target(r)} onMouseDown={(e) => e.preventDefault()} onClick={() => go(r)} className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-medium text-ink">
+                  <span className="block truncate text-subhead font-semibold text-ink">
                     {r.full_name} <span className="font-normal text-muted">· {r.admission_no}</span>
-                    {r.status !== "active" && <span className="ml-1 text-[11.5px] font-normal text-muted">({r.status.replace("_", " ")})</span>}
+                    {r.status !== "active" && <span className="ml-1 text-caption font-normal text-muted">({r.status.replace("_", " ")})</span>}
                   </span>
-                  <span className="block truncate text-[12px] text-ink-2">
+                  <span className="block truncate text-caption text-ink-2">
                     {r.class_name ? `${r.class_name}${r.section ? "-" + r.section : ""}` : "No class"}
                     {r.roll_no ? ` · Roll ${r.roll_no}` : ""}
-                    {r.father_name ? ` · S/o, D/o ${r.father_name}` : ""}
+                    {r.father_name ? ` · ${r.father_name}` : ""}
                     {r.phone ? ` · ${r.phone}` : ""}
                   </span>
                 </Link>
@@ -152,7 +156,7 @@ export function StudentSearch({
                     href={`/collect/${r.id}`}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setOpen(false)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line px-2 py-1 text-[12px] font-medium text-ink-2 hover:border-accent hover:text-accent"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-caption font-semibold text-accent-ink hover:bg-accent-strong"
                   >
                     <IndianRupee className="size-3.5" aria-hidden /> Collect
                   </Link>

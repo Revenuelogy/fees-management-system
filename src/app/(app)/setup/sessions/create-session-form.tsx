@@ -98,19 +98,19 @@ export function CreateSessionForm({
           <Input id="ns-end" name="end_date" type="date" value={end} onChange={(e) => setEnd(e.target.value)} required />
         </Field>
       </div>
-      {nameTaken && <p className="text-[12.5px] text-critical-ink">A session named {name.trim()} already exists.</p>}
+      {nameTaken && <p className="text-footnote text-critical-ink">A session named {name.trim()} already exists.</p>}
       {overlap && !nameTaken && (
-        <p className="text-[12.5px] text-critical-ink">
+        <p className="text-footnote text-critical-ink">
           These dates overlap session {overlap.name}. Sessions cannot overlap.
         </p>
       )}
 
       <fieldset>
-        <legend className="mb-1.5 text-[13px] font-medium text-ink-2">Installments</legend>
+        <legend className="mb-1.5 text-footnote font-medium text-ink-2">Installments</legend>
         <div className="space-y-2">
           {rows.map((r, i) => (
-            <div key={i} className="grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[1.75rem_minmax(0,1fr)_10rem_auto]">
-              <span className="text-[13px] font-semibold tabular text-ink-2">#{i + 1}</span>
+            <div key={i} className="grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[1.75rem_minmax(0,1fr)_9.5rem_auto]">
+              <span className="text-footnote font-semibold tabular text-ink-2">#{i + 1}</span>
               <Input
                 value={r.name}
                 aria-label={`Installment ${i + 1} name`}
@@ -153,7 +153,7 @@ export function CreateSessionForm({
           <Plus className="size-4" aria-hidden /> Add installment
         </Button>
         {outside.length > 0 && (
-          <p className="mt-2 text-[12.5px] text-ink-2">Note: {outside.length === 1 ? "one due date falls" : `${outside.length} due dates fall`} outside the session dates.</p>
+          <p className="mt-2 text-footnote text-ink-2">Note: {outside.length === 1 ? "one due date falls" : `${outside.length} due dates fall`} outside the session dates.</p>
         )}
       </fieldset>
 
@@ -172,7 +172,7 @@ export function CreateSessionForm({
             ))}
           </Select>
         </Field>
-        <label className="flex items-start gap-2 self-center text-[13px] text-ink sm:pt-5">
+        <label className="flex items-start gap-2 self-center text-footnote text-ink sm:pt-5">
           <input
             type="checkbox"
             name="make_current"
@@ -182,7 +182,7 @@ export function CreateSessionForm({
           />
           <span>
             Make this the current session
-            <span className="block text-[12px] text-muted">Usually done when the new year begins.</span>
+            <span className="block text-caption text-muted">Usually done when the new year begins.</span>
           </span>
         </label>
       </div>

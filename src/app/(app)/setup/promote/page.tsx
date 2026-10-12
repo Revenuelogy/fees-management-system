@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarRange, Users } from "lucide-react";
+import { ArrowRight, CalendarRange, CheckCircle2, Users } from "lucide-react";
 import { requireWriter } from "@/lib/auth";
 import { getActiveSession, getClasses, getSessions, param } from "@/lib/context";
 import { createClient } from "@/lib/supabase/server";
@@ -12,9 +12,8 @@ import { PromoteForm, SessionPicker, type PromoteRow } from "./promote-form";
 
 export const metadata = { title: "Promote students" };
 
-const CRUMBS = [{ label: "Setup", href: "/setup" }, { label: "Promote students" }];
-const DESCRIPTION =
-  "Move last session's students into the next session's classes in one go. Each class maps to a target class; the final class usually passes out.";
+const DESCRIPTION = "Move last year's students up a class in one go.";
+const INFO = "Each class maps to a target class in the next session; the final class usually passes out.";
 
 export default async function PromotePage({ searchParams }: PageProps<"/setup/promote">) {
   await requireWriter();
@@ -24,7 +23,7 @@ export default async function PromotePage({ searchParams }: PageProps<"/setup/pr
   if (sessions.length < 2) {
     return (
       <>
-        <PageHeader title="Promote students" crumbs={CRUMBS} description={DESCRIPTION} />
+        <PageHeader title="Promote students" description={DESCRIPTION} info={INFO} />
         <Card>
           <Empty title="You need two sessions to promote students" icon={CalendarRange}>
             Create the new session first (with its installments and fee structure), then come back here.
@@ -95,7 +94,7 @@ export default async function PromotePage({ searchParams }: PageProps<"/setup/pr
 
   return (
     <>
-      <PageHeader title="Promote students" crumbs={CRUMBS} description={DESCRIPTION} />
+      <PageHeader title="Promote students" description={DESCRIPTION} info={INFO} />
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card
           title={
@@ -113,7 +112,7 @@ export default async function PromotePage({ searchParams }: PageProps<"/setup/pr
             <SessionPicker sessions={asc.map((s) => ({ id: s.id, name: s.name })).reverse()} fromId={from.id} toId={to.id} />
           </div>
           {from.id === to.id ? (
-            <p className="text-[13px] text-critical-ink">Choose two different sessions.</p>
+            <p className="text-footnote text-critical-ink">Choose two different sessions.</p>
           ) : rows.length === 0 ? (
             <Empty title={`Nobody is enrolled in ${from.name}`} icon={Users}>
               Pick another “from” session, or import students instead.
@@ -130,17 +129,20 @@ export default async function PromotePage({ searchParams }: PageProps<"/setup/pr
             />
           )}
         </Card>
-        <Card title="How promotion works">
-          <ul className="list-disc space-y-2 pl-4 text-[13px] text-ink-2">
-            <li>Only active students are moved. Students who left or already passed out stay where they are.</li>
-            <li>Each student keeps their section; roll numbers start empty in the new session.</li>
-            <li>
-              Students already enrolled in {to.name} ({plural(alreadyTotal, "student")} from these classes) are not changed, so running
-              promotion again is safe.
-            </li>
-            <li>“Passed out” marks the students as having left the school; they no longer appear as active.</li>
-            <li>Unpaid fees from {from.name} stay with each student and show up as previous dues.</li>
-            <li>New admissions are added separately (import or the students page).</li>
+        <Card title="Good to know">
+          <ul className="space-y-3 text-subhead text-ink-2">
+            {[
+              "Only active students move.",
+              "Sections are kept; roll numbers start empty.",
+              `Safe to re-run: ${plural(alreadyTotal, "student")} already in ${to.name} stay as they are.`,
+              `Unpaid ${from.name} fees follow each student as old dues.`,
+              "“Passed out” students leave the active list.",
+            ].map((t) => (
+              <li key={t} className="flex gap-2.5">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+                <span>{t}</span>
+              </li>
+            ))}
           </ul>
         </Card>
       </div>

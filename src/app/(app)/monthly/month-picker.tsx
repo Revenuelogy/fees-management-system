@@ -19,7 +19,7 @@ export function MonthPicker({
       aria-label="Month"
       value={value}
       onChange={(e) => router.push(hrefTemplate.replace("__M__", e.target.value))}
-      className="h-9 rounded-lg border border-line-strong bg-surface px-2.5 pr-8 text-sm font-medium text-ink focus:border-accent focus:outline-none"
+      className="h-9 rounded-full bg-fill px-4 pr-8 text-subhead font-semibold text-ink transition-colors hover:bg-[rgba(118,118,128,0.18)] focus:outline-none focus:ring-4 focus:ring-accent/15"
     >
       {options.map((m) => (
         <option key={m.value} value={m.value}>

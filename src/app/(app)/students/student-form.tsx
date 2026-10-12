@@ -117,7 +117,7 @@ export function StudentForm({
               <input type="checkbox" name="generate" defaultChecked className="mt-0.5 size-4 accent-[var(--accent)]" />
               <span>
                 Generate fee charges from the class fee structure
-                <span className="block text-[12px] text-muted">
+                <span className="block text-caption text-muted">
                   {editing
                     ? "Applies when the student is newly enrolled, moves to another class, or has no fee plan yet in this session."
                     : "Creates this session's installments for the chosen class. You can adjust them later on the fee plan page."}

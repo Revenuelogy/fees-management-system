@@ -113,9 +113,9 @@ export function FeePlan({
   return (
     <div className="space-y-4">
       <FormSuccess message={notice} />
-      <div className="relative overflow-x-auto rounded-lg border border-line">
-        <table className="w-full min-w-[760px] border-collapse text-left text-[13.5px]">
-          <thead className="bg-surface-2 text-[12px] uppercase tracking-wide text-muted">
+      <div className="relative overflow-x-auto rounded-2xl border border-line">
+        <table className="w-full min-w-[760px] border-collapse text-left text-subhead">
+          <thead className="bg-surface-2 text-caption uppercase tracking-wide text-muted">
             <tr>
               <th scope="col" className="px-3 py-2 font-medium">Fee head</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Amount</th>
@@ -136,14 +136,14 @@ export function FeePlan({
                       <span className="font-semibold text-ink">
                         {g.number}. {g.name}
                       </span>
-                      <span className="text-[12.5px] text-muted">due {fmtDate(g.due_date)}</span>
+                      <span className="text-footnote text-muted">due {fmtDate(g.due_date)}</span>
                       <InstallmentStatus lines={g.lines} dueDate={g.due_date} />
                     </span>
                   </th>
                 </tr>
                 {g.lines.length === 0 && (
                   <tr className="border-t border-line">
-                    <td colSpan={7} className="px-3 py-2 text-[13px] text-muted">
+                    <td colSpan={7} className="px-3 py-2 text-footnote text-muted">
                       No fee lines in this installment.
                     </td>
                   </tr>
@@ -152,7 +152,7 @@ export function FeePlan({
                   <ChargeRow key={`${l.charge_id}:${l.amount}:${l.concession}`} line={l} studentId={studentId} notify={setNotice} />
                 ))}
                 {g.lines.length > 1 && (
-                  <tr className="border-t border-line text-[12.5px] text-ink-2">
+                  <tr className="border-t border-line text-footnote text-ink-2">
                     <td className="px-3 py-1.5">Installment total</td>
                     <td className={cn(money, "py-1.5")}>{rupees(t.amount)}</td>
                     <td className={cn(money, "py-1.5")}>{rupees(t.concession)}</td>
@@ -209,7 +209,7 @@ function ChargeRow({ line, studentId, notify }: { line: PlanLine; studentId: str
             </Badge>
           )}
           {line.note && (
-            <span className="block max-w-[280px] truncate text-[12px] text-muted" title={line.note}>
+            <span className="block max-w-[280px] truncate text-caption text-muted" title={line.note}>
               {line.note}
             </span>
           )}
@@ -301,7 +301,7 @@ function ChargeRow({ line, studentId, notify }: { line: PlanLine; studentId: str
       </tr>
       {mode === "delete" && (
         <tr className="bg-accent-soft/40">
-          <td colSpan={7} className="px-3 pb-2 text-[12.5px] text-ink">
+          <td colSpan={7} className="px-3 pb-2 text-footnote text-ink">
             Delete the {line.fee_head} line ({rupees(line.net)})?{" "}
             {line.paid > 0 ? (
               <b>
@@ -316,7 +316,7 @@ function ChargeRow({ line, studentId, notify }: { line: PlanLine; studentId: str
       )}
       {mode === "edit" && previewNet !== null && previewNet < line.paid && (
         <tr className="bg-accent-soft/40">
-          <td colSpan={7} className="px-3 pb-2 text-[12.5px] text-ink">
+          <td colSpan={7} className="px-3 pb-2 text-footnote text-ink">
             {rupees(line.paid)} is already paid against this line. Lowering it to {rupees(previewNet)} moves{" "}
             {rupees(line.paid - previewNet)} to other dues (or advance).
           </td>
@@ -355,9 +355,9 @@ function AddLineForm({
     );
   }
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-line bg-surface-2/40 p-3 sm:p-4">
+    <form onSubmit={onSubmit} className="rounded-2xl bg-fill-2 p-3 sm:p-4">
       <input type="hidden" name="student_id" value={studentId} />
-      <p className="mb-3 text-[13px] font-medium text-ink">Add a fee line</p>
+      <p className="mb-3 text-footnote font-medium text-ink">Add a fee line</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Installment" htmlFor="add-inst">
           <Select id="add-inst" name="installment_id" required defaultValue={installments[0]?.id}>

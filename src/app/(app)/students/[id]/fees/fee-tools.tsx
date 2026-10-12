@@ -131,7 +131,7 @@ export function RegenerateTool({
       }
     >
       {blocked ? (
-        <p className="text-[13px] text-ink-2">{blocked}</p>
+        <p className="text-footnote text-ink-2">{blocked}</p>
       ) : (
         <form onSubmit={onSubmit} className="space-y-3">
           <input type="hidden" name="student_id" value={studentId} />
@@ -140,7 +140,7 @@ export function RegenerateTool({
             <input type="checkbox" name="overwrite" className={checkbox} />
             <span>
               Also reset existing lines to the structure
-              <span className="block text-[12px] text-muted">
+              <span className="block text-caption text-muted">
                 Structure lines get the class amount again and lines no longer in the structure are removed. Lines edited or added by hand
                 (Manual) and opening dues are never touched. Concessions are kept (capped at the new amount).
               </span>
@@ -209,7 +209,7 @@ export function OpeningDueTool({
         <FormError message={state.error} />
         <FormSuccess message={state.message} />
         {state.ok && addedTo && addedTo !== currentSessionId && (
-          <p className="text-[13px]">
+          <p className="text-footnote">
             <Link
               href={addedTo === activeSessionId ? baseHref : withParams(baseHref, { session: addedTo })}
               className="font-medium text-accent hover:underline"

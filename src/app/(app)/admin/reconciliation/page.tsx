@@ -8,12 +8,13 @@ import type { ReconciliationCheck } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { InfoTip } from "@/components/ui/info-tip";
 import { DataTable } from "@/components/ui/data-table";
 import { NoSession } from "@/components/no-session";
 import { cn } from "@/lib/cn";
 import { MonthCloseForm, RerunAllocationForm } from "./recon-forms";
 
-export const metadata = { title: "Reconciliation" };
+export const metadata = { title: "Health checks" };
 
 type Kind = "pass" | "fail" | "warning" | "info";
 
@@ -111,68 +112,61 @@ export default async function ReconciliationPage() {
   return (
     <>
       <PageHeader
-        title="Reconciliation"
-        crumbs={[{ label: "Admin" }, { label: "Reconciliation" }]}
-        description={`Consistency checks for session ${recon.session.name}: the same money counted different ways must agree. Checked ${when(recon.checked_at)}.`}
+        title="Health checks"
+        description={`Session ${recon.session.name} · checked ${when(recon.checked_at)}`}
+        info="The same money counted different ways must agree to the paisa."
       />
 
       <Card>
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-3 rounded-lg px-4 py-3",
-            problems === 0 ? "bg-good-soft" : fails > 0 ? "bg-critical-soft" : "bg-warning-soft",
-          )}
-        >
-          {problems === 0 ? (
-            <CheckCircle2 className="size-6 text-good-ink" aria-hidden />
-          ) : fails > 0 ? (
-            <XCircle className="size-6 text-critical-ink" aria-hidden />
-          ) : (
-            <AlertTriangle className="size-6 text-ink" aria-hidden />
-          )}
+        <div className="flex items-center gap-4">
+          <span
+            className={cn(
+              "inline-flex size-14 shrink-0 items-center justify-center rounded-full",
+              problems === 0 ? "bg-good-soft text-good-ink" : fails > 0 ? "bg-critical-soft text-critical-ink" : "bg-warning-soft text-ink",
+            )}
+          >
+            {problems === 0 ? <CheckCircle2 className="size-7" aria-hidden /> : fails > 0 ? <XCircle className="size-7" aria-hidden /> : <AlertTriangle className="size-7" aria-hidden />}
+          </span>
           <div>
-            <p className={cn("text-lg font-semibold", problems === 0 ? "text-good-ink" : fails > 0 ? "text-critical-ink" : "text-ink")}>
-              {problems === 0 ? "All checks pass" : `${problems} ${problems === 1 ? "problem" : "problems"}`}
+            <p className="text-title3 font-semibold text-ink">
+              {problems === 0 ? "All checks pass" : `${problems} ${problems === 1 ? "problem" : "problems"} found`}
             </p>
-            <p className="text-[13px] text-ink-2">
+            <p className="text-subhead text-ink-2">
               {problems === 0
                 ? `${checks.filter((c) => !c.info).length} checks agree to the paisa.`
                 : [fails ? `${fails} failed` : null, warns ? `${warns} ${warns === 1 ? "warning" : "warnings"}` : null].filter(Boolean).join(" · ")}
             </p>
           </div>
         </div>
-        <ul className="mt-4 divide-y divide-line overflow-hidden rounded-lg border border-line text-[13.5px]">
-          <li className="hidden bg-surface-2 px-4 py-2 text-[12px] font-medium uppercase tracking-wide text-muted sm:grid sm:grid-cols-[minmax(0,1fr)_9rem_9rem_6rem] sm:gap-3">
-            <span>Check</span>
-            <span className="text-right">Value</span>
-            <span className="text-right">Should match</span>
-            <span className="text-right">Result</span>
-          </li>
+        <ul className="mt-5 divide-y divide-line border-t border-line">
           {checks.map((c) => {
             const k = kindOf(c);
             const K = KIND[k];
             const Icon = K.icon;
             const diff = !c.ok && !c.count && c.left !== null && c.right !== null ? c.left - c.right : null;
+            const problem = k === "fail" || k === "warning";
             return (
-              <li key={c.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 px-4 py-2.5 tabular sm:grid-cols-[minmax(0,1fr)_9rem_9rem_6rem]">
-                <div className="min-w-0">
-                  <span className="font-medium text-ink">{c.label}</span>
-                  {HINTS[c.key] && <span className="block text-[12.5px] text-muted">{HINTS[c.key]}</span>}
-                </div>
-                <div className={cn("col-start-1 row-start-2 sm:col-start-2 sm:row-start-1 sm:text-right", k === "fail" && "font-medium text-critical-ink")}>
-                  <span className="text-[12px] text-muted sm:hidden">Value </span>
-                  {value(c, c.left)}
-                  {diff !== null && diff !== 0 && <span className="block text-[12px] text-muted">diff {rupees(diff, { sign: true })}</span>}
-                </div>
-                <div className="col-start-1 row-start-3 text-ink-2 sm:col-start-3 sm:row-start-1 sm:text-right">
-                  <span className="text-[12px] text-muted sm:hidden">{c.info ? "" : "Should match "}</span>
-                  {c.info ? (c.rows !== undefined ? `${num(c.rows)} allocations` : "—") : value(c, c.right)}
-                </div>
-                <div className="col-start-2 row-start-1 text-right sm:col-start-4">
-                  <Badge tone={K.tone}>
-                    <Icon className="size-3.5" aria-hidden /> {K.label}
-                  </Badge>
-                </div>
+              <li key={c.key} className="flex items-center gap-3 py-3">
+                <Icon
+                  className={cn("size-5 shrink-0", k === "pass" ? "text-good" : k === "fail" ? "text-critical" : k === "warning" ? "text-warning" : "text-muted")}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-1.5 text-subhead font-medium text-ink">
+                    {c.label}
+                    {HINTS[c.key] && <InfoTip>{HINTS[c.key]}</InfoTip>}
+                    {problem ? <Badge tone={K.tone}>{K.label}</Badge> : <span className="sr-only">{K.label}</span>}
+                  </span>
+                  {problem && (
+                    <span className="block text-caption text-muted">
+                      Should be {value(c, c.right)}
+                      {diff !== null && diff !== 0 && <> · off by {rupees(diff, { sign: true })}</>}
+                    </span>
+                  )}
+                </span>
+                <span className={cn("shrink-0 text-right text-subhead tabular", problem ? "font-semibold text-critical-ink" : "text-ink-2")}>
+                  {c.info ? (c.rows !== undefined ? `${num(c.rows)} allocations` : "—") : value(c, c.left)}
+                </span>
               </li>
             );
           })}
@@ -187,9 +181,9 @@ export default async function ReconciliationPage() {
           {admin ? (
             <RerunAllocationForm />
           ) : (
-            <p className="text-[13px] text-ink-2">Only the owner / admin can re-run allocation.</p>
+            <p className="text-footnote text-ink-2">Only the owner / admin can re-run allocation.</p>
           )}
-          <p className="mt-3 text-[12.5px] text-muted">
+          <p className="mt-3 text-footnote text-muted">
             Current rule:{" "}
             <b className="text-ink-2">
               {settings?.allocation_order === "current_first" ? "current session first, then oldest dues" : "oldest dues first"}
@@ -209,8 +203,8 @@ export default async function ReconciliationPage() {
           title={`Month close · ${session.name}`}
           description="Closing a month freezes its numbers (month report, class split, payment modes) and blocks new payments dated inside it. Later corrections — a cancelled receipt or a changed fee plan — then show up as adjustments in the month they are made. Reopen a month to make it live again."
         >
-          <div className="relative overflow-x-auto rounded-lg border border-line">
-            <table className="w-full border-collapse text-left text-[13.5px]">
+          <div className="relative overflow-x-auto rounded-2xl border border-line">
+            <table className="w-full border-collapse text-left text-subhead">
               <tbody>
                 {months.map((m) => {
                   const snap = snapshots.get(m);
@@ -228,7 +222,7 @@ export default async function ReconciliationPage() {
                             <Badge tone="accent">
                               <Lock className="size-3.5" aria-hidden /> Closed
                             </Badge>
-                            <span className="text-[12.5px] text-muted">
+                            <span className="text-footnote text-muted">
                               {when(snap.closed_at)}
                               {snap.closed_by && people.get(snap.closed_by) ? ` · ${people.get(snap.closed_by)}` : ""}
                             </span>
@@ -236,7 +230,7 @@ export default async function ReconciliationPage() {
                         ) : ended ? (
                           <Badge tone="neutral">Open</Badge>
                         ) : (
-                          <span className="whitespace-nowrap text-[12.5px] text-muted">{m === today.slice(0, 7) ? "In progress" : "Not ended yet"}</span>
+                          <span className="whitespace-nowrap text-footnote text-muted">{m === today.slice(0, 7) ? "In progress" : "Not ended yet"}</span>
                         )}
                       </td>
                       <td className="px-4 py-1.5 text-right">
@@ -267,7 +261,7 @@ export default async function ReconciliationPage() {
               { key: "who", label: "By", hideOnMobile: true },
               { key: "action", label: "Action" },
               { key: "entity", label: "Entity", hideOnMobile: true },
-              { key: "details", label: "Details", sortable: false, className: "text-[12.5px] text-ink-2" },
+              { key: "details", label: "Details", sortable: false, className: "text-footnote text-ink-2" },
             ]}
             searchKeys={["action", "entity", "details", "who"]}
             searchPlaceholder="Search the log…"

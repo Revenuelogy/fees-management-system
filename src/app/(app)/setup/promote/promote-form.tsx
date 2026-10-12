@@ -93,9 +93,9 @@ export function PromoteForm({
       <input type="hidden" name="from" value={fromId} />
       <input type="hidden" name="to" value={toId} />
       <input type="hidden" name="mapping" value={JSON.stringify(mapping)} />
-      <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="w-full border-collapse text-left text-[13.5px]">
-          <thead className="bg-surface-2 text-[12px] uppercase tracking-wide text-muted">
+      <div className="overflow-x-auto rounded-2xl border border-line">
+        <table className="w-full border-collapse text-left text-subhead">
+          <thead className="bg-surface-2 text-caption uppercase tracking-wide text-muted">
             <tr>
               <th scope="col" className="px-3 py-2 font-medium">
                 Class in {fromName}
@@ -120,11 +120,11 @@ export function PromoteForm({
                   <td className="px-3 py-2 text-right">
                     <span className="font-medium text-ink">{r.active}</span>
                     {r.inactive > 0 && (
-                      <span className="block text-[12px] text-muted" title="Students who left or passed out are not promoted">
+                      <span className="block text-caption text-muted" title="Students who left or passed out are not promoted">
                         +{r.inactive} inactive
                       </span>
                     )}
-                    {r.already > 0 && <span className="block text-[12px] text-muted sm:hidden">{r.already} already moved</span>}
+                    {r.already > 0 && <span className="block text-caption text-muted sm:hidden">{r.already} already moved</span>}
                   </td>
                   <td className="hidden px-3 py-2 text-right sm:table-cell">
                     {r.already > 0 ? <span className="text-ink">{r.already}</span> : <span className="text-muted">0</span>}
@@ -152,7 +152,7 @@ export function PromoteForm({
         </table>
       </div>
 
-      <div className="rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-[13px] text-ink-2">
+      <div className="rounded-2xl bg-fill-2 px-3 py-2.5 text-footnote text-ink-2">
         Will enrol <b className="text-ink">{plural(toPromote, "student")}</b> in {toName}
         {toPass > 0 && (
           <>
@@ -169,7 +169,7 @@ export function PromoteForm({
         )}
       </div>
 
-      <label className="flex items-start gap-2 text-[13px] text-ink">
+      <label className="flex items-start gap-2 text-footnote text-ink">
         <input
           type="checkbox"
           name="generate"
@@ -179,7 +179,7 @@ export function PromoteForm({
         />
         <span>
           Generate charges in {toName} from its fee structure
-          <span className="block text-[12px] text-muted">You can also do this later from the fee structure page.</span>
+          <span className="block text-caption text-muted">You can also do this later from the fee structure page.</span>
         </span>
       </label>
 

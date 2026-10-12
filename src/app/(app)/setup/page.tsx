@@ -181,17 +181,17 @@ export default async function SetupChecklistPage() {
     <>
       <PageHeader
         title="Setup checklist"
-        crumbs={[{ label: "Setup" }]}
         description={
           active ? (
             <>
-              Checking session <b className="text-ink">{active.name}</b> (chosen in the top bar)
-              {current && current.id !== active.id ? <>. The current session is {current.name}.</> : "."}
+              Session <b className="text-ink">{active.name}</b>
+              {current && current.id !== active.id ? <> · current is {current.name}</> : null}
             </>
           ) : (
             "Start here when setting up the school or a new academic year."
           )
         }
+        info="Checks the session chosen in the top bar."
         actions={
           nextStep ? (
             <LinkButton href={nextStep.links[0].href} variant="primary">
@@ -221,12 +221,12 @@ export default async function SetupChecklistPage() {
                     />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[14px] font-medium text-ink">
+                        <span className="text-subhead font-medium text-ink">
                           {i + 1}. {s.title}
                         </span>
                         {s.done ? <Badge tone="good">Done</Badge> : s.blocked ? <Badge>Waiting</Badge> : <Badge tone="warning">To do</Badge>}
                       </div>
-                      <p className="mt-0.5 text-[13px] text-ink-2">{s.detail}</p>
+                      <p className="mt-0.5 text-footnote text-ink-2">{s.detail}</p>
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2 pl-8 sm:pl-0">
@@ -243,28 +243,27 @@ export default async function SetupChecklistPage() {
         </Card>
 
         <Card title="How setup works" description="The order matters: each step uses what the one before created.">
-          <ol className="space-y-3 text-[13px] text-ink-2">
+          <ol className="space-y-3 text-footnote text-ink-2">
             <HelpStep n={1} href="/setup/sessions" title="Sessions & installments">
-              An academic year (e.g. 2026-27) and the dates fees fall due in it.
+              The academic year and its due dates.
             </HelpStep>
             <HelpStep n={2} href="/setup/classes" title="Classes & fee heads">
-              The classes you teach and the kinds of fees you charge. Fee head priority decides what a payment clears first.
+              What you teach and what you charge.
             </HelpStep>
             <HelpStep n={3} href="/setup/fee-structure" title="Fee structure">
-              How much each class pays per installment for each fee head.
+              Amount per class and installment.
             </HelpStep>
             <HelpStep n={4} href="/setup/import" title="Students">
-              Import from a spreadsheet, or promote last year&apos;s students into the new session.
+              Import them, or promote last year&apos;s.
             </HelpStep>
             <HelpStep n={5} href="/setup/fee-structure" title="Generate charges">
-              “Apply to students” turns the fee structure into each student&apos;s charges. Concessions and transport are then set on each
-              student&apos;s fee page.
+              Apply the fee structure to students.
             </HelpStep>
             <HelpStep n={6} href="/collect" title="Collect fees">
-              Record payments at the counter; receipts and every report update straight away.
+              Receipts and reports update instantly.
             </HelpStep>
           </ol>
-          <p className="mt-4 border-t border-line pt-3 text-[12.5px] text-muted">
+          <p className="mt-4 border-t border-line pt-3 text-footnote text-muted">
             Moving from another system? Import{" "}
             <Link href="/setup/import?tab=dues" className="font-medium text-accent hover:underline">
               opening dues
@@ -284,7 +283,7 @@ export default async function SetupChecklistPage() {
 function HelpStep({ n, href, title, children }: { n: number; href: string; title: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-3">
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-semibold text-accent-strong">{n}</span>
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-caption font-semibold text-accent-strong">{n}</span>
       <div>
         <Link href={href} className="font-medium text-ink hover:text-accent hover:underline">
           {title}

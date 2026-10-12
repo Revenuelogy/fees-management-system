@@ -1,40 +1,43 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { IndianRupee, Pencil, Phone, Receipt } from "lucide-react";
+import { CheckCircle2, IndianRupee, Pencil, Phone, Receipt, Wallet, Clock, AlertTriangle } from "lucide-react";
 import { requireStaff, canWrite } from "@/lib/auth";
 import { param } from "@/lib/context";
 import { createClient } from "@/lib/supabase/server";
-import { MODE_LABELS, fmtDate, fmtDateTime, pct, ratioPct, rupees } from "@/lib/format";
+import { MODE_LABELS, fmtDate, fmtDateTime, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
 import type { Student360 } from "@/lib/types";
-import { PageHeader } from "@/components/ui/page-header";
+import { Breadcrumbs } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
 import { FeeStatusBadge } from "@/components/ui/status";
-import { AllocLines, KIND_LEGEND } from "@/components/ui/alloc";
-import { Legend, Meter, StackedBar } from "@/components/ui/bars";
+import { AllocLines } from "@/components/ui/alloc";
+import { Meter, StackedBar } from "@/components/ui/bars";
 import { Segmented } from "@/components/ui/segmented";
 import { Empty } from "@/components/ui/empty";
+import { Avatar } from "@/components/ui/avatar";
+import { IconTile } from "@/components/ui/kpi";
+import { Ring } from "@/components/ui/ring";
 import { cn } from "@/lib/cn";
 import { NoteForm, DeleteNoteButton } from "./note-form";
 
 export const metadata = { title: "Student" };
 
 const INST_STATUS = {
-  paid: { label: "Paid", tone: "good" },
-  partial: { label: "Part paid", tone: "warning" },
-  partial_overdue: { label: "Part paid · overdue", tone: "serious" },
-  overdue: { label: "Overdue", tone: "critical" },
-  upcoming: { label: "Upcoming", tone: "neutral" },
-  waived: { label: "Waived", tone: "neutral" },
+  paid: { label: "Paid", tone: "good", color: "var(--good)" },
+  partial: { label: "Part paid", tone: "warning", color: "var(--series-1)" },
+  partial_overdue: { label: "Overdue", tone: "critical", color: "var(--critical)" },
+  overdue: { label: "Overdue", tone: "critical", color: "var(--critical)" },
+  upcoming: { label: "Upcoming", tone: "neutral", color: "var(--series-1)" },
+  waived: { label: "Waived", tone: "neutral", color: "var(--tile-gray)" },
 } as const;
 
 const PROFILE = {
-  early: { label: "Pays early", hint: "Usually pays before the due date" },
-  on_time: { label: "Pays on time", hint: "Usually pays within about two weeks of the due date" },
-  late: { label: "Pays late", hint: "Usually pays more than two weeks after the due date" },
-  year_end: { label: "Pays at year end", hint: "Most money arrives in January–March, well after due dates" },
-  no_history: { label: "No payment history", hint: "Nothing paid against fees yet" },
+  early: { label: "Pays early", hint: "Usually before the due date", tone: "text-good-ink" },
+  on_time: { label: "Pays on time", hint: "Usually within two weeks of the due date", tone: "text-good-ink" },
+  late: { label: "Pays late", hint: "Usually more than two weeks after the due date", tone: "text-serious-ink" },
+  year_end: { label: "Pays at year end", hint: "Most money arrives January–March", tone: "text-serious-ink" },
+  no_history: { label: "No history yet", hint: "Nothing paid against fees yet", tone: "text-ink-2" },
 } as const;
 
 export default async function Student360Page({ params, searchParams }: PageProps<"/students/[id]">) {
@@ -53,350 +56,274 @@ export default async function Student360Page({ params, searchParams }: PageProps
   const currentEnr = d.enrollments.find((e) => e.is_current) ?? d.enrollments[0];
   const ladderSessionId = param(sp.session) ?? d.sessions.find((s) => s.is_current)?.session_id ?? d.sessions[0]?.session_id;
   const ladder = d.sessions.find((s) => s.session_id === ladderSessionId);
-  const prevSessions = d.sessions.filter((s) => !s.is_current && s.remaining !== 0);
   const totalOutstanding = d.sessions.reduce((a, s) => a + s.remaining, 0);
   const lp = d.last_payment;
-  const concession = b?.concession ?? 0;
+  const supposed = b ? b.expected + b.prev_opening : 0;
+  const paid = b ? b.received + b.prev_recovered : 0;
 
   return (
-    <>
-      <PageHeader
-        title={
-          <span className="inline-flex flex-wrap items-center gap-2">
-            {st.full_name}
+    <div className="space-y-5">
+      <Breadcrumbs items={[{ label: "Students", href: "/students" }, ...(currentEnr ? [{ label: currentEnr.class_name, href: `/classes/${currentEnr.class_id}` }] : [])]} />
+
+      {/* Profile header */}
+      <section className="flex flex-col gap-5 rounded-[28px] bg-surface p-6 shadow-card sm:flex-row sm:items-center sm:p-7">
+        <Avatar name={st.full_name} size="xl" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-title1 font-bold text-ink">{st.full_name}</h1>
             <FeeStatusBadge status={d.fee_status} />
             {st.status !== "active" && <Badge>{st.status === "left" ? `Left ${fmtDate(st.left_on)}` : "Passed out"}</Badge>}
-          </span>
-        }
-        description={
-          <>
-            {st.admission_no}
-            {currentEnr && <> · {currentEnr.class_name}-{currentEnr.section}{currentEnr.roll_no ? `, roll ${currentEnr.roll_no}` : ""} ({currentEnr.session_name})</>}
-            {st.father_name && <> · Father {st.father_name}</>}
-            {st.mother_name && <> · Mother {st.mother_name}</>}
-          </>
-        }
-        crumbs={[
-          { label: "Students", href: "/students" },
-          ...(currentEnr ? [{ label: currentEnr.class_name, href: `/classes/${currentEnr.class_id}` }] : []),
-          { label: st.full_name },
-        ]}
-        actions={
-          <>
-            {st.phone && (
-              <a href={`tel:${st.phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-sm hover:bg-surface-2">
-                <Phone className="size-4" /> {st.phone}
-              </a>
-            )}
-            {writer && (
-              <>
-                <LinkButton href={`/students/${id}/fees`}>
-                  <Receipt className="size-4" /> Fee plan
-                </LinkButton>
-                <LinkButton href={`/students/${id}/edit`}>
-                  <Pencil className="size-4" /> Edit
-                </LinkButton>
-                <LinkButton href={`/collect/${id}`} variant="primary">
-                  <IndianRupee className="size-4" /> Collect fee
-                </LinkButton>
-              </>
-            )}
-          </>
-        }
-      />
+          </div>
+          <p className="mt-1 text-subhead text-ink-2">
+            {[currentEnr ? `${currentEnr.class_name} · ${currentEnr.section}${currentEnr.roll_no ? ` · Roll ${currentEnr.roll_no}` : ""}` : null, st.admission_no, st.father_name]
+              .filter(Boolean)
+              .join("  ·  ")}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {st.phone && (
+            <a href={`tel:${st.phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-fill px-4 text-subhead font-medium text-ink transition-colors hover:bg-[rgba(118,118,128,0.18)]">
+              <Phone className="size-4" /> {st.phone}
+            </a>
+          )}
+          {writer && (
+            <>
+              <LinkButton href={`/students/${id}/fees`}>
+                <Receipt className="size-4" /> Fee plan
+              </LinkButton>
+              <LinkButton href={`/students/${id}/edit`} aria-label="Edit student">
+                <Pencil className="size-4" />
+              </LinkButton>
+              <LinkButton href={`/collect/${id}`} variant="primary">
+                <IndianRupee className="size-4" /> Collect
+              </LinkButton>
+            </>
+          )}
+        </div>
+      </section>
 
-      {/* The four answers in plain words */}
+      {/* The four answers */}
       {b && (
-        <Card className="mb-4" bodyClassName="p-4 sm:p-5">
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <div className="text-[13px] text-ink-2">Supposed to pay ({b.session_name})</div>
-              <div className="mt-0.5 text-2xl font-semibold">{rupees(b.expected)}</div>
-              <div className="text-[12.5px] text-ink-2">
-                {concession > 0 && <>after {rupees(concession)} concession · </>}
-                {b.prev_opening > 0 ? <>plus {rupees(b.prev_opening)} old dues at session start</> : "no old dues at session start"}
-              </div>
-            </div>
-            <div>
-              <div className="text-[13px] text-ink-2">Has paid</div>
-              <div className="mt-0.5 text-2xl font-semibold">{rupees(b.received + b.prev_recovered)}</div>
-              <div className="text-[12.5px] text-ink-2">
-                {rupees(b.received)} to this session · {rupees(b.prev_recovered)} to old dues
-              </div>
-              <Meter value={ratioPct(b.received + b.prev_recovered, b.expected + b.prev_opening)} className="mt-1.5" />
-            </div>
-            <div>
-              <div className="text-[13px] text-ink-2">Recent payment went to</div>
-              {lp ? (
-                <>
-                  <div className="mt-0.5 text-2xl font-semibold">{rupees(lp.amount)}</div>
-                  <div className="text-[12.5px] text-ink-2">
-                    on {fmtDate(lp.paid_on)}:{" "}
-                    {[lp.current > 0 && `${rupees(lp.current)} current-year fees`, lp.arrears > 0 && `${rupees(lp.arrears)} old dues`, lp.advance > 0 && `${rupees(lp.advance)} advance`]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </div>
+        <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
+              <IconTile icon={Wallet} color="blue" size="sm" /> Should pay
+            </p>
+            <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(supposed)}</p>
+            <p className="mt-2.5 text-footnote text-ink-2">
+              {b.prev_opening > 0 ? <>incl. {rupeesShort(b.prev_opening)} old dues</> : b.session_name}
+              {b.concession > 0 && <> · {rupeesShort(b.concession)} concession</>}
+            </p>
+          </div>
+          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
+              <IconTile icon={CheckCircle2} color="green" size="sm" /> Has paid
+            </p>
+            <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(paid)}</p>
+            <Meter value={ratioPct(paid, supposed)} className="mt-3.5" color="bg-good" track="bg-good-soft" />
+            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of what was due</p>
+          </div>
+          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
+            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
+              <IconTile icon={Clock} color="indigo" size="sm" /> Last payment
+            </p>
+            {lp ? (
+              <>
+                <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(lp.amount)}</p>
+                <div className="mt-3.5">
                   <StackedBar
                     height="h-1.5"
                     segments={[
-                      { value: lp.current, className: "bg-series-1", label: "Current year", display: rupees(lp.current) },
-                      { value: lp.arrears, className: "bg-series-2", label: "Previous dues", display: rupees(lp.arrears) },
+                      { value: lp.current, className: "bg-series-1", label: "This year", display: rupees(lp.current) },
+                      { value: lp.arrears, className: "bg-series-2", label: "Old dues", display: rupees(lp.arrears) },
                       { value: lp.advance, className: "bg-series-3", label: "Advance", display: rupees(lp.advance) },
                     ]}
                   />
-                </>
-              ) : (
-                <div className="mt-0.5 text-[15px] font-medium text-critical-ink">No payment yet</div>
-              )}
-            </div>
-            <div>
-              <div className="text-[13px] text-ink-2">Still owes</div>
-              <div className={cn("mt-0.5 text-2xl font-semibold", b.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupees(b.total_pending)}</div>
-              <div className="text-[12.5px] text-ink-2">
-                {rupees(b.total_overdue)} overdue now
-                {b.prev_pending > 0 && <> · incl. {rupees(b.prev_pending)} old dues</>}
-                {b.advance_balance > 0 && <> · {rupees(b.advance_balance)} advance held</>}
-              </div>
-            </div>
+                </div>
+                <p className="mt-2.5 text-footnote text-ink-2">
+                  {fmtDate(lp.paid_on)} · {lp.arrears > 0 && lp.current === 0 ? "went to old dues" : lp.arrears > 0 ? "this year + old dues" : lp.advance > 0 && lp.current === 0 ? "kept as advance" : "went to this year"}
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-headline font-semibold text-critical-ink">Never paid</p>
+            )}
           </div>
-        </Card>
+          <div className={cn("rounded-[var(--radius-card)] p-5 shadow-card", b.total_pending > 0 ? "bg-surface" : "bg-surface")}>
+            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
+              <IconTile icon={AlertTriangle} color={b.total_overdue > 0 ? "red" : "green"} size="sm" /> Still owes
+            </p>
+            <p className={cn("figure mt-3 text-[28px] leading-none", b.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(b.total_pending)}</p>
+            <p className="mt-2.5 text-footnote text-ink-2">
+              {b.total_overdue > 0 ? <>{rupeesShort(b.total_overdue)} overdue now</> : "Nothing overdue"}
+              {b.advance_balance > 0 && <> · {rupeesShort(b.advance_balance)} advance</>}
+            </p>
+          </div>
+        </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="space-y-4 xl:col-span-2">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="space-y-5 xl:col-span-2">
           <Card
-            title="Installment ladder"
-            description={ladder ? `${ladder.session_name}${ladder.class_name ? ` · ${ladder.class_name}-${ladder.section}` : ""}` : undefined}
+            title="Installments"
+            subtitle={ladder ? `${ladder.session_name}${ladder.class_name ? ` · ${ladder.class_name}` : ""}` : undefined}
             actions={
               d.sessions.length > 1 ? (
-                <Segmented
-                  options={d.sessions.map((s) => ({ label: s.session_name, href: `/students/${id}?session=${s.session_id}`, active: s.session_id === ladderSessionId }))}
-                />
+                <Segmented size="sm" options={d.sessions.map((s) => ({ label: s.session_name, href: `/students/${id}?session=${s.session_id}`, active: s.session_id === ladderSessionId }))} />
               ) : undefined
             }
           >
             {!ladder ? (
               <Empty title="No fee plan">
-                {writer ? (
-                  <>
-                    Generate charges from the class fee structure on the <Link href={`/students/${id}/fees`} className="text-accent underline">fee plan</Link> page.
-                  </>
-                ) : (
-                  "No charges have been set for this student."
-                )}
+                {writer ? <Link href={`/students/${id}/fees`} className="text-accent">Set up the fee plan</Link> : "No charges set for this student."}
               </Empty>
             ) : (
               <>
-                <ol className="space-y-3">
+                <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {ladder.installments.map((i) => {
                     const s = INST_STATUS[i.status];
                     return (
-                      <li key={i.installment_id} className="rounded-lg border border-line p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <span className="font-medium text-ink">{i.name}</span>
-                            <span className="text-[12.5px] text-muted"> · due {fmtDate(i.due_date)}</span>
-                          </div>
+                      <li key={i.installment_id} className="rounded-2xl bg-fill-2 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-subhead font-semibold text-ink">Inst {i.number}</span>
                           <Badge tone={s.tone}>{s.label}</Badge>
                         </div>
-                        <div className="mt-2 grid grid-cols-3 gap-2 text-[13px] tabular">
+                        <div className="mt-4 flex items-center gap-4">
+                          <Ring value={ratioPct(i.paid, i.net) ?? (i.net === 0 ? 100 : 0)} size={64} stroke={7} color={s.color}>
+                            <span className="text-caption font-semibold tabular">{i.net > 0 ? `${Math.round(ratioPct(i.paid, i.net) ?? 0)}%` : "—"}</span>
+                          </Ring>
                           <div>
-                            <div className="text-muted">Expected</div>
-                            <div className="font-medium">{rupees(i.net)}</div>
-                          </div>
-                          <div>
-                            <div className="text-muted">Paid</div>
-                            <div className="font-medium">{rupees(i.paid)}</div>
-                          </div>
-                          <div>
-                            <div className="text-muted">Pending</div>
-                            <div className={cn("font-medium", i.remaining > 0 && i.due_date <= d.today && "text-critical-ink")}>{rupees(i.remaining)}</div>
+                            <p className={cn("text-headline font-semibold tabular", i.remaining > 0 && i.due_date <= d.today ? "text-critical-ink" : "text-ink")}>
+                              {i.remaining > 0 ? rupeesShort(i.remaining) : "Clear"}
+                            </p>
+                            <p className="text-caption text-muted">{i.remaining > 0 ? "left to pay" : `${rupeesShort(i.paid)} paid`}</p>
                           </div>
                         </div>
-                        <Meter value={ratioPct(i.paid, i.net)} className="mt-2" />
-                        <details className="mt-2 text-[12.5px]">
-                          <summary className="cursor-pointer text-ink-2 hover:text-ink">Fee heads</summary>
-                          <table className="mt-1 w-full tabular">
-                            <tbody>
-                              {i.lines.map((l) => (
-                                <tr key={l.charge_id} className="border-t border-line">
-                                  <td className="py-1 pr-2 text-ink">{l.fee_head}</td>
-                                  <td className="py-1 pr-2 text-right">{rupees(l.amount)}</td>
-                                  <td className="py-1 pr-2 text-right text-muted">{l.concession > 0 ? `−${rupees(l.concession)}` : ""}</td>
-                                  <td className="py-1 pr-2 text-right">paid {rupees(l.paid)}</td>
-                                  <td className={cn("py-1 text-right", l.remaining > 0 ? "text-ink" : "text-muted")}>due {rupees(l.remaining)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <p className="mt-3 text-caption text-muted">
+                          Due {fmtDate(i.due_date)} · {rupeesShort(i.net)}
+                        </p>
+                        <details className="mt-2 text-caption">
+                          <summary className="cursor-pointer text-accent">Fee heads</summary>
+                          <ul className="mt-2 space-y-1">
+                            {i.lines.map((l) => (
+                              <li key={l.charge_id} className="flex justify-between gap-2 tabular">
+                                <span className="text-ink-2">{l.fee_head}</span>
+                                <span className={l.remaining > 0 ? "text-ink" : "text-muted"}>{l.remaining > 0 ? rupees(l.remaining) : "paid"}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </details>
                       </li>
                     );
                   })}
                 </ol>
-                <div className="mt-3 flex flex-wrap justify-between gap-2 border-t border-line pt-3 text-[13px] tabular">
-                  <span>
-                    Year: <b>{rupees(ladder.net)}</b> expected
-                    {ladder.concession > 0 && <span className="text-muted"> (after {rupees(ladder.concession)} concession)</span>}
-                  </span>
-                  <span>
-                    <b>{rupees(ladder.paid)}</b> paid · <b className={ladder.remaining > 0 ? "text-critical-ink" : ""}>{rupees(ladder.remaining)}</b> pending
-                  </span>
-                </div>
               </>
             )}
           </Card>
 
-          <Card
-            title="Payment history"
-            description="Every receipt and exactly what it paid for. % = share of the outstanding balance (this and earlier sessions) that the payment cleared."
-            actions={<Legend items={KIND_LEGEND} />}
-          >
+          <Card title="Payments" description="Every receipt and exactly what it paid for. % = share of the outstanding balance that the payment cleared.">
             {d.payments.length === 0 ? (
               <Empty title="No payments yet" />
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-line">
-                <table className="w-full text-[13.5px]">
-                  <thead className="bg-surface-2 text-left text-[12px] uppercase tracking-wide text-muted">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">Date</th>
-                      <th className="px-3 py-2 font-medium">Receipt</th>
-                      <th className="px-3 py-2 text-right font-medium">Amount</th>
-                      <th className="px-3 py-2 font-medium">Paid for</th>
-                      <th className="px-3 py-2 text-right font-medium">% of due</th>
-                    </tr>
-                  </thead>
-                  <tbody className="tabular">
-                    {d.payments.map((p) => (
-                      <tr key={p.payment_id} className={cn("border-t border-line align-top", (p.cancelled || p.is_reversal) && "bg-surface-2/60")}>
-                        <td className="whitespace-nowrap px-3 py-2">{fmtDate(p.paid_on)}</td>
-                        <td className="px-3 py-2">
-                          <Link href={`/payments/${p.payment_id}`} className="font-medium text-ink hover:text-accent hover:underline">
-                            {p.receipt_no}
-                          </Link>
-                          <div className="text-[12px] text-muted">
-                            {MODE_LABELS[p.mode]}
-                            {p.reference_no ? ` · ${p.reference_no}` : ""}
-                            {p.source === "import" ? " · imported" : ""}
-                          </div>
-                          {p.cancelled && <Badge tone="critical" className="mt-1">Cancelled</Badge>}
-                          {p.is_reversal && (
-                            <Badge tone="neutral" className="mt-1" title={p.remarks ?? undefined}>
-                              Cancellation entry
-                            </Badge>
-                          )}
-                        </td>
-                        <td className={cn("whitespace-nowrap px-3 py-2 text-right font-medium", p.amount < 0 && "text-critical-ink", p.cancelled && "line-through decoration-1")}>
-                          {rupees(p.amount)}
-                        </td>
-                        <td className="min-w-[230px] px-3 py-2">
-                          <AllocLines lines={p.allocations} />
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-right">
-                          {p.pct_of_outstanding !== null ? (
-                            <span title={`Outstanding before this payment: ${rupees(p.outstanding_before)}`}>{pct(p.pct_of_outstanding)}</span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ol className="relative space-y-1 before:absolute before:bottom-2 before:left-[19px] before:top-2 before:w-px before:bg-line">
+                {d.payments.map((p) => (
+                  <li key={p.payment_id} className="relative flex gap-4 rounded-2xl py-2.5 pr-2">
+                    <span
+                      className={cn(
+                        "relative z-10 mt-0.5 inline-flex size-10 shrink-0 items-center justify-center rounded-full text-white",
+                        p.is_reversal ? "bg-tile-gray" : p.cancelled ? "bg-critical" : "bg-good",
+                      )}
+                      aria-hidden
+                    >
+                      <IndianRupee className="size-4" strokeWidth={2.4} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <span className={cn("text-headline font-semibold tabular", p.amount < 0 && "text-critical-ink", p.cancelled && "line-through decoration-1")}>{rupees(p.amount)}</span>
+                        <span className="text-footnote text-muted">{fmtDate(p.paid_on)}</span>
+                      </div>
+                      <p className="text-caption text-muted">
+                        <Link href={`/payments/${p.payment_id}`} className="font-medium text-accent">
+                          {p.receipt_no}
+                        </Link>
+                        {" · "}
+                        {MODE_LABELS[p.mode]}
+                        {p.pct_of_outstanding !== null && <> · cleared {pct(p.pct_of_outstanding, 0)} of balance</>}
+                        {p.cancelled && <span className="font-semibold text-critical-ink"> · cancelled</span>}
+                        {p.is_reversal && <span className="font-semibold text-ink-2"> · cancellation</span>}
+                      </p>
+                      <div className="mt-2">
+                        <AllocLines lines={p.allocations} compact />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
             )}
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <Card title="Dues by session">
-            {d.sessions.length === 0 ? (
-              <p className="text-sm text-ink-2">No charges.</p>
-            ) : (
-              <table className="w-full text-[13px] tabular">
-                <thead className="text-left text-[12px] text-muted">
-                  <tr>
-                    <th className="pb-1 font-medium">Session</th>
-                    <th className="pb-1 text-right font-medium">Fees</th>
-                    <th className="pb-1 text-right font-medium">Paid</th>
-                    <th className="pb-1 text-right font-medium">Unpaid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.sessions.map((s) => (
-                    <tr key={s.session_id} className="border-t border-line">
-                      <td className="py-1.5">
-                        {s.session_name}
-                        <div className="text-[11.5px] text-muted">{s.class_name ?? "not enrolled"}</div>
-                      </td>
-                      <td className="py-1.5 text-right">{rupees(s.net)}</td>
-                      <td className="py-1.5 text-right">{rupees(s.paid)}</td>
-                      <td className={cn("py-1.5 text-right font-medium", s.remaining > 0 ? "text-critical-ink" : "text-muted")}>{rupees(s.remaining)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-line-strong font-semibold">
-                    <td className="py-1.5">Total outstanding</td>
-                    <td />
-                    <td />
-                    <td className="py-1.5 text-right">{rupees(totalOutstanding)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-            {prevSessions.length > 0 && (
-              <p className="mt-2 text-[12.5px] text-ink-2">
-                Old dues from {prevSessions.map((s) => s.session_name).join(", ")} are cleared first by new payments (oldest-first rule).
-              </p>
-            )}
+        <div className="space-y-5">
+          <Card title="By session">
+            <ul className="space-y-3">
+              {d.sessions.map((s) => (
+                <li key={s.session_id}>
+                  <div className="flex items-baseline justify-between gap-2 text-subhead">
+                    <span className="font-medium text-ink">
+                      {s.session_name} <span className="text-caption font-normal text-muted">{s.class_name ?? ""}</span>
+                    </span>
+                    <span className={cn("font-semibold tabular", s.remaining > 0 ? "text-critical-ink" : "text-good-ink")}>{s.remaining > 0 ? rupeesShort(s.remaining) : "Clear"}</span>
+                  </div>
+                  <Meter value={ratioPct(s.paid, s.net)} className="mt-1.5" color={s.remaining > 0 ? "bg-series-1" : "bg-good"} track="bg-fill-2" />
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex justify-between border-t border-line pt-3 text-subhead">
+              <span className="text-ink-2">Total owed</span>
+              <span className="font-semibold tabular">{rupees(totalOutstanding)}</span>
+            </div>
           </Card>
 
-          <Card title="Payment habit" description="Based on when money reached each installment, compared with its due date.">
-            <div className="text-lg font-semibold">{PROFILE[d.behaviour.profile].label}</div>
-            <p className="text-[13px] text-ink-2">{PROFILE[d.behaviour.profile].hint}</p>
+          <Card title="Payment habit" description="Based on when money reached each installment compared with its due date.">
+            <p className={cn("text-title2 font-semibold", PROFILE[d.behaviour.profile].tone)}>{PROFILE[d.behaviour.profile].label}</p>
+            <p className="text-footnote text-ink-2">{PROFILE[d.behaviour.profile].hint}</p>
             {d.behaviour.profile !== "no_history" && (
-              <dl className="mt-3 grid grid-cols-3 gap-2 text-[13px]">
+              <dl className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-fill-2 p-3 text-center">
                 <div>
-                  <dt className="text-muted">Avg. vs due</dt>
-                  <dd className="font-medium tabular">
-                    {d.behaviour.avg_days_from_due === null
-                      ? "—"
-                      : d.behaviour.avg_days_from_due <= 0
-                        ? `${Math.abs(d.behaviour.avg_days_from_due)} d early`
-                        : `${d.behaviour.avg_days_from_due} d late`}
+                  <dd className="text-headline font-semibold tabular">
+                    {d.behaviour.avg_days_from_due === null ? "—" : d.behaviour.avg_days_from_due <= 0 ? `${Math.abs(d.behaviour.avg_days_from_due)}d` : `+${d.behaviour.avg_days_from_due}d`}
                   </dd>
+                  <dt className="text-caption text-muted">vs due date</dt>
                 </div>
                 <div>
-                  <dt className="text-muted">On time</dt>
-                  <dd className="font-medium tabular">{pct(d.behaviour.on_time_pct, 0)}</dd>
+                  <dd className="text-headline font-semibold tabular">{pct(d.behaviour.on_time_pct, 0)}</dd>
+                  <dt className="text-caption text-muted">on time</dt>
                 </div>
                 <div>
-                  <dt className="text-muted">Jan–Mar</dt>
-                  <dd className="font-medium tabular">{pct(d.behaviour.year_end_pct, 0)}</dd>
+                  <dd className="text-headline font-semibold tabular">{pct(d.behaviour.year_end_pct, 0)}</dd>
+                  <dt className="text-caption text-muted">in Jan–Mar</dt>
                 </div>
               </dl>
             )}
           </Card>
 
-          <Card title="Notes & promises">
+          <Card title="Notes">
             {writer && <NoteForm studentId={id} />}
-            <ul className={cn("space-y-3", writer && "mt-4")}>
-              {d.notes.length === 0 && <li className="text-[13px] text-ink-2">No notes yet.</li>}
+            <ul className={cn("space-y-2.5", writer && "mt-4")}>
+              {d.notes.length === 0 && <li className="text-footnote text-muted">No notes yet.</li>}
               {d.notes.map((n) => (
-                <li key={n.id} className="rounded-lg border border-line p-3 text-[13px]">
+                <li key={n.id} className="rounded-2xl bg-fill-2 p-3.5 text-subhead">
                   <div className="flex items-start justify-between gap-2">
                     <p className="whitespace-pre-wrap text-ink">{n.note}</p>
                     {writer && <DeleteNoteButton id={n.id} studentId={id} />}
                   </div>
                   {(n.promised_date || n.promised_amount) && (
-                    <p className={cn("mt-1 font-medium", n.promised_date && n.promised_date < d.today ? "text-critical-ink" : "text-ink-2")}>
+                    <p className={cn("mt-1.5 text-footnote font-semibold", n.promised_date && n.promised_date < d.today ? "text-critical-ink" : "text-accent")}>
                       Promised {n.promised_amount ? rupees(n.promised_amount) : "payment"}
                       {n.promised_date ? ` by ${fmtDate(n.promised_date)}` : ""}
-                      {n.promised_date && n.promised_date < d.today ? " · date passed" : ""}
+                      {n.promised_date && n.promised_date < d.today ? " · passed" : ""}
                     </p>
                   )}
-                  <p className="mt-1 text-[12px] text-muted">
+                  <p className="mt-1 text-caption text-muted">
                     {n.author ?? "Staff"} · {fmtDateTime(n.created_at)}
                   </p>
                 </li>
@@ -404,30 +331,25 @@ export default async function Student360Page({ params, searchParams }: PageProps
             </ul>
           </Card>
 
-          <Card title="Contact & details">
-            <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 text-[13px]">
-              <dt className="text-muted">Phone</dt>
-              <dd>{st.phone ?? "—"}{st.alt_phone ? `, ${st.alt_phone}` : ""}</dd>
-              <dt className="text-muted">Email</dt>
-              <dd className="break-all">{st.email ?? "—"}</dd>
-              <dt className="text-muted">Address</dt>
-              <dd>{st.address ?? "—"}</dd>
-              <dt className="text-muted">Date of birth</dt>
-              <dd>{fmtDate(st.dob)}</dd>
-              <dt className="text-muted">Admitted</dt>
-              <dd>{fmtDate(st.admission_date)}</dd>
-              <dt className="text-muted">Classes</dt>
-              <dd>{d.enrollments.map((e) => `${e.session_name}: ${e.class_name}-${e.section}`).join(" · ") || "—"}</dd>
-              {st.remarks && (
-                <>
-                  <dt className="text-muted">Remarks</dt>
-                  <dd>{st.remarks}</dd>
-                </>
-              )}
+          <Card title="Details">
+            <dl className="space-y-2.5 text-subhead">
+              {[
+                ["Phone", [st.phone, st.alt_phone].filter(Boolean).join(", ") || "—"],
+                ["Mother", st.mother_name ?? "—"],
+                ["Address", st.address ?? "—"],
+                ["Born", fmtDate(st.dob)],
+                ["Admitted", fmtDate(st.admission_date)],
+                ["History", d.enrollments.map((e) => `${e.session_name}: ${e.class_name}`).join(" · ") || "—"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4">
+                  <dt className="shrink-0 text-ink-2">{k}</dt>
+                  <dd className="text-right text-ink">{v}</dd>
+                </div>
+              ))}
             </dl>
           </Card>
         </div>
       </div>
-    </>
+    </div>
   );
 }

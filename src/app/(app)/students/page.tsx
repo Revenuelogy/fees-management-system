@@ -66,12 +66,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
         class_name: e?.classes?.name ?? null,
         class_order: e?.classes?.sort_order ?? Number.MAX_SAFE_INTEGER,
         section: e?.section ?? null,
-        class_label: e ? `${e.classes?.name ?? "?"} – ${e.section}` : null,
+        class_label: e ? `${e.classes?.name ?? "?"} · ${e.section}` : null,
         roll_no: e?.roll_no ?? null,
         status: s.status,
         status_label:
           s.status === "left" && s.left_on ? `Left · ${fmtDate(s.left_on)}` : STUDENT_STATUS_LABELS[s.status],
         manage: "Edit",
+        who: [s.admission_no, s.father_name].filter(Boolean).join(" · "),
       };
     })
     .filter((r) => !classFilter || r.class_id === classFilter.id)
@@ -96,15 +97,13 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
 
   const writer = canWrite(viewer.role);
   const columns: Column[] = [
-    { key: "admission_no", label: "Adm. no" },
-    { key: "full_name", label: "Name", href: "/students/{id}" },
-    { key: "father_name", label: "Father", hideOnMobile: true },
-    { key: "phone", label: "Phone", hideOnMobile: true },
-    { key: "class_label", label: "Class" },
+    { key: "full_name", label: "Student", type: "person", href: "/students/{id}", sub: "who" },
+    { key: "class_label", label: "Class", className: "whitespace-nowrap" },
     { key: "roll_no", label: "Roll", hideOnMobile: true },
-    { key: "status_label", label: "Status" },
+    { key: "phone", label: "Phone", hideOnMobile: true },
+    { key: "status_label", label: "Status", hideOnMobile: true },
   ];
-  if (writer) columns.push({ key: "manage", label: "", href: "/students/{id}/edit", sortable: false, hideOnMobile: true });
+  if (writer) columns.push({ key: "manage", label: "", type: "action", href: "/students/{id}/edit", sortable: false, hideOnMobile: true });
 
   return (
     <>
@@ -112,14 +111,9 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
         title="Students"
         crumbs={classFilter ? [{ label: "Students", href: "/students" }, { label: classFilter.name }] : []}
         description={
-          session ? (
-            <>
-              Student register with each student&apos;s class in <b>{session.name}</b>. {num(counts.active)} active ·{" "}
-              {num(counts.enrolled)} enrolled in {session.name} · {num(counts.left)} left · {num(counts.passed)} passed out.
-            </>
-          ) : (
-            "Student register. Create an academic session to enrol students into classes."
-          )
+          session
+            ? `${num(counts.active)} active · ${num(counts.enrolled)} in ${session.name} · ${num(counts.left)} left · ${num(counts.passed)} passed out`
+            : "Create an academic session to enrol students into classes."
         }
         actions={
           writer && (
@@ -130,7 +124,7 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
         }
       >
         {classFilter && (
-          <p className="text-[13px] text-ink-2">
+          <p className="text-footnote text-ink-2">
             Showing <b>{classFilter.name}</b> only ·{" "}
             <Link href="/students" className="font-medium text-accent hover:underline">
               Show all classes
@@ -140,9 +134,8 @@ export default async function StudentsPage({ searchParams }: PageProps<"/student
       </PageHeader>
 
       {activeNotEnrolled > 0 && session && !classFilter && (
-        <p className="mb-4 rounded-lg border border-line bg-warning-soft px-3 py-2 text-[13px] text-ink">
-          {activeNotEnrolled} active {activeNotEnrolled === 1 ? "student is" : "students are"} not enrolled in {session.name}. They have
-          no class or fee plan for this session — choose <b>Class: Not enrolled</b> below to find them.
+        <p className="mb-5 rounded-2xl bg-warning-soft px-4 py-3 text-footnote text-ink">
+          {activeNotEnrolled} active {activeNotEnrolled === 1 ? "student has" : "students have"} no class in {session.name}. Filter by <b>Class → Not enrolled</b> to find them.
         </p>
       )}
 

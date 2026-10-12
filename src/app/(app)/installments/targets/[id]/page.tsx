@@ -1,15 +1,15 @@
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { fmtDate, pct, rupeesShort } from "@/lib/format";
+import { fmtDate, rupeesShort } from "@/lib/format";
 import type { TargetProgress } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
-import { Kpi, KpiGrid } from "@/components/ui/kpi";
 import { BarList } from "@/components/ui/bars";
 import { DataTable } from "@/components/ui/data-table";
+import { Ring } from "@/components/ui/ring";
 
-export const metadata = { title: "Target tracker" };
+export const metadata = { title: "Target" };
 
 export default async function TargetPage({ params }: PageProps<"/installments/targets/[id]">) {
   await requireStaff();
@@ -20,46 +20,62 @@ export default async function TargetPage({ params }: PageProps<"/installments/ta
   if (error) throw new Error(error.message);
   const p = data as TargetProgress;
   const t = p.target;
+  const reached = p.gap <= 0;
 
   return (
-    <>
+    <div className="space-y-5">
       <PageHeader
-        title={t.name}
-        description={`Collect ${Number(t.target_pct)}% of the fees that fall due on or before ${fmtDate(t.target_date)}.`}
-        crumbs={[{ label: "Installments", href: "/installments" }, { label: "Target tracker" }]}
+        title={`${Number(t.target_pct)}% by ${fmtDate(t.target_date)}`}
+        description="Share of fees due by that date that should be collected"
+        crumbs={[{ label: "Installments", href: "/installments" }]}
       />
-      <KpiGrid cols={4}>
-        <Kpi label="Fees due by target date" value={rupeesShort(p.expected)} />
-        <Kpi label="Goal" value={rupeesShort(p.goal)} sub={`${Number(t.target_pct)}% of due fees`} />
-        <Kpi label="Collected so far" value={rupeesShort(p.received)} meter={p.current_pct} sub={`${pct(p.current_pct)} of due fees`} />
-        <Kpi label="Gap to target" value={rupeesShort(p.gap)} tone={p.gap > 0 ? "critical" : "good"} sub={p.gap > 0 ? `${p.students_to_close.length} students below close it` : "Target reached"} />
-      </KpiGrid>
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <section className="rounded-[28px] bg-surface p-6 shadow-card sm:p-8">
+        <div className="flex flex-col gap-8 md:flex-row md:items-center">
+          <Ring value={p.current_pct} size={168} stroke={16} color={reached ? "var(--good)" : "var(--series-1)"} className="self-center">
+            <span className="figure text-[32px] leading-none">{Math.round(p.current_pct ?? 0)}%</span>
+            <span className="mt-1 text-footnote text-ink-2">of {Number(t.target_pct)}% goal</span>
+          </Ring>
+          <div className="grid flex-1 grid-cols-2 gap-6 lg:grid-cols-4">
+            {[
+              ["Due by then", rupeesShort(p.expected), ""],
+              ["Goal", rupeesShort(p.goal), ""],
+              ["Collected", rupeesShort(p.received), ""],
+              ["Still needed", reached ? "Reached" : rupeesShort(p.gap), reached ? "text-good-ink" : "text-critical-ink"],
+            ].map(([l, v, c]) => (
+              <div key={l}>
+                <p className="text-footnote text-ink-2">{l}</p>
+                <p className={`figure mt-1 text-title1 ${c}`}>{v}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card
-          className="lg:col-span-2"
-          title="Students whose payment closes the gap"
-          description="Largest balances first; the list stops once their dues add up to the gap."
+          className="xl:col-span-2"
+          title="Who closes the gap"
+          subtitle={reached ? undefined : `${p.students_to_close.length} students, largest balances first`}
+          description="The list stops once these students' dues add up to the gap."
         >
           <DataTable
-            rows={p.students_to_close as unknown as Record<string, unknown>[]}
+            rows={p.students_to_close.map((s) => ({ ...s, who: `${s.class_name}${s.phone ? " · " + s.phone : ""}` })) as unknown as Record<string, unknown>[]}
             searchKeys={["full_name", "admission_no", "phone", "class_name"]}
             totals
+            pageSize={20}
             exportName="target-call-list"
             exportMeta={[t.name, `Gap ${rupeesShort(p.gap)}`]}
             columns={[
-              { key: "full_name", label: "Student", href: "/students/{student_id}", sub: "admission_no" },
-              { key: "class_name", label: "Class", sub: "section" },
-              { key: "phone", label: "Phone" },
-              { key: "remaining", label: "Owes (due by target date)", type: "money", total: true, alertPositive: true },
-              { key: "cumulative", label: "Running total", type: "money" },
+              { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
+              { key: "remaining", label: "Owes", type: "money", total: true, alertPositive: true },
+              { key: "cumulative", label: "Running total", type: "money", hideOnMobile: true },
             ]}
             empty="The target has been reached."
           />
         </Card>
-        <Card title="Where the remaining dues sit" description="Unpaid fees due by the target date, by class.">
-          <BarList rows={p.classes.map((c) => ({ label: c.class_name, value: c.remaining, display: rupeesShort(c.remaining), sub: `${c.students} students` }))} />
+        <Card title="By class" description="Unpaid fees due by the target date, per class.">
+          <BarList compact color="bg-critical" rows={p.classes.map((c) => ({ label: c.class_name, value: c.remaining, display: rupeesShort(c.remaining), sub: `${c.students}` }))} />
         </Card>
       </div>
-    </>
+    </div>
   );
 }

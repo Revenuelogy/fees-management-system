@@ -1,47 +1,50 @@
 import type { AppRole } from "@/lib/types";
+import type { TileColor } from "@/components/ui/kpi";
 
-export type NavItem = { href: string; label: string; icon: string; roles?: AppRole[] };
+export type NavItem = { href: string; label: string; icon: string; color: TileColor; roles?: AppRole[]; match?: string[] };
 export type NavGroup = { label: string; items: NavItem[] };
 
 const WRITERS: AppRole[] = ["admin", "accountant"];
 
 export const NAV: NavGroup[] = [
   {
-    label: "Analysis",
+    label: "Overview",
     items: [
-      { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
-      { href: "/monthly", label: "Monthly", icon: "CalendarDays" },
-      { href: "/installments", label: "Installments", icon: "Layers" },
-      { href: "/classes", label: "Classes", icon: "School" },
+      { href: "/", label: "Dashboard", icon: "LayoutGrid", color: "blue" },
+      { href: "/monthly", label: "Months", icon: "CalendarDays", color: "red" },
+      { href: "/installments", label: "Installments", icon: "Layers", color: "indigo" },
+      { href: "/classes", label: "Classes", icon: "School", color: "teal" },
     ],
   },
   {
-    label: "Fees",
+    label: "Money",
     items: [
-      { href: "/collect", label: "Collect fee", icon: "IndianRupee", roles: WRITERS },
-      { href: "/payments", label: "Payments & receipts", icon: "Receipt" },
-      { href: "/pending", label: "Pending fees", icon: "AlertCircle" },
-      { href: "/students", label: "Students", icon: "Users" },
-      { href: "/reports/summary", label: "Owner summary", icon: "FileText" },
+      { href: "/payments", label: "Payments", icon: "Receipt", color: "green" },
+      { href: "/pending", label: "Pending fees", icon: "Hourglass", color: "orange" },
+      { href: "/students", label: "Students", icon: "Users", color: "blue" },
+      { href: "/reports/summary", label: "Owner report", icon: "FileText", color: "gray" },
     ],
   },
   {
-    label: "Setup",
+    label: "Manage",
     items: [
-      { href: "/setup", label: "Setup checklist", icon: "ListChecks", roles: WRITERS },
-      { href: "/setup/sessions", label: "Sessions & installments", icon: "CalendarRange", roles: WRITERS },
-      { href: "/setup/classes", label: "Classes & fee heads", icon: "GraduationCap", roles: WRITERS },
-      { href: "/setup/fee-structure", label: "Fee structure", icon: "Coins", roles: WRITERS },
-      { href: "/setup/promote", label: "Promote students", icon: "ArrowRight", roles: WRITERS },
-      { href: "/setup/import", label: "Import data", icon: "Upload", roles: WRITERS },
+      { href: "/setup", label: "Setup", icon: "SlidersHorizontal", color: "gray", roles: WRITERS, match: ["/setup"] },
+      { href: "/settings", label: "Settings", icon: "Settings", color: "gray", roles: ["admin", "accountant", "principal"], match: ["/settings", "/admin"] },
     ],
   },
-  {
-    label: "Admin",
-    items: [
-      { href: "/settings", label: "School settings", icon: "Settings", roles: ["admin"] },
-      { href: "/settings/staff", label: "Staff & roles", icon: "ShieldCheck", roles: ["admin"] },
-      { href: "/admin/reconciliation", label: "Reconciliation", icon: "Scale", roles: ["admin", "accountant", "principal"] },
-    ],
-  },
+];
+
+export const SETUP_TABS = [
+  { href: "/setup", label: "Checklist" },
+  { href: "/setup/sessions", label: "Sessions" },
+  { href: "/setup/classes", label: "Classes & fees" },
+  { href: "/setup/fee-structure", label: "Fee structure" },
+  { href: "/setup/promote", label: "Promote" },
+  { href: "/setup/import", label: "Import" },
+];
+
+export const SETTINGS_TABS: { href: string; label: string; roles?: AppRole[] }[] = [
+  { href: "/settings", label: "School", roles: ["admin"] },
+  { href: "/settings/staff", label: "Staff", roles: ["admin"] },
+  { href: "/admin/reconciliation", label: "Health checks" },
 ];

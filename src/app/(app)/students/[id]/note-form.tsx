@@ -22,7 +22,7 @@ export function NoteForm({ studentId }: { studentId: string }) {
         <Input name="promised_amount" inputMode="decimal" placeholder="Promised ₹ (optional)" aria-label="Promised amount" />
       </div>
       <FormError message={state.error} />
-      <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+      <Button type="submit" size="sm" variant="secondary" disabled={pending} className="w-full">
         {pending ? "Saving…" : "Add note"}
       </Button>
     </form>
@@ -39,7 +39,7 @@ export function DeleteNoteButton({ id, studentId }: { id: string; studentId: str
       onClick={() => {
         if (confirm("Delete this note?")) start(async () => void (await deleteNote(id, studentId)));
       }}
-      className="shrink-0 rounded p-0.5 text-muted hover:text-critical-ink"
+      className="shrink-0 rounded-full p-1 text-muted transition-colors hover:bg-fill hover:text-critical-ink"
     >
       <Trash2 className="size-3.5" />
     </button>

@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 
-/** URL-driven segmented control: each option is a link. */
+/** Apple-style segmented control. URL-driven: each option is a link. */
 export function Segmented({
   options,
   label,
+  size = "md",
 }: {
   options: { label: string; href: string; active: boolean; title?: string }[];
   label?: string;
+  size?: "sm" | "md";
 }) {
   return (
     <div className="inline-flex items-center gap-2">
-      {label && <span className="text-[13px] text-muted">{label}</span>}
-      <div className="inline-flex rounded-lg border border-line bg-surface-2 p-0.5" role="group" aria-label={label}>
+      {label && <span className="text-footnote text-muted">{label}</span>}
+      <div className="inline-flex rounded-[10px] bg-fill p-[2px]" role="group" aria-label={label}>
         {options.map((o) => (
           <Link
             key={o.label}
@@ -21,8 +23,11 @@ export function Segmented({
             scroll={false}
             aria-current={o.active ? "true" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors",
-              o.active ? "bg-surface text-ink shadow-sm" : "text-ink-2 hover:text-ink",
+              "whitespace-nowrap rounded-[8px] font-medium transition-all duration-200",
+              size === "sm" ? "px-2.5 py-[3px] text-caption" : "px-3 py-[5px] text-footnote",
+              o.active
+                ? "bg-surface text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.04)] dark:bg-surface-3"
+                : "text-ink-2 hover:text-ink",
             )}
           >
             {o.label}
