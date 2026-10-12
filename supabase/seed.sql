@@ -247,7 +247,7 @@ begin
                       when 'card' then 'POS' || lpad(floor(random() * 99999)::text, 5, '0')
          end,
          case when sp.paid_on < date '2026-04-01' then 'import' else 'app' end,
-         sp.paid_on::timestamp + interval '9 hours' + (floor(random() * 420) || ' minutes')::interval,
+         least(sp.paid_on::timestamp + interval '9 hours' + (floor(random() * 420) || ' minutes')::interval, now() - interval '5 minutes'),
          '11111111-1111-1111-1111-111111111111'
     from _seed_pay sp
    where public.session_for_date(sp.paid_on) is not null;
@@ -268,7 +268,7 @@ begin
                                  source, reverses_payment_id, created_at, created_by)
     values (pr.receipt_no || '-C', pr.student_id, pr.session_id, pr.paid_on + 2, -pr.amount, pr.mode, pr.reference_no,
             'Cancelled: ' || case when pr.mode = 'cheque' then 'cheque bounced' else 'entered against wrong student' end,
-            'app', pr.id, pr.created_at + interval '2 days', '11111111-1111-1111-1111-111111111111');
+            'app', pr.id, least(pr.created_at + interval '2 days', now() - interval '1 minute'), '11111111-1111-1111-1111-111111111111');
   end loop;
 
   -- two students left mid-year: future installments waived

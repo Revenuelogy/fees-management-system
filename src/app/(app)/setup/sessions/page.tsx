@@ -69,7 +69,7 @@ export default async function SessionsPage() {
           </LinkButton>
         }
       />
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="space-y-4">
           {sessions.length === 0 ? (
             <Card>

@@ -96,7 +96,7 @@ export default async function PromotePage({ searchParams }: PageProps<"/setup/pr
   return (
     <>
       <PageHeader title="Promote students" crumbs={CRUMBS} description={DESCRIPTION} />
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card
           title={
             <span className="inline-flex flex-wrap items-center gap-2">

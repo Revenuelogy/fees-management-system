@@ -67,14 +67,20 @@ begin
      and sc.net_amount > 0;
   n := coalesce(array_length(a_id, 1), 0);
 
+  -- date order; a reversal is always processed after the payment it cancels,
+  -- even if it was dated or timestamped earlier
   for pay in
     select p.id, p.amount, p.paid_on, p.session_id, p.source, p.reverses_payment_id,
            p.session_hint_id, p.fee_head_hint_id, p.installment_hint_id,
            s.start_date as pay_start
       from public.payments p
       join public.academic_sessions s on s.id = p.session_id
+      left join public.payments o on o.id = p.reverses_payment_id
      where p.student_id = p_student
-     order by p.paid_on, p.created_at, p.id
+     order by greatest(p.paid_on, coalesce(o.paid_on, p.paid_on)),
+              greatest(p.created_at, coalesce(o.created_at, p.created_at)),
+              (p.reverses_payment_id is not null),
+              p.id
   loop
     -- Reversal: mirror the original payment's allocations and re-open those dues
     if pay.reverses_payment_id is not null then

@@ -1,7 +1,7 @@
 -- Privileges on internal helpers, last-admin protection, opening dues, withdraw/re-activate.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(10);
 
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('00000000-0000-0000-0000-000000000000', '66666666-6666-6666-6666-666666666666', 'authenticated', 'authenticated', 'pgtap-admin3@school.test', '', now(), '{}', '{}', now(), now())
@@ -40,6 +40,18 @@ select is(public.reactivate_student((select id from fx where k = 'st'), true), 1
 select is((select concession from public.student_charges sc join public.installments i on i.id = sc.installment_id
             where sc.student_id = (select id from fx where k = 'st') and i.number = 2 and sc.fee_head_id = (select id from fx where k = 'h')),
   25000::bigint, 'the earlier concession is back, not zero');
+
+-- a reversal timestamped before its original (same day) is still processed after it
+reset role;
+insert into public.payments (receipt_no, student_id, session_id, paid_on, amount, mode, source, created_at)
+values ('PGTAP3-R1', (select id from fx where k = 'st'), (select id from fx where k = 's'), '2081-06-01', 30000, 'cash', 'import', now() + interval '1 hour');
+insert into public.payments (receipt_no, student_id, session_id, paid_on, amount, mode, source, reverses_payment_id, created_at)
+select 'PGTAP3-R1-C', student_id, session_id, paid_on, -amount, mode, 'app', id, now() from public.payments where receipt_no = 'PGTAP3-R1';
+select is((select coalesce(sum(a.amount), 0)::bigint from public.allocations a join public.payments p on p.id = a.payment_id where p.receipt_no = 'PGTAP3-R1-C'),
+  -30000::bigint, 'early-timestamped reversal still mirrors its original');
+select is((select count(*)::int from public.payments p where p.student_id = (select id from fx where k = 'st')
+            and p.amount <> coalesce((select sum(amount) from public.allocations a where a.payment_id = p.id), 0)), 0,
+  'every payment of the student is fully allocated');
 
 -- the last admin cannot be demoted
 reset role;

@@ -582,6 +582,8 @@ begin
       select id into v_student from public.students where admission_no = trim(r ->> 'admission_no');
       if v_student is null then raise exception 'Unknown admission_no "%"', r ->> 'admission_no'; end if;
       v_paid_on := (r ->> 'paid_on')::date;
+      if v_paid_on is null then raise exception 'paid_on is required'; end if;
+      if v_paid_on > public.fees_today() then raise exception 'Payment date % is in the future', v_paid_on; end if;
       v_amount  := (r ->> 'amount')::bigint;
       if v_amount is null or v_amount <= 0 then raise exception 'Amount must be positive'; end if;
       v_session := public.session_for_date(v_paid_on);

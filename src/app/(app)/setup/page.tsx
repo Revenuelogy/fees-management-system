@@ -201,7 +201,7 @@ export default async function SetupChecklistPage() {
         }
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card
           title={`${doneCount} of ${steps.length} steps done`}
           description={doneCount === steps.length ? "Setup is complete. You can collect fees." : "Work top to bottom; each step builds on the one before."}

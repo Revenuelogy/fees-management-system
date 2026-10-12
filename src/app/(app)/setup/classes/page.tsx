@@ -58,7 +58,7 @@ export default async function ClassesSetupPage() {
         crumbs={[{ label: "Setup", href: "/setup" }, { label: "Classes & fee heads" }]}
         description="The list of classes and the kinds of fees you charge. Both are shared by all sessions; inactive ones are hidden from new setups but kept for history."
       />
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <Card title="Classes" description="Sort order sets the order classes are listed in, and which class students are promoted to next.">
           <div className={`${GRID} hidden border-b border-line pb-1.5 text-[12px] font-medium uppercase tracking-wide text-muted sm:grid`}>
             <span>Class</span>

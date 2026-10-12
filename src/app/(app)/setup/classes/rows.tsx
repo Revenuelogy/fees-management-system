@@ -7,6 +7,9 @@ import { useFormAction } from "../_lib/use-form-action";
 import { addClass, addFeeHead, saveClass, saveFeeHead } from "./actions";
 import { GRID } from "./grid";
 
+// fixed width on phones (the column is `auto` there), fills its column from `sm` up
+const NUM_CELL = "w-[4.5rem] self-start justify-self-end sm:w-auto sm:justify-self-stretch";
+
 export type ClassInfo = { id: string; name: string; sort_order: number; is_active: boolean; inSession: number; enrolments: number; structure: number };
 export type FeeHeadInfo = { id: string; name: string; priority: number; is_active: boolean; charges: number; structure: number };
 
@@ -44,7 +47,9 @@ export function ClassRow({ cls, sessionName }: { cls: ClassInfo; sessionName: st
         <Input name="name" defaultValue={cls.name} required aria-label="Class name" />
         <p className="mt-0.5 truncate text-[12px] text-muted">{usage || "No students yet"}</p>
       </div>
-      <Input name="sort_order" defaultValue={cls.sort_order} inputMode="numeric" aria-label={`Sort order of ${cls.name}`} className="w-[4.5rem] self-start justify-self-end text-right sm:w-full" />
+      <div className={NUM_CELL}>
+        <Input name="sort_order" defaultValue={cls.sort_order} inputMode="numeric" aria-label={`Sort order of ${cls.name}`} className="text-right" />
+      </div>
       <div className="self-start pt-2">
         <ActiveToggle defaultChecked={cls.is_active} label={`${cls.name} is active`} />
       </div>
@@ -76,7 +81,9 @@ export function AddClassRow({ nextSort }: { nextSort: number }) {
   return (
     <form ref={formRef} onSubmit={onSubmit} className={`${GRID} mt-1 border-t border-dashed border-line-strong pt-3`}>
       <Input name="name" placeholder="New class, e.g. Class 11" required aria-label="New class name" />
-      <Input key={nextSort} name="sort_order" defaultValue={nextSort} inputMode="numeric" aria-label="New class sort order" className="w-[4.5rem] justify-self-end text-right sm:w-full" />
+      <div className={NUM_CELL}>
+        <Input key={nextSort} name="sort_order" defaultValue={nextSort} inputMode="numeric" aria-label="New class sort order" className="text-right" />
+      </div>
       <ActiveToggle defaultChecked label="New class is active" />
       <div className="justify-self-end">
         <Button type="submit" size="sm" disabled={pending}>
@@ -104,14 +111,16 @@ export function FeeHeadRow({ head }: { head: FeeHeadInfo }) {
         <Input name="name" defaultValue={head.name} required aria-label="Fee head name" />
         <p className="mt-0.5 truncate text-[12px] text-muted">{usage || "Not used yet"}</p>
       </div>
-      <Input
-        name="priority"
-        defaultValue={head.priority}
-        inputMode="numeric"
-        aria-label={`Priority of ${head.name}`}
-        className="w-[4.5rem] self-start justify-self-end text-right sm:w-full"
-        title="Lower numbers are cleared first"
-      />
+      <div className={NUM_CELL}>
+        <Input
+          name="priority"
+          defaultValue={head.priority}
+          inputMode="numeric"
+          aria-label={`Priority of ${head.name}`}
+          className="text-right"
+          title="Lower numbers are cleared first"
+        />
+      </div>
       <div className="self-start pt-2">
         <ActiveToggle defaultChecked={head.is_active} label={`${head.name} is active`} />
       </div>
@@ -149,7 +158,9 @@ export function AddFeeHeadRow({ nextPriority }: { nextPriority: number }) {
   return (
     <form ref={formRef} onSubmit={onSubmit} className={`${GRID} mt-1 border-t border-dashed border-line-strong pt-3`}>
       <Input name="name" placeholder="New fee head, e.g. Lab Fee" required aria-label="New fee head name" />
-      <Input key={nextPriority} name="priority" defaultValue={nextPriority} inputMode="numeric" aria-label="New fee head priority" className="w-[4.5rem] justify-self-end text-right sm:w-full" />
+      <div className={NUM_CELL}>
+        <Input key={nextPriority} name="priority" defaultValue={nextPriority} inputMode="numeric" aria-label="New fee head priority" className="text-right" />
+      </div>
       <ActiveToggle defaultChecked label="New fee head is active" />
       <div className="justify-self-end">
         <Button type="submit" size="sm" disabled={pending}>

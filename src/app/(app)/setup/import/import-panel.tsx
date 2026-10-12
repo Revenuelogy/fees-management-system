@@ -217,7 +217,7 @@ export function ImportPanel({
   const canRun = !!parsed && missing.length === 0 && !running;
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
       <Card className="order-2 lg:order-1" title={spec.title} description={spec.intro}>
         {!result && (
           <div className="space-y-4">
