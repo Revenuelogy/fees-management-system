@@ -1,23 +1,15 @@
-"use server";
+// Form handlers for sessions and installments. They call the API (src/app/api/sessions, /installments).
 
-import { revalidatePath } from "next/cache";
-import { requireWriter } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
-import { friendlyError, type ActionState } from "@/lib/action-state";
-import { isIsoDate } from "../_lib/dates";
-import { plural, listJoin } from "../_lib/text";
+import { api, submit } from "@/lib/api/client";
+import type { ActionState } from "@/lib/action-state";
+import { isIsoDate } from "@/lib/dates";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
-function refresh() {
-  // the session list feeds the top-bar switcher and every analysis page
-  revalidatePath("/", "layout");
-}
-
-type InstallmentInput = { number: number; name: string; due_date: string };
+type Result = { message: string };
+const withMessage = (r: Result): ActionState => ({ ok: true, message: r.message });
 
 export async function createSession(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireWriter();
   const name = str(fd, "name");
   const start = str(fd, "start_date");
   const end = str(fd, "end_date");
@@ -36,137 +28,53 @@ export async function createSession(_prev: ActionState, fd: FormData): Promise<A
     return { error: "Could not read the installment rows." };
   }
   if (rows.length === 0) return { error: "Add at least one installment." };
-  const installments: InstallmentInput[] = [];
+  const installments: { name: string | null; due_date: string }[] = [];
   for (const [i, r] of rows.entries()) {
     const due = String(r.due_date ?? "");
     if (!isIsoDate(due)) return { error: `Installment ${i + 1} needs a valid due date.` };
-    installments.push({ number: i + 1, name: String(r.name ?? "").trim() || `Installment ${i + 1}`, due_date: due });
+    installments.push({ name: String(r.name ?? "").trim() || null, due_date: due });
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("create_session", {
-    p_name: name,
-    p_start: start,
-    p_end: end,
-    p_installments: installments,
-    p_make_current: makeCurrent,
-    p_copy_from: copyFrom,
-  });
-  if (error) return { error: friendlyError(error) };
-
-  refresh();
-  return {
-    ok: true,
-    message: `Session ${name} created with ${plural(installments.length, "installment")}${copyFrom ? ", fee structure copied" : ""}${
-      makeCurrent ? " and marked as current" : ""
-    }.`,
-  };
+  return submit(
+    () => api.post<Result>("/api/sessions", { name, start_date: start, end_date: end, installments, make_current: makeCurrent, copy_from: copyFrom }),
+    withMessage,
+  );
 }
 
 export async function makeCurrent(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireWriter();
-  const id = str(fd, "session_id");
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("set_current_session", { p_session: id });
-  if (error) return { error: friendlyError(error) };
-  refresh();
-  return { ok: true, message: "Marked as the current session." };
+  return submit(() => api.post<Result>(`/api/sessions/${str(fd, "session_id")}/current`), withMessage);
 }
 
 export async function updateSession(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireWriter();
-  const id = str(fd, "session_id");
   const name = str(fd, "name");
   const start = str(fd, "start_date");
   const end = str(fd, "end_date");
   if (!name) return { error: "Enter a session name." };
   if (!isIsoDate(start) || !isIsoDate(end)) return { error: "Enter valid start and end dates." };
   if (end <= start) return { error: "The end date must be after the start date." };
-  const supabase = await createClient();
-  const { error } = await supabase.from("academic_sessions").update({ name, start_date: start, end_date: end }).eq("id", id);
-  if (error) return { error: friendlyError(error) };
-  refresh();
-  return { ok: true, message: "Session details saved." };
+  return submit(() => api.patch<Result>(`/api/sessions/${str(fd, "session_id")}`, { name, start_date: start, end_date: end }), withMessage);
 }
 
 export async function deleteSession(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireWriter();
-  const id = str(fd, "session_id");
-  const supabase = await createClient();
-  const { data: session } = await supabase.from("academic_sessions").select("id, name").eq("id", id).maybeSingle();
-  if (!session) return { error: "That session no longer exists." };
-
-  // Deleting a session cascades to its enrolments, installments and charges, so refuse while it holds data.
-  const [enr, pay, hint, chg] = await Promise.all([
-    supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("session_id", id),
-    supabase.from("payments").select("id", { count: "exact", head: true }).eq("session_id", id),
-    supabase.from("payments").select("id", { count: "exact", head: true }).eq("session_hint_id", id),
-    supabase.from("student_charges").select("id", { count: "exact", head: true }).eq("session_id", id),
-  ]);
-  const inUse: string[] = [];
-  if (enr.count) inUse.push(plural(enr.count, "enrolment"));
-  if ((pay.count ?? 0) + (hint.count ?? 0)) inUse.push(plural((pay.count ?? 0) + (hint.count ?? 0), "payment"));
-  if (chg.count) inUse.push(plural(chg.count, "fee charge"));
-  if (inUse.length) {
-    return {
-      error: `${session.name} cannot be deleted because it has ${listJoin(inUse)}. Sessions with students or payments are kept for history.`,
-    };
-  }
-
-  const { error } = await supabase.from("academic_sessions").delete().eq("id", id);
-  if (error) return { error: friendlyError(error) };
-  refresh();
-  return { ok: true, message: `Session ${session.name} deleted.` };
+  return submit(() => api.delete<Result>(`/api/sessions/${str(fd, "session_id")}`), withMessage);
 }
 
 export async function saveInstallment(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireWriter();
   const id = str(fd, "installment_id");
-  const intent = str(fd, "intent");
-  const supabase = await createClient();
-
-  if (intent === "delete") {
-    const { data: inst } = await supabase.from("installments").select("id, number, name").eq("id", id).maybeSingle();
-    if (!inst) return { error: "That installment no longer exists." };
-    const [chg, hint] = await Promise.all([
-      supabase.from("student_charges").select("id", { count: "exact", head: true }).eq("installment_id", id),
-      supabase.from("payments").select("id", { count: "exact", head: true }).eq("installment_hint_id", id),
-    ]);
-    if (chg.count) {
-      return {
-        error: `${inst.name} cannot be deleted: ${plural(chg.count, "student charge is", "student charges are")} billed against it. Rename it or change its due date instead.`,
-      };
-    }
-    if (hint.count) {
-      return { error: `${inst.name} cannot be deleted: ${plural(hint.count, "imported payment refers", "imported payments refer")} to it.` };
-    }
-    const { error } = await supabase.from("installments").delete().eq("id", id);
-    if (error) return { error: friendlyError(error) };
-    refresh();
-    return { ok: true, message: `${inst.name} deleted.` };
-  }
+  if (str(fd, "intent") === "delete") return submit(() => api.delete<Result>(`/api/installments/${id}`), withMessage);
 
   const name = str(fd, "name");
   const due = str(fd, "due_date");
   if (!name) return { error: "Enter a name." };
   if (!isIsoDate(due)) return { error: "Enter a valid due date." };
-  const { error } = await supabase.from("installments").update({ name, due_date: due }).eq("id", id);
-  if (error) return { error: friendlyError(error) };
-  refresh();
-  return { ok: true, message: "Saved." };
+  return submit(() => api.patch<Result>(`/api/installments/${id}`, { name, due_date: due }), withMessage);
 }
 
 export async function addInstallment(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  await requireWriter();
   const sessionId = str(fd, "session_id");
   const number = Number(str(fd, "number"));
-  const name = str(fd, "name") || `Installment ${number}`;
   const due = str(fd, "due_date");
   if (!Number.isInteger(number) || number < 1) return { error: "The installment number must be 1 or more." };
   if (!isIsoDate(due)) return { error: "Enter a valid due date." };
-  const supabase = await createClient();
-  const { error } = await supabase.from("installments").insert({ session_id: sessionId, number, name, due_date: due });
-  if (error) return { error: friendlyError(error) };
-  refresh();
-  return { ok: true, message: `${name} added. Fill in its amounts on the fee structure page.` };
+  return submit(() => api.post<Result>(`/api/sessions/${sessionId}/installments`, { number, name: str(fd, "name") || null, due_date: due }), withMessage);
 }

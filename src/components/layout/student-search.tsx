@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { IndianRupee, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { apiFetch, apiUrl } from "@/lib/api/client";
 import { Avatar } from "@/components/ui/avatar";
 import type { SearchResult } from "@/lib/types";
 
@@ -56,15 +57,14 @@ export function StudentSearch({
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/students/search?q=${encodeURIComponent(term)}&limit=12`, { signal: ctrl.signal });
-        const data = await res.json();
+        const data = await apiFetch<SearchResult[]>(apiUrl("/api/students/search", { q: term, limit: 12 }), { signal: ctrl.signal });
         if (Array.isArray(data)) {
           setResults(data);
           setHi(0);
           setOpen(true);
         }
       } catch {
-        /* aborted */
+        /* aborted or offline */
       } finally {
         setLoading(false);
       }

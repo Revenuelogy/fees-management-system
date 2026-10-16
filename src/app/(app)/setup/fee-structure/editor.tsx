@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormError, FormSuccess, Select } from "@/components/ui/form";
 import { useFormAction } from "../_lib/use-form-action";
-import { plural } from "../_lib/text";
+import { plural } from "@/lib/text";
 import { applyStructure, copyStructure, saveStructure } from "./actions";
 
 type Inst = { id: string; number: number; name: string; due_date: string };
@@ -77,7 +77,9 @@ export function FeeStructureEditor({
   });
   const apply = useFormAction(applyStructure);
 
-  const cells = heads.flatMap((h) => installments.map((i) => ({ installment_id: i.id, fee_head_id: h.id, amount: values[key(h.id, i.id)] ?? "" })));
+  const cells = heads.flatMap((h) =>
+    installments.map((i) => ({ installment_id: i.id, fee_head_id: h.id, amount: values[key(h.id, i.id)] ?? "", label: `${h.name}, ${i.name}` })),
+  );
   const without = stats.enrolled - stats.withCharges;
 
   return (

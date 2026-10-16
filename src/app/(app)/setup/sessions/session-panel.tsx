@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, FormSuccess, Input } from "@/components/ui/form";
 import { useFormAction } from "../_lib/use-form-action";
-import { plural, listJoin } from "../_lib/text";
+import { plural, listJoin } from "@/lib/text";
 import { addInstallment, deleteSession, makeCurrent, saveInstallment, updateSession } from "./actions";
 
 export type SessionInfo = {

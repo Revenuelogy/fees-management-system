@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { KeyRound, UserPlus } from "lucide-react";
 import type { AppRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, FormSuccess, Input, Select } from "@/components/ui/form";
-import { createStaff, setRole } from "./actions";
+import { createStaff, resetPassword, setRole } from "./actions";
 import { useFormAction } from "../use-form-action";
 
 export const ROLE_OPTIONS: { value: AppRole | "none"; label: string }[] = [
@@ -23,7 +23,7 @@ export function RoleForm({ id, role, isSelf }: { id: string; role: AppRole | nul
 
   if (isSelf) {
     return (
-      <span className="text-footnote text-ink-2" title="You cannot remove your own admin role">
+      <span className="whitespace-nowrap text-footnote text-ink-2" title="You cannot remove your own admin role">
         {ROLE_OPTIONS.find((o) => o.value === initial)?.label} · you
       </span>
     );
@@ -52,6 +52,54 @@ export function RoleForm({ id, role, isSelf }: { id: string; role: AppRole | nul
       )}
       {state.error && <span className="w-full text-footnote text-critical-ink">{state.error}</span>}
       {state.ok && value === initial && <span className="text-footnote text-good-ink">Saved</span>}
+    </form>
+  );
+}
+
+/** Set a new password for a login (e.g. a forgotten one). The person is signed out everywhere. */
+export function PasswordForm({ id, isSelf }: { id: string; isSelf: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [state, onSubmit, pending] = useFormAction(async (prev, formData) => {
+    const result = await resetPassword(prev, formData);
+    if (result.ok) setOpen(false);
+    return result;
+  });
+
+  if (!open) {
+    return (
+      <span className="flex flex-col items-start">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-0.5 inline-flex items-center gap-1 text-caption font-medium text-accent hover:underline"
+        >
+          <KeyRound className="size-3" aria-hidden /> Change password…
+        </button>
+        {state.ok && <span className="max-w-[260px] text-caption text-good-ink">{state.message}</span>}
+      </span>
+    );
+  }
+  return (
+    <form onSubmit={onSubmit} className="mt-1.5 flex flex-wrap items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      <Input
+        name="password"
+        type="text"
+        required
+        minLength={8}
+        autoComplete="new-password"
+        aria-label="New password"
+        placeholder={isSelf ? "Your new password" : "New password"}
+        className="h-8 w-44 text-footnote"
+        autoFocus
+      />
+      <Button type="submit" size="sm" variant="primary" disabled={pending}>
+        {pending ? "Saving…" : "Save"}
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        Cancel
+      </Button>
+      {state.error && <span className="w-full text-footnote text-critical-ink">{state.error}</span>}
     </form>
   );
 }

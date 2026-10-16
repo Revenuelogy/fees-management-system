@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Banknote, Building2, Check, CreditCard, FileCheck2, MoreHorizontal, Smartphone } from "lucide-react";
 import { collectPayment } from "./actions";
 import type { ActionState } from "@/lib/action-state";
@@ -62,6 +63,12 @@ export function CollectForm({
   recent: { id: string; receipt_no: string; paid_on: string; amount: number; cancelled: boolean }[];
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(collectPayment, {});
+  const router = useRouter();
+  // saved: open the receipt (the button stays disabled so the payment cannot be sent twice)
+  const saved = !!state.redirect;
+  useEffect(() => {
+    if (state.redirect) router.push(state.redirect);
+  }, [state.redirect, router]);
   const [amountText, setAmountText] = useState("");
   const [paidOn, setPaidOn] = useState(today);
   const [mode, setMode] = useState<PaymentMode>("cash");
@@ -353,8 +360,8 @@ export function CollectForm({
             {!paySession && <FormError message="No academic session covers this date." />}
             <FormError message={state.error} />
           </div>
-          <Button type="submit" variant="primary" size="lg" className="mt-4 w-full" disabled={pending || amount <= 0 || over || !paySession}>
-            {pending ? "Saving…" : amount > 0 ? `Collect ${rupees(amount)}` : "Enter an amount"}
+          <Button type="submit" variant="primary" size="lg" className="mt-4 w-full" disabled={pending || saved || amount <= 0 || over || !paySession}>
+            {pending || saved ? "Saving…" : amount > 0 ? `Collect ${rupees(amount)}` : "Enter an amount"}
           </Button>
         </section>
 

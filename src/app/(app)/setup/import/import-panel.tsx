@@ -8,14 +8,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Select } from "@/components/ui/form";
-import { listJoin, plural } from "../_lib/text";
-import { IMPORT_SPECS, emptySummary, normalizeHeader, type ImportKind, type ImportSummary } from "./columns";
+import { listJoin, plural } from "@/lib/text";
+import { IMPORT_SPECS, emptySummary, normalizeHeader, type ImportKind, type ImportSummary } from "@/lib/import-columns";
 import { importChunk } from "./actions";
 
 type Parsed = { fileName: string; headers: string[]; rows: Record<string, string>[]; parseErrors: number };
 
 const MAX_ROWS = 1000;
-const MAX_BYTES = 750_000; // stay well under the 1 MB server action body limit
+const MAX_BYTES = 750_000; // keep each request small (one chunk = one database transaction)
 
 function chunkRows(rows: Record<string, string>[]): Record<string, string>[][] {
   const enc = new TextEncoder();

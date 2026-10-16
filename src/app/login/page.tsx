@@ -4,7 +4,8 @@ export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const sp = await searchParams;
-  const next = typeof sp.next === "string" && sp.next.startsWith("/") ? sp.next : "/";
+  // same-site paths only ("//host" and "/\host" would leave the site)
+  const next = typeof sp.next === "string" && /^\/(?![/\\])/.test(sp.next) ? sp.next : "/";
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
       <div

@@ -6,12 +6,13 @@ import { FormError, Input } from "@/components/ui/form";
 import { useFormAction } from "../_lib/use-form-action";
 import { addClass, addFeeHead, saveClass, saveFeeHead } from "./actions";
 import { GRID } from "./grid";
+import type { ClassSetupRow, FeeHeadSetupRow } from "@/lib/types";
 
 // fixed width on phones (the column is `auto` there), fills its column from `sm` up
 const NUM_CELL = "w-[4.5rem] self-start justify-self-end sm:w-auto sm:justify-self-stretch";
 
-export type ClassInfo = { id: string; name: string; sort_order: number; is_active: boolean; inSession: number; enrolments: number; structure: number };
-export type FeeHeadInfo = { id: string; name: string; priority: number; is_active: boolean; charges: number; structure: number };
+export type ClassInfo = ClassSetupRow;
+export type FeeHeadInfo = FeeHeadSetupRow;
 
 function ActiveToggle({ defaultChecked, label }: { defaultChecked: boolean; label: string }) {
   return (

@@ -6,7 +6,7 @@ import type { ActionState } from "@/lib/action-state";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, FormSuccess, Input, Select } from "@/components/ui/form";
 import { useFormAction } from "../_lib/use-form-action";
-import { addDays, addMonthsIso, isIsoDate, isoFrom, shiftYears } from "../_lib/dates";
+import { addDays, addMonthsIso, isIsoDate, isoFrom, shiftYears } from "@/lib/dates";
 import { createSession } from "./actions";
 
 type Row = { name: string; due_date: string };
