@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FormError, FormSuccess, Select } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { useFormAction } from "../_lib/use-form-action";
-import { listJoin, plural } from "../_lib/text";
+import { listJoin, plural } from "@/lib/text";
 import { promoteStudents } from "./actions";
 
 export type PromoteRow = {

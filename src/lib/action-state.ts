@@ -1,13 +1,15 @@
-/** Shape returned by every form server action, consumed with useActionState. */
+/** Shape returned by every form handler (see `submit` in src/lib/api/client.ts), consumed with useActionState. */
 export type ActionState = {
   ok?: boolean;
   error?: string;
   message?: string;
   /** Free-form result payload (e.g. import summaries) */
   data?: unknown;
+  /** Page to open after success (useFormAction navigates there) */
+  redirect?: string;
 };
 
-/** Turn a Supabase / Postgres error into a sentence a school accountant can act on. */
+/** Turn a Postgres error into a sentence a school accountant can act on (used by the API). */
 export function friendlyError(error: { message?: string; code?: string; details?: string } | null | undefined): string {
   if (!error) return "Something went wrong.";
   const msg = error.message ?? "";

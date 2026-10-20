@@ -1,9 +1,17 @@
-// Shapes returned by the database RPCs (see supabase/migrations). Money is integer paise.
+// Shapes returned by the API and the database RPCs behind it (db/migrations). Money is integer paise.
 
 export type AppRole = "admin" | "accountant" | "principal" | "teacher";
 export type PaymentMode = "cash" | "upi" | "cheque" | "bank_transfer" | "card" | "other";
 export type AllocationKind = "current" | "arrears" | "advance";
 export type FeeStatus = "paid_up" | "partial" | "not_paying" | "arrears_only" | "free" | "no_plan";
+
+/** The signed-in login (GET /api/auth/me). role NULL = no access yet. */
+export interface Viewer {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: AppRole | null;
+}
 
 export interface Profile {
   id: string;
@@ -565,4 +573,174 @@ export interface SearchResult {
   class_name: string | null;
   section: string | null;
   roll_no: string | null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// API shapes (src/app/api) that are not plain RPC results
+// ---------------------------------------------------------------------------------------------
+
+/** GET /api/students: a student with their enrolment in the requested session (nulls when not enrolled). */
+export type StudentListRow = Pick<Student, "id" | "admission_no" | "full_name" | "father_name" | "phone" | "status" | "left_on"> & {
+  class_id: string | null;
+  class_name: string | null;
+  class_order: number | null;
+  section: string | null;
+  roll_no: string | null;
+};
+
+/** GET /api/students/[id] */
+export type StudentRecord = {
+  student: Student;
+  enrollment: { class_id: string; section: string; roll_no: string | null } | null;
+  /** receipts on record (a student with receipts cannot be deleted) */
+  payments: number;
+  /** fee lines waived when the student left (restorable on re-activation) */
+  waived_lines: number;
+};
+
+/** GET /api/students/[id]/fees */
+export type FeePlanData = {
+  student: Student;
+  enrollments: { session_id: string; section: string; roll_no: string | null; class_id: string; class_name: string }[];
+  dues: DueLine[];
+  /** source and note of every fee line */
+  meta: { id: string; source: string; note: string | null }[];
+  installments: Installment[];
+  heads: FeeHead[];
+  /** money not yet matched to any charge */
+  advance: number;
+};
+
+/** GET /api/payments: one receipt (or cancellation entry) with its class and what it paid for. */
+export interface PaymentRegisterRow {
+  payment_id: string;
+  receipt_no: string;
+  paid_on: string;
+  amount: number;
+  mode: PaymentMode;
+  reference_no: string | null;
+  remarks: string | null;
+  source: "app" | "import";
+  session_id: string;
+  student_id: string;
+  reverses_payment_id: string | null;
+  created_at: string;
+  full_name: string;
+  admission_no: string;
+  father_name: string | null;
+  /** class in the session the money was received in */
+  class_name: string | null;
+  section: string | null;
+  current: number;
+  arrears: number;
+  advance: number;
+  /** a later entry cancels this receipt */
+  cancelled: boolean;
+}
+
+/** GET /api/payments/[id] */
+export interface ReceiptData {
+  payment: { id: string; student_id: string; receipt_no: string; created_at: string; reverses_payment_id: string | null; created_by_name: string | null };
+  student: Student360;
+  /** the entry that cancelled this receipt, if any */
+  reversal: { id: string; receipt_no: string; paid_on: string; remarks: string | null } | null;
+}
+
+/** GET /api/analytics/reconciliation */
+export interface Reconciliation {
+  session: { id: string; name: string };
+  checked_at: string;
+  checks: ReconciliationCheck[];
+}
+
+/** GET /api/setup/checklist */
+export interface SetupChecklist {
+  active_heads: number;
+  installments: Installment[];
+  classes_with_structure: string[];
+  /** active students enrolled in the session */
+  enrolled: number;
+  /** enrolled students without fee lines (null when the check could not run) */
+  without_plan: number | null;
+}
+
+/** GET /api/sessions: a session with what it holds (sessions holding data cannot be deleted). */
+export interface SessionSetupRow {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  enrollments: number;
+  payments: number;
+  charges: number;
+  installments: { id: string; number: number; name: string; due_date: string; charges: number }[];
+}
+
+/** GET /api/setup/classes */
+export interface ClassSetupRow {
+  id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  /** enrolments in every session */
+  enrolments: number;
+  /** enrolments in the requested session */
+  inSession: number;
+  /** fee structure amounts (all sessions) */
+  structure: number;
+}
+
+export interface FeeHeadSetupRow {
+  id: string;
+  name: string;
+  priority: number;
+  is_active: boolean;
+  charges: number;
+  structure: number;
+}
+
+/** GET /api/fee-structure */
+export interface FeeStructureData {
+  installments: Installment[];
+  heads: FeeHead[];
+  /** paise by `${fee_head_id}|${installment_id}` */
+  amounts: Record<string, number>;
+  classes_with_structure: string[];
+  /** active students of the class enrolled in the session, and how many of them have fee lines */
+  enrolled: number;
+  with_charges: number;
+  no_plan: ReconciliationCheck | null;
+}
+
+/** GET /api/promote */
+export interface PromotePreview {
+  by_class: { class_id: string; active: number; inactive: number; already: number }[];
+  target_has_structure: string[];
+  /** students already enrolled in the target session */
+  target_enrolled: number;
+}
+
+/** GET /api/staff */
+export interface StaffMember extends Profile {
+  last_sign_in_at: string | null;
+}
+
+/** GET /api/admin/snapshots: a closed month */
+export interface MonthSnapshot {
+  month: string;
+  closed_at: string;
+  closed_by_name: string | null;
+}
+
+/** GET /api/admin/audit */
+export interface AuditRow {
+  id: number;
+  at: string;
+  user_id: string | null;
+  user_name: string | null;
+  action: string;
+  entity: string | null;
+  entity_id: string | null;
+  details: unknown;
 }

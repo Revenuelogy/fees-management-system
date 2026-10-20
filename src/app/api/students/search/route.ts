@@ -1,12 +1,12 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
+import { api, readQuery } from "@/server/http";
+import { search } from "@/server/services/students";
+import { intParam } from "@/server/validate";
 
-export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
-  const limit = Number(request.nextUrl.searchParams.get("limit") ?? 12);
-  if (q.length < 1) return NextResponse.json([]);
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("search_students", { p_query: q, p_limit: Math.min(Math.max(limit, 1), 50) });
-  if (error) return NextResponse.json({ error: error.message }, { status: error.code === "42501" ? 403 : 400 });
-  return NextResponse.json(data ?? []);
-}
+const Query = z.object({ q: z.string().trim().max(100).default(""), limit: intParam(12, 1, 50) });
+
+/** Type-ahead search by name, admission no, father's name or phone. */
+export const GET = api("staff", async ({ req, viewer }) => {
+  const { q, limit } = readQuery(req, Query);
+  return q ? search(viewer, q, limit) : [];
+});

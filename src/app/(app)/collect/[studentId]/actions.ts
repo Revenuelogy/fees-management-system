@@ -1,17 +1,13 @@
-"use server";
+// Form handler for collecting a payment (API: POST /api/payments). Opens the new receipt on success.
 
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { requireWriter } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { api, submit } from "@/lib/api/client";
 import { parseRupees } from "@/lib/format";
-import { friendlyError, type ActionState } from "@/lib/action-state";
+import type { ActionState } from "@/lib/action-state";
 import type { PaymentMode } from "@/lib/types";
 
 const MODES: PaymentMode[] = ["cash", "upi", "cheque", "bank_transfer", "card", "other"];
 
 export async function collectPayment(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireWriter();
   const studentId = String(formData.get("student_id") ?? "");
   const amount = parseRupees(String(formData.get("amount") ?? ""));
   const paidOn = String(formData.get("paid_on") ?? "");
@@ -35,18 +31,17 @@ export async function collectPayment(_prev: ActionState, formData: FormData): Pr
   const allocated = targets.reduce((a, t) => a + t.amount, 0);
   if (allocated > amount) return { error: "The amounts allocated to dues add up to more than the amount received." };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("collect_payment", {
-    p_student: studentId,
-    p_amount: amount,
-    p_paid_on: paidOn,
-    p_mode: mode,
-    p_reference: reference || null,
-    p_remarks: remarks || null,
-    p_targets: targets,
-  });
-  if (error) return { error: friendlyError(error) };
-  const result = data as { payment_id: string; receipt_no: string };
-  revalidatePath("/", "layout");
-  redirect(`/payments/${result.payment_id}?new=1`);
+  return submit(
+    () =>
+      api.post<{ payment_id: string; receipt_no: string }>("/api/payments", {
+        student_id: studentId,
+        amount,
+        paid_on: paidOn,
+        mode,
+        reference_no: reference || null,
+        remarks: remarks || null,
+        targets,
+      }),
+    (r) => ({ ok: true, redirect: `/payments/${r.payment_id}?new=1` }),
+  );
 }

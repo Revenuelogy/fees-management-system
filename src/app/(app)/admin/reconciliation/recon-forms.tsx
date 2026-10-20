@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { FormError, FormSuccess } from "@/components/ui/form";
 import { closeMonth, reopenMonth, rerunAllocation } from "./actions";
 
-type ServerAction = (prev: ActionState, formData: FormData) => Promise<ActionState>;
+type FormAction = (prev: ActionState, formData: FormData) => Promise<ActionState>;
 
-function useAction(fn: ServerAction) {
+function useAction(fn: FormAction) {
   const [state, dispatch, pending] = useActionState<ActionState, FormData>(fn, {});
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

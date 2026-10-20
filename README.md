@@ -4,8 +4,9 @@ Fee collection, receipts and a deep analysis layer that answers one question for
 **where exactly is my fee money?** What should have come, what has come, what is stuck, and which
 class or student is holding it back, at the level of session, month, installment, class and single student.
 
-Built with **Next.js 16** (App Router) and **Supabase Postgres**. Admin-only today, with staff roles
-(accountant, principal, class teacher) already modelled.
+Built with **Next.js 16** (App Router) and **PostgreSQL** (any PostgreSQL 13+ server: local, Docker, RDS,
+Cloud SQL, Neon, Supabase…). Admin-only today, with staff roles (accountant, principal, class teacher) already
+modelled.
 
 ## What you can do
 
@@ -68,40 +69,109 @@ changes; the correction shows in the month it was made. Imported receipts withou
 monthly received = session received; installment received + previous dues + advance = total received;
 every payment fully allocated; no charge over-collected; enrolled students without a fee plan.
 
+## How it is built
+
+```
+Browser (React screens)  ──fetch JSON──▶  REST API  src/app/api/**/route.ts
+  SWR cache: instant revisits,             │  session cookie + role check, zod validation
+  refresh on focus / every 60 s /          ▼
+  after every save                       Services  src/server/services/*
+                                           │  in-memory cache (30 s), cleared by every write
+                                           ▼
+                                         PostgreSQL  db/migrations/*  (tables, RLS, SQL functions)
+```
+
+* **Frontend and backend are separate.** Screens are React components that only call the JSON API under
+  `/api`; they never touch the database. The API could serve another client (a mobile app, a script) as is.
+* **Any PostgreSQL.** The server connects with a single `DATABASE_URL` through `pg`. Logins and sessions
+  live in the app's own tables (`app_users`, `app_sessions`; passwords hashed with scrypt). Every query runs
+  in a transaction that records the signed-in staff member, so the role checks inside the SQL functions,
+  row-level security and the audit log all know who is acting.
+* **Caching.** The API keeps database reads in memory for `CACHE_TTL_SECONDS` (default 30 s) and shares one
+  query between simultaneous identical requests. Every write made through the API clears that cache, so the
+  next screen shows the new figures at once; the TTL only bounds how long a change made elsewhere (another
+  app instance, a manual SQL fix) takes to appear. The browser keeps what it fetched (SWR), shows it instantly
+  when you come back to a screen, and refreshes it in the background when the tab regains focus, once a minute,
+  and after every save. API responses are `Cache-Control: private, no-store`, so nothing is stored by a CDN.
+
+### API overview
+
+| Area | Endpoints |
+| --- | --- |
+| Sign in | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `GET /api/bootstrap` (viewer, sessions, classes, settings) |
+| Analytics | `GET /api/analytics/dashboard`, `defaulters`, `balances`, `classes`, `classes/[id]`, `months/[month]` (+ `/payments`, `/non-payers`, `/classes/[classId]`), `installments`, `installments/[number]`, `reconciliation` |
+| Students | `GET/POST /api/students`, `GET /api/students/search`, `GET/PUT/DELETE /api/students/[id]`, `…/360`, `…/dues`, `…/fees`, `…/withdraw`, `…/reactivate`, `…/notes`, `…/charges`, `…/charges/generate`, `…/concessions`, `…/opening-dues` |
+| Money | `GET/POST /api/payments`, `GET /api/payments/[id]`, `POST /api/payments/[id]/cancel`, `GET/POST /api/targets`, `GET/DELETE /api/targets/[id]` |
+| Setup | `/api/sessions` (+ `/[id]`, `/current`, `/installments`), `/api/installments/[id]`, `/api/classes`, `/api/fee-heads`, `/api/fee-structure` (+ `/copy`, `/apply`), `/api/promote`, `POST /api/imports/[kind]`, `GET /api/setup/checklist`, `GET /api/setup/classes` |
+| Admin | `/api/settings` (+ `/allocation-rule`), `/api/staff` (+ `/[id]`, `/[id]/password`), `POST /api/admin/reallocate`, `POST /api/months/[month]/close` and `/reopen`, `GET /api/admin/snapshots`, `GET /api/admin/audit` |
+
+Money is integer paise in every request and response; dates are `YYYY-MM-DD`. Errors come back as
+`{ "error": "…" }` with a status code (400 invalid, 401 not signed in, 403 role, 404, 409 conflict).
+
 ## Running it locally
 
-Requirements: Node 20+, Docker (for the local Supabase stack).
+Requirements: Node 20.12+ (22 LTS recommended) and PostgreSQL 13+ with the `pg_trgm` extension (included in
+the standard packages and Docker images). For example with Docker:
+
+```bash
+docker run -d --name fees-db -p 5432:5432 \
+  -e POSTGRES_USER=fees -e POSTGRES_PASSWORD=fees -e POSTGRES_DB=fees postgres:17
+```
 
 ```bash
 npm install
-cp .env.example .env.local
-npx supabase start            # prints the API URL and publishable/secret keys -> put them in .env.local
-npx supabase db reset         # applies migrations + loads demo data (2 sessions, ~340 students)
+cp .env.example .env.local    # set DATABASE_URL
+npm run db:reset              # creates the schema + loads demo data (2 sessions, ~340 students)
 npm run dev                   # http://localhost:3000
 ```
 
 Demo login: **admin@school.test** / **admin12345**.
 
-Useful scripts: `npm run typecheck`, `npm run lint`, `npm run db:test` (pgTAP tests for the allocation
-engine, security and reconciliation), `npm run db:types`.
+Database scripts (they read `DATABASE_URL` from the environment or `.env.local`):
 
-## Deploying (Supabase + Vercel or any Node host)
+| Script | What it does |
+| --- | --- |
+| `npm run db:migrate` | Applies new files from `db/migrations`, in order, once each (tracked in `schema_migrations`). |
+| `npm run db:seed` | Loads the demo data (local only). |
+| `npm run db:reset` | Drops everything, migrates and seeds. Refuses non-local databases unless you add `-- --force`. |
+| `npm run db:test` | pgTAP tests for the allocation engine, security and reconciliation (needs the `pgtap` extension, e.g. `apt install postgresql-17-pgtap`). |
+| `npm run db:create-user -- --email … --password … [--name …] [--role …]` | Creates a login. The first login on a new database becomes admin. |
+| `npm run db:set-password -- --email … --password …` | Sets a new password from the command line. |
 
-1. Create a Supabase project. In *Authentication → Sign In / Providers* keep Email enabled and
-   **turn off "Allow new users to sign up"** (staff accounts are created by the admin).
-2. Link and push the schema (do **not** run the demo seed in production):
+Other checks: `npm run typecheck`, `npm run lint`.
+
+## Deploying (any PostgreSQL + any Node host)
+
+1. Create a PostgreSQL 13+ database and note its connection string (add `?sslmode=require` or whatever your
+   provider documents).
+2. Create the schema (do **not** run the demo seed in production):
    ```bash
-   npx supabase link --project-ref <your-project-ref>
-   npx supabase db push
+   DATABASE_URL=postgres://… npm run db:migrate
    ```
-3. In *Authentication → Users* add the owner's account. **The first user becomes admin automatically**;
-   later users get no access until an admin assigns a role in *Settings → Staff*.
-4. Deploy the Next.js app (e.g. Vercel) with environment variables:
-   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and optionally
-   `SUPABASE_SECRET_KEY` (server only; lets the admin create staff logins from the app).
+3. Create the owner's login. **The first login becomes admin automatically**; later logins get no access
+   until an admin assigns a role in *Settings → Staff* (where the admin can also create logins and set new
+   passwords):
+   ```bash
+   DATABASE_URL=postgres://… npm run db:create-user -- --email owner@school.in --password '…' --name "Owner"
+   ```
+4. Deploy the Next.js app (`npm run build && npm start`, Vercel, Docker…) with `DATABASE_URL` set, and
+   optionally `DATABASE_POOL_MAX` and `CACHE_TTL_SECONDS` (see `.env.example`). With several instances behind
+   a load balancer each keeps its own cache; writes clear it on the instance that handled them and the others
+   catch up within `CACHE_TTL_SECONDS` (set it lower, or to 0, if that matters).
 5. Sign in and follow *Setup checklist*: create the session with its installments → classes and fee
    heads → fee structure → import or add students (with class) → generate charges → import opening dues
    and old receipts if you have them → start collecting.
+
+After updating the code, run `npm run db:migrate` again before starting the new version.
+
+**Optional: a least-privilege database role.** The simplest setup connects as the schema owner. For defence
+in depth, connect the app as a separate role; row-level security and function privileges then apply to every
+query the app makes:
+
+```sql
+create role fees_app login password '…';
+select public.grant_app_access('fees_app');   -- as the schema owner; repeat after new migrations
+```
 
 ## Roles
 
@@ -112,23 +182,29 @@ engine, security and reconciliation), `npm run db:types`.
 | Principal | Read-only analytics, class and student views. |
 | Class teacher | Reserved for a later release (own class only); currently no data access. |
 
-Access is enforced in the database with row-level security and role checks inside every function, not
-just in the UI. Writes to payments are only possible through the `collect_payment` / `cancel_payment`
-functions; every payment, cancellation, import and month close is written to the audit log.
+Access is checked by the API on every request and again inside every SQL function (and by row-level security
+when the app connects as a least-privilege role), not just in the UI. Writes to payments are only possible
+through the `collect_payment` / `cancel_payment` functions; every payment, cancellation, import, month close,
+role change and password reset is written to the audit log. Sign-in attempts are rate limited, sessions end
+after 7 days without use (30 days at most), and signing out ends the session on the server.
 
 ## Project layout
 
 ```
-supabase/
-  migrations/   schema + RLS, allocation engine, operations RPCs, analytics RPCs
+db/
+  migrations/   schema + RLS, allocation engine, operations, analytics, app access
   seed.sql      deterministic demo data (local only)
   tests/        pgTAP tests (npm run db:test)
+scripts/db.mjs  migrate / seed / reset / test / create-user / set-password
 src/
+  app/api/      the REST API (route handlers)
   app/(app)/    signed-in screens (dashboard, monthly, installments, classes, students,
-                collect, payments, pending, reports, setup, settings, admin)
+                collect, payments, pending, reports, setup, settings, admin); each page renders a
+                client view that loads its data from the API
   app/login     sign in
-  components/   UI kit, charts, layout (sidebar, search, session switcher)
-  lib/          auth guards, session context, formatting (money is integer paise), RPC types
+  server/       backend only: database pool, auth, cache, validation, services
+  components/   UI kit, charts, layout (app shell, sidebar, search, session switcher)
+  lib/          shared types, formatting (money is integer paise), roles; lib/api = browser API client
 ```
 
 See `AGENTS.md` for coding conventions.
