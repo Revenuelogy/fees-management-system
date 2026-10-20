@@ -62,13 +62,15 @@ export type CollectInput = {
   remarks: string | null;
   /** what the payment should pay for, chosen at the counter (paise per charge) */
   targets: { charge_id: string; amount: number }[];
+  /** the recovery activity this payment came from (a participation of the student), if any */
+  credit_participant_id: string | null;
 };
 
-/** Record a payment (collect_payment allocates it and numbers the receipt). */
+/** Record a payment (collect_payment allocates it and numbers the receipt), credited to an activity when chosen. */
 export function collect(viewer: Viewer, input: CollectInput) {
   return orNotFound(
-    write(viewer, (db) =>
-      db.rpc<{ payment_id: string; receipt_no: string }>("collect_payment", {
+    write(viewer, async (db) => {
+      const r = await db.rpc<{ payment_id: string; receipt_no: string }>("collect_payment", {
         p_student: input.student_id,
         p_amount: input.amount,
         p_paid_on: input.paid_on,
@@ -76,10 +78,14 @@ export function collect(viewer: Viewer, input: CollectInput) {
         p_reference: input.reference_no,
         p_remarks: input.remarks,
         p_targets: input.targets,
-      }),
-    ),
-    /^Student not found/,
-    "That student does not exist.",
+      });
+      if (input.credit_participant_id) {
+        await db.rpc("credit_recovery_payment", { p_participant: input.credit_participant_id, p_payment: r.payment_id });
+      }
+      return r;
+    }),
+    /^(Student|Participant) not found/,
+    "That student or activity does not exist.",
   );
 }
 

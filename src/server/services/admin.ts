@@ -50,6 +50,22 @@ export async function updateAllocationRule(viewer: Viewer, rule: SchoolSettings[
   });
 }
 
+/** Days after a promised date within which a payment still counts as keeping the promise. */
+export async function updatePromiseGrace(viewer: Viewer, days: number) {
+  return write(viewer, async (db) => {
+    const before = (await db.one<{ promise_grace_days: number }>("select promise_grace_days from public.school_settings where id = 1"))?.promise_grace_days;
+    if (before === days) return { message: "Unchanged." };
+    await db.query("update public.school_settings set promise_grace_days = $1 where id = 1", [days]);
+    await audit(db, "change_promise_grace", "school_settings", "1", { from: before ?? null, to: days });
+    return {
+      message:
+        days === 0
+          ? "Saved. A promise is kept only when the money arrives by the promised date."
+          : `Saved. Money that arrives up to ${days} ${days === 1 ? "day" : "days"} after the promised date keeps the promise.`,
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------------------------
 // Staff logins and roles
 // ---------------------------------------------------------------------------------------------

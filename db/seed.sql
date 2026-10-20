@@ -4,6 +4,9 @@
 -- Two sessions (2025-26 closed, 2026-27 running), ~330 students, realistic
 -- payment behaviour (early, on-time, late, partial, defaulters), arrears,
 -- concessions, transport, cancelled receipts and a few notes.
+-- Fee recovery: brothers and sisters sharing a parent (phone number), parent
+-- profiles, a call campaign with kept / broken / open promises and two
+-- student activities with receipts credited to them.
 -- Deterministic: the same data is produced on every reset.
 -- =============================================================================
 
@@ -65,6 +68,10 @@ declare
   v_amt    bigint;
   v_frac   numeric;
   pr       record;
+  uid      uuid := '11111111-1111-1111-1111-111111111111';
+  v_camp   uuid;
+  v_act1   uuid;
+  v_act2   uuid;
 begin
   perform setseed(0.2026);
   perform set_config('fees.skip_realloc', 'on', true);
@@ -163,6 +170,64 @@ begin
     end loop;
   end loop;
 
+  -- brothers and sisters: some students share their family's phone (and parents' names). The
+  -- students_link_parent trigger moves them into one parent profile; the emptied profiles are dropped.
+  with g as (
+    select st.id, st.phone, st.father_name, st.mother_name, st.address, split_part(st.full_name, ' ', 2) as sur,
+           row_number() over (partition by split_part(st.full_name, ' ', 2) order by st.admission_no) as rn
+      from public.students st where st.status = 'active'
+  )
+  update public.students s
+     set phone = h.phone, father_name = h.father_name, mother_name = h.mother_name, address = h.address
+    from g join g h on h.sur = g.sur and h.rn = g.rn - case when g.rn % 10 = 3 then 2 else 1 end
+   where s.id = g.id and (g.rn % 5 = 2 or g.rn % 10 = 3);
+  delete from public.parents p where not exists (select 1 from public.students st where st.parent_id = p.id);
+
+  -- what the staff know about most families (choices follow the family's payment habit; hashes of the
+  -- phone number keep them deterministic without drawing on random())
+  with fam as (
+    select distinct on (st.parent_id) st.parent_id, ss.profile, (hashtext(p.phone)::bigint + 2147483648) as h
+      from public.students st
+      join _seed_stu ss on ss.id = st.id
+      join public.parents p on p.id = st.parent_id
+     order by st.parent_id, st.admission_no
+  )
+  update public.parents p
+     set economic_status = case f.profile
+                             when 'early' then (array['upper_middle', 'high'])[1 + f.h % 2]
+                             when 'ontime' then (array['middle', 'upper_middle'])[1 + f.h % 2]
+                             when 'late' then (array['middle', 'lower_middle'])[1 + f.h % 2]
+                             when 'partial' then (array['lower_middle', 'low'])[1 + f.h % 2]
+                             else (array['high', 'middle', 'low'])[1 + f.h % 3] end,
+         payment_behaviour = case f.profile
+                               when 'early' then 'regular'
+                               when 'ontime' then 'installment_wise'
+                               when 'late' then (array['year_end', 'irregular'])[1 + (f.h / 3) % 2]
+                               when 'partial' then (array['willing_struggling', 'carries_forward'])[1 + (f.h / 3) % 2]
+                               else case when f.h % 3 = 2 then 'non_payer' else 'capable_not_paying' end end,
+         attitude = case f.profile
+                      when 'early' then 'cooperative'
+                      when 'ontime' then (array['cooperative', 'neutral'])[1 + (f.h / 5) % 2]
+                      when 'late' then (array['neutral', 'demanding'])[1 + (f.h / 5) % 2]
+                      when 'partial' then (array['cooperative', 'neutral'])[1 + (f.h / 5) % 2]
+                      else (array['demanding', 'difficult', 'neutral'])[1 + (f.h / 5) % 3] end,
+         occupation = (array['Shop owner', 'Government job', 'Private job', 'Farmer', 'Driver', 'Teacher', 'Business',
+                             'Daily wage worker', 'Doctor', 'Contractor'])[1 + (f.h / 7) % 10],
+         best_time_to_call = (array['After 7 pm', 'Morning before 9', 'Lunch time (1–2 pm)', 'Weekends only', null])[1 + (f.h / 11) % 5],
+         concerns = (array['Weak in English speaking', 'Maths marks are dropping', 'Wants more homework support',
+                           'School bus timing', 'Discipline in class', 'Board exam preparation', 'Handwriting and spelling',
+                           'Wants more sports and activities'])[1 + (f.h / 13) % 8],
+         priorities = (array['Good results', 'Spoken English and confidence', 'Safety and transport', 'Sports and activities',
+                             'Fee concession or easy installments', 'Personal attention from teachers'])[1 + (f.h / 17) % 6],
+         behaviour_notes = (array['Polite on calls, usually keeps their word.',
+                                  'Busy; prefers short calls and WhatsApp reminders.',
+                                  'Asks for more time every installment, but pays eventually.',
+                                  'Gets upset when reminded in front of others. Speak privately.',
+                                  'Mother handles fees; father rarely picks up.',
+                                  'Compares our fees with other schools; mentions concessions.'])[1 + (f.h / 19) % 6]
+    from fam f
+   where p.id = f.parent_id and f.h % 10 < 7;
+
   -- charges from structure, then transport + concessions
   insert into public.student_charges (student_id, session_id, installment_id, fee_head_id, amount, source)
   select e.student_id, e.session_id, fs.installment_id, fs.fee_head_id, fs.amount, 'structure'
@@ -230,6 +295,108 @@ begin
     from _seed_stu ss
    where ss.profile in ('defaulter', 'partial') and random() < 0.35;
 
+  -- fee recovery: an October call campaign. About a third of the families who pay late, in part or not at all
+  -- were called in the last three weeks; those who promised either paid (early, on the day, within the grace
+  -- day or only in part) or did not. A second campaign for old dues has no calls yet.
+  insert into public.recovery_campaigns (kind, name, description, start_date, target_amount, created_by, created_at)
+  values ('calls', 'October fee drive',
+          'Call every family behind on fees: no payment for two months, big dues, old dues or a broken promise.',
+          v_today - 21, 150000000, uid, (v_today - 21)::timestamp + interval '9 hours')
+  returning id into v_camp;
+  insert into public.recovery_campaigns (kind, name, description, start_date, silent_days, high_due, include_old_dues,
+                                         recall_days, created_by, created_at)
+  values ('calls', 'Old dues recovery', 'Families who still owe fees of earlier sessions.', v_today - 3, null, null, true,
+          10, uid, (v_today - 3)::timestamp + interval '9 hours');
+
+  create temp table _seed_calls on commit drop as
+  with fam as (
+    select distinct on (st.parent_id) st.parent_id, st.id as head_id, ss.profile, (hashtext(p.phone)::bigint + 2147483648) as h
+      from public.students st
+      join _seed_stu ss on ss.id = st.id
+      join public.parents p on p.id = st.parent_id
+     where st.status = 'active'
+       and exists (select 1 from public.enrollments e where e.student_id = st.id and e.session_id = s_cur)
+     order by st.parent_id, st.admission_no
+  ),
+  c as (
+    select fam.parent_id, fam.head_id, fam.h,
+           (v_today - 1 - ((fam.h / 7) % 20)::int) as call_date,
+           case when fam.h % 10 < 6 then 'connected' when fam.h % 10 in (6, 9) then 'no_answer'
+                when fam.h % 10 = 7 then 'busy' else 'switched_off' end as outcome,
+           case when (fam.h / 11) % 10 < 6 then 'will_pay' when (fam.h / 11) % 10 = 6 then 'needs_time'
+                when (fam.h / 11) % 10 = 7 then 'financial_issue' when (fam.h / 11) % 10 = 8 then 'complaint'
+                else 'call_later' end as resp
+      from fam
+     where fam.profile in ('defaulter', 'partial', 'late') and fam.h % 2 = 0
+  )
+  select c.parent_id, c.head_id, c.h, c.call_date, c.outcome,
+         case when c.outcome = 'connected' then (array['father', 'father', 'mother', 'guardian'])[1 + (c.h / 23) % 4] end as picked_by,
+         case when c.outcome = 'connected' then c.resp end as response,
+         case when c.outcome = 'no_answer' then 'Rang, no answer.'
+              when c.outcome = 'busy' then 'Cut the call; try in the evening.'
+              when c.outcome = 'switched_off' then 'Phone switched off.'
+              when c.resp = 'will_pay' then (array['Will pay after salary.', 'Said they will come to the office and pay.',
+                                                   'Promised to clear the overdue installment.', 'Will pay by UPI.'])[1 + (c.h / 29) % 4]
+              when c.resp = 'needs_time' then 'Asked for a few more weeks; crop money expected next month.'
+              when c.resp = 'financial_issue' then 'Lost job recently; asked about a concession.'
+              when c.resp = 'complaint' then 'Unhappy about the bus timing; wants to meet the principal before paying.'
+              else 'In a meeting; asked to call again next week.' end as summary,
+         case when c.outcome = 'connected' and c.resp = 'will_pay' then c.call_date + 2 + ((c.h / 13) % 8)::int end as promised_date,
+         case when c.outcome = 'connected' and c.resp = 'will_pay' and (c.h / 17) % 3 <> 0
+              then ((5000 + ((c.h / 19) % 6) * 2500) * 100)::bigint end as promised_amount,
+         case when c.outcome = 'connected' and c.resp = 'call_later' then c.call_date + 3 + ((c.h / 31) % 5)::int end as follow_up_on
+    from c;
+
+  insert into public.parent_calls (parent_id, campaign_id, call_date, called_at, outcome, picked_by, response, summary,
+                                   promised_date, promised_amount, follow_up_on, created_by)
+  select sc.parent_id, v_camp, sc.call_date,
+         (sc.call_date + time '10:00' + ((sc.h / 37) % 420) * interval '1 minute') at time zone 'Asia/Kolkata',
+         sc.outcome, sc.picked_by, sc.response, sc.summary, sc.promised_date, sc.promised_amount, sc.follow_up_on, uid
+    from _seed_calls sc;
+
+  -- promises kept (on or before the day, or the grace day after it), some kept only in part, the rest not kept
+  insert into _seed_pay
+  select sc.head_id,
+         case when (sc.h / 41) % 4 = 3 then sc.promised_date + 1 else greatest(sc.call_date, sc.promised_date - ((sc.h / 41) % 4)::int) end,
+         case when (sc.h / 43) % 5 = 2 then coalesce(sc.promised_amount, 500000) / 2 else coalesce(sc.promised_amount, 500000) end,
+         (array['cash', 'upi'])[1 + (sc.h / 47) % 2]::public.payment_mode
+    from _seed_calls sc
+   where sc.promised_date is not null and (sc.h / 43) % 5 < 3;
+
+  -- student activities used to recover fees
+  insert into public.recovery_campaigns (kind, name, description, start_date, target_amount, created_by, created_at)
+  values ('activity', 'English speaking club',
+          'Extra spoken-English practice three days a week for Class 6 and 7 students whose parents worry about it. '
+          || 'Parents were asked to clear pending fees so the school can run it.',
+          v_today - 25, 20000000, uid, (v_today - 25)::timestamp + interval '9 hours')
+  returning id into v_act1;
+  insert into public.recovery_campaigns (kind, name, description, start_date, end_date, created_by, created_at)
+  values ('activity', 'Class 8 science trip',
+          'A day trip to the science centre, open to Class 8 students whose fees are paid up to date.',
+          v_today - 12, v_today + 10, uid, (v_today - 12)::timestamp + interval '9 hours')
+  returning id into v_act2;
+
+  insert into public.recovery_participants (campaign_id, student_id, added_on, updated_by, updated_at)
+  select case when c.name = 'Class 8' then v_act2 else v_act1 end, e.student_id,
+         case when c.name = 'Class 8' then v_today - 12 else v_today - 25 end, uid,
+         (case when c.name = 'Class 8' then v_today - 12 else v_today - 25 end)::timestamp + interval '10 hours'
+    from public.enrollments e
+    join _seed_stu ss on ss.id = e.student_id
+    join public.classes c on c.id = e.class_id
+   where e.session_id = s_cur and c.name in ('Class 6', 'Class 7', 'Class 8')
+     and ss.profile in ('partial', 'defaulter', 'late');
+
+  -- about half of them paid after the activity started
+  insert into _seed_pay
+  select rp.student_id,
+         rc.start_date + 2 + ((hashtext(st.admission_no)::bigint + 2147483648) % 15)::int,
+         ((5000 + ((hashtext(st.admission_no || 'a')::bigint + 2147483648) % 5) * 2500) * 100)::bigint,
+         'cash'
+    from public.recovery_participants rp
+    join public.recovery_campaigns rc on rc.id = rp.campaign_id
+    join public.students st on st.id = rp.student_id
+   where (hashtext(st.admission_no)::bigint + 2147483648) % 2 = 0;
+
   delete from _seed_pay where paid_on > v_today or amount <= 0;
 
   insert into public.payments (receipt_no, student_id, session_id, paid_on, amount, mode, reference_no, source, created_at, created_by)
@@ -263,6 +430,27 @@ begin
             'Cancelled: ' || case when pr.mode = 'cheque' then 'cheque bounced' else 'entered against wrong student' end,
             'app', pr.id, least(pr.created_at + interval '2 days', now() - interval '1 minute'), '11111111-1111-1111-1111-111111111111');
   end loop;
+
+  -- the accountant credited most of those receipts to the activity; some parents said no
+  insert into public.recovery_credits (payment_id, participant_id, created_by, created_at)
+  select distinct on (rp.id) p.id, rp.id, uid, least(p.created_at + interval '1 hour', now() - interval '1 minute')
+    from public.recovery_participants rp
+    join public.recovery_campaigns rc on rc.id = rp.campaign_id
+    join public.payments p on p.student_id = rp.student_id and p.amount > 0 and p.paid_on >= rc.start_date
+   where not exists (select 1 from public.payments r where r.reverses_payment_id = p.id)
+     and (hashtext(p.receipt_no)::bigint + 2147483648) % 4 <> 0
+   order by rp.id, p.paid_on, p.created_at
+  on conflict (payment_id) do nothing;
+  update public.recovery_participants rp
+     set response = case when exists (select 1 from public.recovery_credits rc where rc.participant_id = rp.id) then 'positive'
+                         when (hashtext(st.admission_no || 'r')::bigint + 2147483648) % 3 = 0 then 'negative'
+                         else 'pending' end,
+         note = case when exists (select 1 from public.recovery_credits rc where rc.participant_id = rp.id) then null
+                     when (hashtext(st.admission_no || 'r')::bigint + 2147483648) % 3 = 0
+                       then (array['Parent says they will pay only after the half-yearly exams.',
+                                   'Not interested in the activity; will pay at year end.'])[1 + (hashtext(st.admission_no)::bigint + 2147483648) % 2] end
+    from public.students st
+   where st.id = rp.student_id;
 
   -- two students left mid-year: future installments waived
   update public.students set status = 'left', left_on = '2026-07-20'

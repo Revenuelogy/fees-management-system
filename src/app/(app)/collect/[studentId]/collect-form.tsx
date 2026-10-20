@@ -9,7 +9,7 @@ import type { ActionState } from "@/lib/action-state";
 import type { DueLine, PaymentMode } from "@/lib/types";
 import { fmtDate, parseRupees, pct, rupees, rupeesShort } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Field, FormError, Input, Textarea } from "@/components/ui/form";
+import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { StackedBar, Legend } from "@/components/ui/bars";
 import { KIND_LEGEND } from "@/components/ui/alloc";
@@ -53,6 +53,7 @@ export function CollectForm({
   order,
   sessions,
   recent,
+  activities = [],
 }: {
   studentId: string;
   dues: DueLine[];
@@ -61,6 +62,8 @@ export function CollectForm({
   order: "oldest_first" | "current_first";
   sessions: SessionLite[];
   recent: { id: string; receipt_no: string; paid_on: string; amount: number; cancelled: boolean }[];
+  /** running recovery activities the student takes part in (the payment can be counted for one) */
+  activities?: { participant_id: string; name: string }[];
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(collectPayment, {});
   const router = useRouter();
@@ -318,6 +321,18 @@ export function CollectForm({
             <Field label="Date" htmlFor="paid_on">
               <Input id="paid_on" name="paid_on" type="date" max={today} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required />
             </Field>
+            {activities.length > 0 && (
+              <Field label="Paid because of an activity?" htmlFor="credit_participant_id" hint="Counts this receipt for the fee recovery activity.">
+                <Select id="credit_participant_id" name="credit_participant_id" defaultValue="">
+                  <option value="">No</option>
+                  {activities.map((a) => (
+                    <option key={a.participant_id} value={a.participant_id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
             {showNote ? (
               <Field label="Remarks" htmlFor="remarks">
                 <Textarea id="remarks" name="remarks" rows={2} autoFocus />

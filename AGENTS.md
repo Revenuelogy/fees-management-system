@@ -41,12 +41,18 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
     cache. `audit()` writes an audit row.
   - `cache.ts` in-process cache: TTL `CACHE_TTL_SECONDS` (30 s), tags `data` / `staff`, in-flight de-duplication.
     Every data write invalidates every data read, so screens never show stale figures after a write.
-  - `services/*` one module per area (analytics, students, payments, setup, imports, admin, context, targets).
+  - `services/*` one module per area (analytics, students, payments, setup, imports, admin, context, targets, parents,
+    recovery).
   - `auth/` scrypt passwords (`password.mjs`, shared with `scripts/db.mjs`), DB-backed sessions in `app_sessions`
     (httpOnly cookie `fms_auth`), login rate limit.
 - `src/lib/` shared by both sides: `types.ts` (RPC and API shapes), `format.ts`, `roles.ts` (`isStaff / canWrite /
   isAdmin`), `context.ts` (`flag()` / `param()` for search params), `dates.ts`, `text.ts`, `import-columns.ts`,
-  `action-state.ts` (`ActionState`, `friendlyError()` used by the API).
+  `action-state.ts` (`ActionState`, `friendlyError()` used by the API), `recovery.ts` (fee recovery keys used by zod
+  and the screens, with their labels; `phoneDigits()` / `fmtPhone()`).
+- Fee recovery: families are `parents` keyed by phone (the `students_link_parent` trigger links students); calls,
+  promises, the call list (`call_queue`) and campaign / activity figures are SQL in `db/migrations/*_recovery.sql`.
+  Logging a call is open to all staff (`log_parent_call`); everything else needs a writer. Shared badges live in
+  `src/components/recovery.tsx`; the call form and call history in `src/app/(app)/parents/`.
 - `src/lib/api/` browser side: `useApi(url)` (SWR; pass `null` to wait), `api.get/post/put/patch/delete`, `apiUrl()`,
   `submit()` for form handlers, `refreshAll()`. A 401 sends the browser to `/login`, a missing role to `/no-access`.
 - In client views: `useApp()` gives `viewer`, `writer`, `admin`, `session` (picked in the top bar, cookie

@@ -14,6 +14,7 @@ export async function collectPayment(_prev: ActionState, formData: FormData): Pr
   const mode = String(formData.get("mode") ?? "cash") as PaymentMode;
   const reference = String(formData.get("reference_no") ?? "").trim();
   const remarks = String(formData.get("remarks") ?? "").trim();
+  const creditParticipant = String(formData.get("credit_participant_id") ?? "") || null;
   let targets: { charge_id: string; amount: number }[] = [];
   try {
     targets = JSON.parse(String(formData.get("targets") ?? "[]"));
@@ -41,6 +42,7 @@ export async function collectPayment(_prev: ActionState, formData: FormData): Pr
         reference_no: reference || null,
         remarks: remarks || null,
         targets,
+        credit_participant_id: creditParticipant,
       }),
     (r) => ({ ok: true, redirect: `/payments/${r.payment_id}?new=1` }),
   );

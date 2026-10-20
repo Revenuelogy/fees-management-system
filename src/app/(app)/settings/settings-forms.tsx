@@ -6,7 +6,7 @@ import type { SchoolSettings } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, FormSuccess, Input, Select, Textarea } from "@/components/ui/form";
-import { updateAllocationRule, updateSchoolProfile } from "./actions";
+import { updateAllocationRule, updatePromiseGrace, updateSchoolProfile } from "./actions";
 import { useFormAction } from "./use-form-action";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -122,6 +122,27 @@ export function AllocationRuleForm({ current }: { current: SchoolSettings["alloc
         <FormSuccess message={state.message} />
         <Button type="submit" variant={changed ? "primary" : "secondary"} disabled={pending || !changed}>
           {pending ? "Re-matching all payments…" : changed ? "Change rule and re-run allocation" : "No change"}
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+export function PromiseGraceForm({ current }: { current: number }) {
+  const [state, onSubmit, pending] = useFormAction(updatePromiseGrace);
+  return (
+    <Card
+      title="Payment promises"
+      description="When a parent promises to pay by a date, the promise counts as kept if the money arrives by then or within these extra days. Otherwise the family goes back on the call list the day after."
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <Field label="Grace days after the promised date" htmlFor="promise_grace_days" hint="Example with 1: promised for the 18th, paid on the 19th = kept; not paid by the 19th = called again on the 20th.">
+          <Input id="promise_grace_days" name="promise_grace_days" type="number" min={0} max={30} required defaultValue={current} className="w-28" />
+        </Field>
+        <FormError message={state.error} />
+        <FormSuccess message={state.message} />
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save"}
         </Button>
       </form>
     </Card>

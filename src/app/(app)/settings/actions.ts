@@ -47,3 +47,9 @@ export async function updateAllocationRule(_prev: ActionState, formData: FormDat
   if (rule !== "oldest_first" && rule !== "current_first") return { error: "Choose an allocation rule." };
   return submit(() => api.put<Result>("/api/settings/allocation-rule", { allocation_order: rule }), withMessage);
 }
+
+export async function updatePromiseGrace(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const days = Number(text(formData, "promise_grace_days"));
+  if (!Number.isInteger(days) || days < 0 || days > 30) return { error: "Enter 0 to 30 days." };
+  return submit(() => api.put<Result>("/api/settings/promise-grace", { promise_grace_days: days }), withMessage);
+}

@@ -4,7 +4,7 @@ import { useApi } from "@/lib/api/hooks";
 import { todayIST } from "@/lib/format";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
-import type { DueLine, Student360 } from "@/lib/types";
+import type { DueLine, Student360, StudentRecovery } from "@/lib/types";
 import { Breadcrumbs } from "@/components/ui/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { FeeStatusBadge } from "@/components/ui/status";
@@ -16,6 +16,8 @@ export function CollectStudent({ studentId }: { studentId: string }) {
   // no background refresh while the cashier is filling the form
   const s360 = useApi<Student360>(`/api/students/${studentId}/360`, { refreshInterval: 0, revalidateOnFocus: false });
   const duesRes = useApi<DueLine[]>(`/api/students/${studentId}/dues`, { refreshInterval: 0, revalidateOnFocus: false });
+  // optional: running recovery activities of the student (the form works without it)
+  const rec = useApi<StudentRecovery>(`/api/students/${studentId}/recovery`, { refreshInterval: 0, revalidateOnFocus: false });
   if (!s360.data || !duesRes.data) return <Pending queries={[s360, duesRes]} />;
   const d = s360.data;
   const dues = duesRes.data.filter((l) => l.remaining > 0);
@@ -46,6 +48,7 @@ export function CollectStudent({ studentId }: { studentId: string }) {
         order={settings?.allocation_order ?? "oldest_first"}
         sessions={sessions.map((s) => ({ id: s.id, start: s.start_date, end: s.end_date, name: s.name }))}
         recent={d.payments.filter((p) => !p.is_reversal).slice(0, 3).map((p) => ({ id: p.payment_id, receipt_no: p.receipt_no, paid_on: p.paid_on, amount: p.amount, cancelled: p.cancelled }))}
+        activities={(rec.data?.activities ?? []).filter((a) => a.status === "active").map((a) => ({ participant_id: a.participant_id, name: a.name }))}
       />
     </>
   );
