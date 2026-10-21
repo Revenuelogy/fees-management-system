@@ -6,7 +6,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'fees_api_test') then create role fees_api_test nologin; end if;
 end $$;
 select public.grant_app_access('fees_api_test');
-select plan(38);
+select plan(40);
 
 insert into public.app_users (id, email, password_hash)
 values ('55555555-5555-5555-5555-555555555555', 'pgtap-admin4@school.test', 'x'),
@@ -171,6 +171,11 @@ select throws_ok($$ select public.link_parents_by_phone() $$, '42501', null, 'li
 reset role;
 select is((select (public.campaign_detail((select id from fx where k = 'a1')) -> 'stats' ->> 'credited')::bigint), 40000::bigint,
   'the activity shows the credited amount');
+select is((select a ->> 'paid_during' || '/' || (a ->> 'credited') || '/' || (a ->> 'credited_receipts') || '/' || (a ->> 'participants')
+             from jsonb_array_elements(public.student_recovery((select id from fx where k = 'st3')) -> 'activities') a),
+  '40000/40000/1/2', 'the student profile shows what was paid since the activity started and what was counted for it');
+select is((select a ->> 'paid_during' from jsonb_array_elements(public.student_recovery((select id from fx where k = 'st4')) -> 'activities') a),
+  '0', 'a payment before the activity started does not count as paid during it');
 
 -- merging two profiles of one family -------------------------------------------------------
 select is(public.merge_parents((select id from fx where k = 'pD'), (select id from fx where k = 'pB')), 1, 'merge moves the children');

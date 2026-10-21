@@ -2,6 +2,7 @@ import "server-only";
 import type { z } from "zod";
 import type { Viewer } from "@/server/auth/session";
 import { audit, read, write } from "@/server/data";
+import type { Db } from "@/server/db";
 import { badRequest, notFound } from "@/server/http";
 import type { CampaignFields, ParticipantPatch, ParticipantsBody } from "@/server/schemas/recovery";
 import { orNotFound } from "@/server/services/analytics";
@@ -57,15 +58,18 @@ const SETTINGS = [
   "include_old_dues", "include_broken", "recall_days",
 ] as const;
 
-export async function createCampaign(viewer: Viewer, kind: CampaignKind, c: CampaignInput) {
+/** Create a campaign; an activity can start with `studentIds` taking part (all in one transaction). */
+export async function createCampaign(viewer: Viewer, kind: CampaignKind, c: CampaignInput, studentIds: string[] = []) {
   return write(viewer, async (db) => {
     const row = await db.one<{ id: string }>(
       `insert into public.recovery_campaigns (kind, ${SETTINGS.join(", ")})
        values ($1, ${SETTINGS.map((_, i) => `$${i + 2}`).join(", ")}) returning id`,
       [kind, ...SETTINGS.map((f) => c[f])],
     );
-    await audit(db, "create_campaign", "recovery_campaigns", row!.id, { kind, name: c.name });
-    return { id: row!.id };
+    const added = studentIds.length ? await addToActivity(db, row!.id, { studentIds }) : 0;
+    if (added < studentIds.length) throw notFound("That student does not exist.");
+    await audit(db, "create_campaign", "recovery_campaigns", row!.id, { kind, name: c.name, students: added });
+    return { id: row!.id, message: kind === "activity" ? `“${c.name}” created.` : `“${c.name}” started.` };
   });
 }
 
@@ -101,21 +105,28 @@ export async function deleteCampaign(viewer: Viewer, id: string) {
 // Activities: participants, responses and credited receipts
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * add_activity_participants() takes the students as uuid[]; db.rpc() sends JS arrays as jsonb, so this calls it
+ * with an explicit cast (pg sends a JS array as a Postgres array).
+ */
+async function addToActivity(
+  db: Db,
+  campaignId: string,
+  o: { studentIds: string[]; classId?: string | null; section?: string | null; onlyDues?: boolean },
+) {
+  const row = await db.one<{ n: number }>(
+    `select public.add_activity_participants(p_campaign => $1, p_students => $2::uuid[], p_class => $3, p_section => $4,
+                                             p_only_dues => $5) as n`,
+    [campaignId, o.studentIds.length ? o.studentIds : null, o.classId ?? null, o.section ?? null, o.onlyDues ?? false],
+  );
+  return Number(row?.n ?? 0);
+}
+
 export async function addParticipants(viewer: Viewer, campaignId: string, p: z.output<typeof ParticipantsBody>) {
-  const n = Number(
-    await orNotFound(
-      write(viewer, (db) =>
-        db.rpc<number>("add_activity_participants", {
-          p_campaign: campaignId,
-          p_students: p.student_ids.length ? p.student_ids : null,
-          p_class: p.class_id,
-          p_section: p.section,
-          p_only_dues: p.only_with_dues,
-        }),
-      ),
-      /^Campaign not found/,
-      "That activity does not exist.",
-    ),
+  const n = await orNotFound(
+    write(viewer, (db) => addToActivity(db, campaignId, { studentIds: p.student_ids, classId: p.class_id, section: p.section, onlyDues: p.only_with_dues })),
+    /^Campaign not found/,
+    "That activity does not exist.",
   );
   return {
     message: n === 0 ? "No new students: they are already in the activity (or none matched)." : `${n} ${n === 1 ? "student" : "students"} added.`,

@@ -92,7 +92,11 @@ export const CampaignFields = CampaignBase.refine(endAfterStart, END_BEFORE_STAR
 
 export const CampaignCreateBody = CampaignBase.extend({
   kind: z.enum(["calls", "activity"], { error: "Choose calls or an activity." }),
-}).refine(endAfterStart, END_BEFORE_START);
+  /** activity only: students taking part from the start (e.g. the student whose profile it was created from) */
+  student_ids: z.array(id("Unknown student.")).max(500).default([]),
+})
+  .refine(endAfterStart, END_BEFORE_START)
+  .refine((b) => b.kind === "activity" || b.student_ids.length === 0, "Students are added to activities, not to call campaigns.");
 
 export const ParticipantsBody = z
   .object({

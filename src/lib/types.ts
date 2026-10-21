@@ -1251,8 +1251,19 @@ export interface StudentRecovery {
     status: "active" | "closed";
     start_date: string;
     end_date: string | null;
+    target_amount: number | null;
+    /** students taking part (1 = an activity for this student alone) */
+    participants: number;
+    added_on: string;
     response: ParticipantResponse;
     note: string | null;
+    updated_at: string;
+    updated_by_name: string | null;
+    /** what the student paid from the start to the end (or today) */
+    paid_during: number;
+    /** receipts counted for the activity */
     credited: number;
+    credited_receipts: number;
   }[];
+  today: string;
 }

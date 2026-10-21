@@ -8,17 +8,17 @@ import { OUTCOME_LABELS, RESPONSE_LABELS, fmtPhone } from "@/lib/recovery";
 import type { StudentRecovery } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { BehaviourBadge, EconomicBadge, ParticipantBadge, PromiseLine } from "@/components/recovery";
+import { BehaviourBadge, EconomicBadge, PromiseLine } from "@/components/recovery";
 
-/** The student's family (parent profile, brothers and sisters, latest calls) and their recovery activities. */
+/** The student's family: parent profile, brothers and sisters, the latest calls and promise. (Activities: ActivitiesCard.) */
 export function FamilyCard({ studentId }: { studentId: string }) {
   const res = useApi<StudentRecovery>(`/api/students/${studentId}/recovery`);
   if (!res.data) return null;
-  const { parent, siblings, calls, promise, activities } = res.data;
+  const { parent, siblings, calls, promise } = res.data;
 
   return (
     <Card
-      title="Family & recovery"
+      title="Family"
       description="The parent profile is found by phone number; brothers and sisters with the same number share it."
       actions={
         parent ? (
@@ -82,18 +82,6 @@ export function FamilyCard({ studentId }: { studentId: string }) {
         </div>
       ) : (
         <p className="text-footnote text-muted">No family linked yet. Add the parent&rsquo;s phone number to the student to link one.</p>
-      )}
-      {activities.length > 0 && (
-        <ul className={parent ? "mt-3 space-y-2 border-t border-line pt-3" : "mt-3 space-y-2"}>
-          {activities.map((a) => (
-            <li key={a.participant_id} className="flex items-center justify-between gap-2 text-footnote">
-              <Link href={`/recovery/${a.campaign_id}`} className="min-w-0 truncate font-medium text-ink hover:text-accent">
-                {a.name}
-              </Link>
-              <ParticipantBadge response={a.response} />
-            </li>
-          ))}
-        </ul>
       )}
     </Card>
   );
