@@ -28,7 +28,9 @@ export const NAV: NavGroup[] = [
   {
     label: "Recovery",
     items: [
-      { href: "/recovery", label: "Calls & activities", icon: "PhoneCall", color: "orange" },
+      { href: "/recovery", label: "Recovery dashboard", icon: "TrendingUp", color: "green" },
+      { href: "/calls", label: "Calls", icon: "PhoneCall", color: "blue" },
+      { href: "/activities", label: "Activities", icon: "Sparkles", color: "teal" },
       { href: "/parents", label: "Parents", icon: "UsersRound", color: "indigo" },
     ],
   },

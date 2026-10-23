@@ -1,4 +1,4 @@
-// Form handler for starting a fee recovery activity for one student (API: POST /api/recovery/campaigns).
+// Form handler for starting a fee recovery activity for one student (API: POST /api/activities).
 
 import { api, submit } from "@/lib/api/client";
 import { parseRupees } from "@/lib/format";
@@ -21,8 +21,7 @@ export async function createStudentActivity(_prev: ActionState, formData: FormDa
 
   return submit(
     () =>
-      api.post<{ id: string; message: string }>("/api/recovery/campaigns", {
-        kind: "activity",
+      api.post<{ id: string; message: string }>("/api/activities", {
         name,
         description: text(formData, "description"),
         start_date: start,

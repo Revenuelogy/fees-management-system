@@ -4,7 +4,10 @@ import { useState } from "react";
 import { Ban, PhoneCall, PhoneMissed, PhoneOff, PhoneOutgoing } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { addDays } from "@/lib/dates";
-import { OUTCOMES, OUTCOME_LABELS, PICKED_BY, PICKED_BY_LABELS, RESPONSES, RESPONSE_LABELS, type CallOutcome } from "@/lib/recovery";
+import {
+  OUTCOMES, OUTCOME_LABELS, PICKED_BY, PICKED_BY_LABELS, PURPOSES, PURPOSE_LABELS, RESPONSES, RESPONSE_LABELS, type CallOutcome,
+  type CallPurpose,
+} from "@/lib/recovery";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, FormSuccess, Input, Select, Textarea } from "@/components/ui/form";
 import { useFormAction } from "../setup/_lib/use-form-action";
@@ -26,28 +29,34 @@ const SHORT: Record<CallOutcome, string> = {
   wrong_number: "Wrong number",
 };
 
+const SUMMARY_HINT: Record<CallPurpose, string> = {
+  fees: "Concern, reason for delay, mood of the call…",
+  performance: "What was shared about the child's studies or report…",
+  ptm: "Invited to the meeting; will they come?",
+  query: "What they asked, and the answer given…",
+  other: "What the call was about…",
+};
+
 /**
- * Log one call: did it get through, who picked up, what they said, the date (and amount) they promised, and when
- * to call again. With `nextHref`, "Save & next" opens the next family on the call list.
+ * Log one call: what it was about, did it get through, who picked up and what was said. On a fee call: what they
+ * said about paying and the date (and amount) they promised. With `nextHref`, "Save & next" opens the next family
+ * on the caller's list.
  */
 export function CallForm({
   parentId,
   today,
   graceDays,
-  campaignId,
-  campaigns = [],
   nextHref,
+  defaultPurpose = "fees",
 }: {
   parentId: string;
   today: string;
   graceDays: number;
-  /** log the call in this campaign (no campaign picker) */
-  campaignId?: string;
-  /** otherwise: active call campaigns to choose from */
-  campaigns?: { id: string; name: string }[];
   nextHref?: string | null;
+  defaultPurpose?: CallPurpose;
 }) {
   const { state, pending, onSubmit, formRef } = useFormAction(logCall, { resetOnSuccess: true });
+  const [purpose, setPurpose] = useState<CallPurpose>(defaultPurpose);
   const [outcome, setOutcome] = useState<CallOutcome>("connected");
   const [backDate, setBackDate] = useState(false);
   // after a saved call the form starts again (the inputs are reset by useFormAction)
@@ -56,17 +65,41 @@ export function CallForm({
     setHandled(state);
     if (state.ok) {
       setOutcome("connected");
+      setPurpose(defaultPurpose);
       setBackDate(false);
     }
   }
   const connected = outcome === "connected";
+  const fees = purpose === "fees";
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="@container space-y-4">
       <input type="hidden" name="parent_id" value={parentId} />
       <input type="hidden" name="outcome" value={outcome} />
-      {campaignId && <input type="hidden" name="campaign_id" value={campaignId} />}
+      <input type="hidden" name="purpose" value={purpose} />
       {nextHref && <input type="hidden" name="next_href" value={nextHref} />}
+
+      <div>
+        <p className="mb-2 text-footnote font-medium text-ink-2">What is the call about?</p>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="What the call is about">
+          {PURPOSES.map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="radio"
+              aria-checked={p === purpose}
+              title={PURPOSE_LABELS[p].label}
+              onClick={() => setPurpose(p)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-footnote font-semibold transition-colors",
+                p === purpose ? "bg-ink text-surface" : "bg-fill-2 text-ink-2 hover:bg-fill",
+              )}
+            >
+              {PURPOSE_LABELS[p].short}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div>
         <p className="mb-2 text-footnote font-medium text-ink-2">Did they pick up?</p>
@@ -110,53 +143,49 @@ export function CallForm({
               ))}
             </Select>
           </Field>
-          <Field label="What they said" htmlFor="response">
-            <Select id="response" name="response" defaultValue="will_pay">
-              {RESPONSES.map((r) => (
-                <option key={r} value={r}>
-                  {RESPONSE_LABELS[r]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field
-            label="Will pay by (tentative date)"
-            htmlFor="promised_date"
-            hint={graceDays > 0 ? `Paid within ${graceDays} ${graceDays === 1 ? "day" : "days"} after it still counts as kept.` : "Must be paid by this date to count as kept."}
-          >
-            <Input id="promised_date" name="promised_date" type="date" min={today} max={addDays(today, 180)} />
-          </Field>
-          <Field label="Amount promised (optional)" htmlFor="promised_amount" hint="Leave empty if they did not say.">
-            <Input id="promised_amount" name="promised_amount" inputMode="decimal" placeholder="₹" />
-          </Field>
+          {fees && (
+            <>
+              <Field label="What they said" htmlFor="response">
+                <Select id="response" name="response" defaultValue="will_pay">
+                  {RESPONSES.map((r) => (
+                    <option key={r} value={r}>
+                      {RESPONSE_LABELS[r]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Will pay by (tentative date)"
+                htmlFor="promised_date"
+                hint={
+                  graceDays > 0
+                    ? `If unpaid by this date and ${graceDays} more ${graceDays === 1 ? "day" : "days"}, the family is back on the call list.`
+                    : "If unpaid by this date, the family is back on the call list the next day."
+                }
+              >
+                <Input id="promised_date" name="promised_date" type="date" min={today} max={addDays(today, 180)} />
+              </Field>
+              <Field label="Amount promised (optional)" htmlFor="promised_amount" hint="Leave empty if they did not say.">
+                <Input id="promised_amount" name="promised_amount" inputMode="decimal" placeholder="₹" />
+              </Field>
+            </>
+          )}
         </div>
       )}
 
-      <Field label={connected ? "What did they say, in brief?" : "Note (optional)"} htmlFor="summary">
+      <Field label={connected ? "What was said, in brief?" : "Note (optional)"} htmlFor="summary">
         <Textarea
           id="summary"
           name="summary"
           rows={connected ? 3 : 2}
-          placeholder={connected ? "Concern, reason for delay, mood of the call…" : "e.g. Tried twice, will try in the evening"}
+          placeholder={connected ? SUMMARY_HINT[purpose] : "e.g. Tried twice, will try in the evening"}
         />
       </Field>
 
       <div className="grid gap-3 @md:grid-cols-2">
-        <Field label="Call again on (optional)" htmlFor="follow_up_on" hint="When they asked to be called back.">
+        <Field label="Call again on (optional)" htmlFor="follow_up_on" hint={fees ? "When they asked to be called back." : undefined}>
           <Input id="follow_up_on" name="follow_up_on" type="date" min={addDays(today, 1)} />
         </Field>
-        {!campaignId && campaigns.length > 0 && (
-          <Field label="Campaign" htmlFor="campaign_id">
-            <Select id="campaign_id" name="campaign_id" defaultValue={campaigns[0]?.id ?? ""}>
-              <option value="">No campaign</option>
-              {campaigns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        )}
         {backDate ? (
           <Field label="Date of the call" htmlFor="call_date">
             <Input id="call_date" name="call_date" type="date" max={today} min={addDays(today, -60)} defaultValue={today} />

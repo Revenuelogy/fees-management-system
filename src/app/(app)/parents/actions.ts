@@ -80,16 +80,18 @@ export async function linkByPhone(): Promise<ActionState> {
 }
 
 /**
- * Log a call. The "next" button (name=go, value=next) opens `next_href` afterwards (the next family on the
- * campaign's list).
+ * Log a call about anything. What they said about fees and a promise apply to fee calls that got through. The
+ * "next" button (name=go, value=next) opens `next_href` afterwards (the next family on the caller's list).
  */
 export async function logCall(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parentId = text(formData, "parent_id");
   const outcome = text(formData, "outcome");
+  const purpose = text(formData, "purpose") ?? "fees";
   const connected = outcome === "connected";
+  const feeTalk = connected && purpose === "fees";
   const callDate = text(formData, "call_date");
-  const promisedDate = connected ? text(formData, "promised_date") : null;
-  const amountRaw = connected ? text(formData, "promised_amount") : null;
+  const promisedDate = feeTalk ? text(formData, "promised_date") : null;
+  const amountRaw = feeTalk ? text(formData, "promised_amount") : null;
   const promisedAmount = amountRaw ? parseRupees(amountRaw) : null;
   const followUp = text(formData, "follow_up_on");
 
@@ -105,11 +107,11 @@ export async function logCall(_prev: ActionState, formData: FormData): Promise<A
   return submit(
     () =>
       api.post<Result>(`/api/parents/${parentId}/calls`, {
-        campaign_id: text(formData, "campaign_id"),
+        purpose,
         call_date: callDate,
         outcome,
         picked_by: connected ? text(formData, "picked_by") : null,
-        response: connected ? text(formData, "response") : null,
+        response: feeTalk ? text(formData, "response") : null,
         summary: text(formData, "summary"),
         promised_date: promisedDate,
         promised_amount: promisedAmount,

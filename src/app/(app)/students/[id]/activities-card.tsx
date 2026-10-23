@@ -7,7 +7,7 @@ import { useApi } from "@/lib/api/hooks";
 import { fmtDate, fmtDateTime, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
 import { PARTICIPANT_LABELS, PARTICIPANT_RESPONSES } from "@/lib/recovery";
 import type { ActionState } from "@/lib/action-state";
-import type { RecoveryCampaign, StudentRecovery } from "@/lib/types";
+import type { RecoveryActivity, StudentRecovery } from "@/lib/types";
 import { useApp } from "@/components/layout/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import { Meter } from "@/components/ui/bars";
 import { Empty } from "@/components/ui/empty";
 import { ParticipantBadge } from "@/components/recovery";
 import { useFormAction } from "../../setup/_lib/use-form-action";
-import { addStudentToActivity, saveResponse } from "../../recovery/actions";
+import { addStudentToActivity, saveResponse } from "../../activities/actions";
 import { createStudentActivity } from "./activity-actions";
 
 type Activity = StudentRecovery["activities"][number];
@@ -31,13 +31,13 @@ type Activity = StudentRecovery["activities"][number];
 export function ActivitiesCard({ studentId, studentName, overdue }: { studentId: string; studentName: string; overdue: number }) {
   const { writer } = useApp();
   const res = useApi<StudentRecovery>(`/api/students/${studentId}/recovery`);
-  const running = useApi<RecoveryCampaign[]>(writer ? "/api/recovery/campaigns?active=1" : null);
+  const running = useApi<RecoveryActivity[]>(writer ? "/api/activities?running=1" : null);
   const [mode, setMode] = useState<"list" | "new" | "join">("list");
   const [notice, setNotice] = useState<string | null>(null);
   if (!res.data) return null;
   const { activities, parent, today } = res.data;
   const first = studentName.split(" ")[0];
-  const joinable = (running.data ?? []).filter((c) => c.kind === "activity" && !activities.some((a) => a.campaign_id === c.id));
+  const joinable = (running.data ?? []).filter((c) => !activities.some((a) => a.activity_id === c.id));
   const done = (message?: string) => {
     setMode("list");
     setNotice(message ?? null);
@@ -109,7 +109,7 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
         <IconTile icon={Sparkles} color="indigo" size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/recovery/${a.campaign_id}`} className="text-subhead font-semibold text-ink hover:text-accent">
+            <Link href={`/activities/${a.activity_id}`} className="text-subhead font-semibold text-ink hover:text-accent">
               {a.name}
             </Link>
             <ParticipantBadge response={a.response} />
@@ -126,7 +126,7 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
 
       <dl className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-surface p-3 text-center sm:grid-cols-3">
         <div>
-          <dd className="text-headline font-semibold tabular text-ink">{rupeesShort(a.paid_during)}</dd>
+          <dd className="text-headline font-semibold tabular text-ink">{rupeesShort(a.paid_since)}</dd>
           <dt className="text-caption text-muted">paid since it started</dt>
         </div>
         <div>
@@ -146,6 +146,7 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
 
       {writer ? (
         <form onSubmit={onSubmit} className="mt-3 grid items-end gap-2 sm:grid-cols-[180px_1fr_auto]">
+          <input type="hidden" name="activity_id" value={a.activity_id} />
           <input type="hidden" name="participant_id" value={a.participant_id} />
           <Field label="Response" htmlFor={`sresp-${a.participant_id}`}>
             <Select id={`sresp-${a.participant_id}`} name="response" defaultValue={a.response}>
@@ -181,7 +182,7 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
             </>
           )}
         </span>
-        <Link href={`/recovery/${a.campaign_id}`} className="font-medium text-accent">
+        <Link href={`/activities/${a.activity_id}`} className="font-medium text-accent">
           {writer ? "Count receipts for it" : "Open activity"}
         </Link>
       </p>
@@ -256,15 +257,15 @@ function NewActivity({
   );
 }
 
-function JoinActivity({ studentId, options, onDone }: { studentId: string; options: RecoveryCampaign[]; onDone: (message?: string) => void }) {
-  const [campaignId, setCampaignId] = useState(options[0]?.id ?? "");
+function JoinActivity({ studentId, options, onDone }: { studentId: string; options: RecoveryActivity[]; onDone: (message?: string) => void }) {
+  const [activityId, setActivityId] = useState(options[0]?.id ?? "");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="mb-4 space-y-3 rounded-2xl border border-line p-4">
       <div className="grid items-end gap-2 sm:grid-cols-[1fr_auto_auto]">
         <Field label="Running activity" htmlFor="join_activity">
-          <Select id="join_activity" value={campaignId} onChange={(e) => setCampaignId(e.target.value)}>
+          <Select id="join_activity" value={activityId} onChange={(e) => setActivityId(e.target.value)}>
             {options.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -275,11 +276,11 @@ function JoinActivity({ studentId, options, onDone }: { studentId: string; optio
         <Button
           type="button"
           variant="primary"
-          disabled={pending || !campaignId}
+          disabled={pending || !activityId}
           onClick={() =>
             start(async () => {
               setError(null);
-              const r = await addStudentToActivity(campaignId, studentId);
+              const r = await addStudentToActivity(activityId, studentId);
               if (r.error) setError(r.error);
               else onDone(r.message);
             })

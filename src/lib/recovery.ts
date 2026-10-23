@@ -1,5 +1,5 @@
 // Fee recovery vocabulary shared by the API (validation) and the screens (labels). The keys match the CHECK
-// constraints in db/migrations/*_recovery.sql.
+// constraints and the call list / activity functions in db/migrations/*_recovery.sql and *_daily_calls.sql.
 
 export const RELATIONS = ["father", "mother", "guardian", "other"] as const;
 export const ECONOMIC = ["low", "lower_middle", "middle", "upper_middle", "high"] as const;
@@ -7,6 +7,7 @@ export const BEHAVIOURS = [
   "regular", "installment_wise", "year_end", "carries_forward", "willing_struggling", "capable_not_paying", "irregular", "non_payer",
 ] as const;
 export const ATTITUDES = ["cooperative", "neutral", "demanding", "difficult"] as const;
+export const PURPOSES = ["fees", "performance", "ptm", "query", "other"] as const;
 export const OUTCOMES = ["connected", "no_answer", "busy", "switched_off", "wrong_number"] as const;
 export const PICKED_BY = ["father", "mother", "guardian", "student", "other"] as const;
 export const RESPONSES = ["will_pay", "needs_time", "financial_issue", "complaint", "already_paid", "refused", "call_later", "other"] as const;
@@ -16,14 +17,17 @@ export type Relation = (typeof RELATIONS)[number];
 export type Economic = (typeof ECONOMIC)[number];
 export type Behaviour = (typeof BEHAVIOURS)[number];
 export type Attitude = (typeof ATTITUDES)[number];
+export type CallPurpose = (typeof PURPOSES)[number];
 export type CallOutcome = (typeof OUTCOMES)[number];
 export type PickedBy = (typeof PICKED_BY)[number];
 export type CallResponse = (typeof RESPONSES)[number];
 export type ParticipantResponse = (typeof PARTICIPANT_RESPONSES)[number];
 export type PromiseStatus = "kept" | "pending" | "partial" | "broken";
 export type PromiseTiming = "early" | "on_date" | "grace";
-export type QueueState = "due" | "promised" | "waiting" | "cleared" | "off_list";
-export type QueueReason = "broken_promise" | "partial_promise" | "call_back" | "high_dues" | "silent" | "old_dues" | "owes";
+export type CallState = "due" | "called" | "promised" | "paid_recently" | "waiting" | "cleared";
+export type CallReason =
+  | "broken_promise" | "partial_promise" | "call_back" | "high_dues" | "never_paid" | "silent" | "old_dues" | "overdue" | "not_reached";
+export type ActivityVerdict = "good" | "fair" | "poor" | "too_early" | "no_students";
 
 type Tone = "neutral" | "accent" | "good" | "warning" | "serious" | "critical";
 
@@ -53,6 +57,14 @@ export const ATTITUDE_LABELS: Record<Attitude, string> = {
   neutral: "Neutral",
   demanding: "Demanding",
   difficult: "Difficult — handle with care",
+};
+
+export const PURPOSE_LABELS: Record<CallPurpose, { label: string; short: string }> = {
+  fees: { label: "Fees / payment", short: "Fees" },
+  performance: { label: "Student's studies or report", short: "Studies" },
+  ptm: { label: "Parent-teacher meeting", short: "PTM" },
+  query: { label: "Parent's question", short: "Query" },
+  other: { label: "Something else", short: "Other" },
 };
 
 export const OUTCOME_LABELS: Record<CallOutcome, string> = {
@@ -95,22 +107,35 @@ export const TIMING_LABELS: Record<PromiseTiming, string> = {
   grace: "paid within the grace days",
 };
 
-export const REASON_LABELS: Record<QueueReason, { label: string; hint: string; tone: Tone }> = {
-  broken_promise: { label: "Broke a promise", hint: "Promised a date and paid nothing by it", tone: "critical" },
-  partial_promise: { label: "Paid part of a promise", hint: "Paid less than promised by the date", tone: "serious" },
-  call_back: { label: "Asked to call back", hint: "The date they asked for has come", tone: "accent" },
-  high_dues: { label: "Big dues", hint: "Owes more than the campaign's limit", tone: "serious" },
-  silent: { label: "Silent", hint: "Nothing paid for the campaign's number of days", tone: "warning" },
-  old_dues: { label: "Old dues", hint: "Owes fees of earlier sessions", tone: "serious" },
-  owes: { label: "Owes fees", hint: "The campaign calls everyone who owes", tone: "neutral" },
+/** Why a family is on today's call list (the first one is the main reason). */
+export const REASON_LABELS: Record<CallReason, { label: string; hint: string; tone: Tone }> = {
+  broken_promise: { label: "Broke a promise", hint: "Promised a date and paid nothing by it (and the grace days)", tone: "critical" },
+  partial_promise: { label: "Paid less than promised", hint: "Paid only part of the promised amount by the date", tone: "serious" },
+  call_back: { label: "Asked to call today", hint: "The date they asked to be called on has come", tone: "accent" },
+  high_dues: { label: "High dues", hint: "Owes more than the high-dues amount in the call list rules", tone: "serious" },
+  never_paid: { label: "Never paid", hint: "No payment on record", tone: "critical" },
+  silent: { label: "No payment for 2 months", hint: "Nothing paid for 60 days or more", tone: "warning" },
+  old_dues: { label: "Old dues", hint: "Owes fees of earlier years", tone: "serious" },
+  overdue: { label: "Fees overdue", hint: "Owes fees that have fallen due", tone: "neutral" },
+  not_reached: { label: "Not reached last time", hint: "The last call did not get through", tone: "neutral" },
 };
 
-export const QUEUE_STATES: Record<QueueState, { label: string; hint: string }> = {
-  due: { label: "To call", hint: "Call them now" },
-  promised: { label: "Promised", hint: "Waiting for the date they promised (plus the grace days)" },
-  waiting: { label: "Called recently", hint: "Called or paid recently; back on the list on the date shown" },
-  cleared: { label: "Cleared", hint: "Owes less than the campaign's minimum now" },
-  off_list: { label: "Off the list", hint: "Called before; no rule of the campaign holds any more" },
+/** Where a family with dues stands today. */
+export const CALL_STATES: Record<CallState, { label: string; hint: string }> = {
+  due: { label: "To call today", hint: "On today's list" },
+  called: { label: "Called today", hint: "A fee call was logged today" },
+  promised: { label: "Promised to pay", hint: "Waiting for the date they promised (plus the grace days)" },
+  paid_recently: { label: "Paid recently", hint: "Paid something recently, so not called" },
+  waiting: { label: "Called recently", hint: "Called a few days ago; back on the list on the date shown" },
+  cleared: { label: "No dues now", hint: "Owes less than the amount the call list starts at" },
+};
+
+export const VERDICT_LABELS: Record<ActivityVerdict, { label: string; hint: string; tone: Tone }> = {
+  good: { label: "Working well", hint: "Half or more of the students who owe paid because of it (or the target is reached)", tone: "good" },
+  fair: { label: "Some effect", hint: "A quarter to a half of the students who owe paid because of it", tone: "warning" },
+  poor: { label: "Not working", hint: "Fewer than a quarter of the students who owe paid because of it", tone: "critical" },
+  too_early: { label: "Too early to say", hint: "Less than a week old and nothing counted for it yet", tone: "neutral" },
+  no_students: { label: "No students yet", hint: "Add the students taking part", tone: "neutral" },
 };
 
 export const PARTICIPANT_LABELS: Record<ParticipantResponse, { label: string; tone: Tone }> = {

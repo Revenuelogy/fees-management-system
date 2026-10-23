@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Phone } from "lucide-react";
 import { useApi } from "@/lib/api/hooks";
 import { fmtDate } from "@/lib/format";
-import { OUTCOME_LABELS, RESPONSE_LABELS, fmtPhone } from "@/lib/recovery";
+import { OUTCOME_LABELS, PURPOSE_LABELS, RESPONSE_LABELS, fmtPhone } from "@/lib/recovery";
 import type { StudentRecovery } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -72,7 +72,8 @@ export function FamilyCard({ studentId }: { studentId: string }) {
               {calls.slice(0, 2).map((c) => (
                 <li key={c.id} className="text-footnote">
                   <span className="font-medium text-ink">
-                    {fmtDate(c.call_date)} · {c.response ? RESPONSE_LABELS[c.response] : OUTCOME_LABELS[c.outcome]}
+                    {fmtDate(c.call_date)} · {c.purpose !== "fees" && `${PURPOSE_LABELS[c.purpose].short} · `}
+                    {c.response ? RESPONSE_LABELS[c.response] : OUTCOME_LABELS[c.outcome]}
                   </span>
                   {c.summary && <span className="block text-ink-2">{c.summary}</span>}
                 </li>

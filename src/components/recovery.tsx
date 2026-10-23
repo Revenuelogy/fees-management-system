@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { fmtDate, rupees } from "@/lib/format";
 import {
   BEHAVIOUR_LABELS, ECONOMIC_LABELS, PARTICIPANT_LABELS, PROMISE_LABELS, REASON_LABELS, TIMING_LABELS,
-  type Behaviour, type Economic, type ParticipantResponse, type PromiseStatus, type PromiseTiming, type QueueReason,
+  type Behaviour, type Economic, type ParticipantResponse, type PromiseStatus, type PromiseTiming, type CallReason,
 } from "@/lib/recovery";
 
 // Small displays shared by the parent and recovery screens. Status always comes with an icon and a label.
@@ -62,7 +62,7 @@ export function EconomicBadge({ value }: { value: Economic | null | undefined })
   return <Badge title="Economic condition">{ECONOMIC_LABELS[value]}</Badge>;
 }
 
-export function ReasonBadges({ reasons }: { reasons: QueueReason[] }) {
+export function ReasonBadges({ reasons }: { reasons: CallReason[] }) {
   if (reasons.length === 0) return null;
   return (
     <span className="inline-flex flex-wrap gap-1">

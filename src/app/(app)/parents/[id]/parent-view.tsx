@@ -7,7 +7,7 @@ import { useApi } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
 import { MODE_LABELS, fmtDate, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
 import { ATTITUDE_LABELS, BEHAVIOUR_LABELS, ECONOMIC_LABELS, RELATION_LABELS, TIMING_LABELS, fmtPhone } from "@/lib/recovery";
-import type { Parent360, RecoveryCampaign } from "@/lib/types";
+import type { Parent360 } from "@/lib/types";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
 import { Breadcrumbs } from "@/components/ui/page-header";
@@ -35,7 +35,6 @@ const HABIT = {
 export function ParentView({ id }: { id: string }) {
   const { session, writer, viewer } = useApp();
   const res = useApi<Parent360>(apiUrl(`/api/parents/${id}`, { session: session?.id }));
-  const camps = useApi<RecoveryCampaign[]>("/api/recovery/campaigns?active=1");
   if (!res.data) return <Pending queries={[res]} />;
   const d = res.data;
   const p = d.parent;
@@ -43,7 +42,6 @@ export function ParentView({ id }: { id: string }) {
   const supposed = t ? t.expected + t.prev_opening : 0;
   const paid = t ? t.received + t.prev_recovered : 0;
   const lp = d.last_payment;
-  const callCampaigns = (camps.data ?? []).filter((c) => c.kind === "calls").map((c) => ({ id: c.id, name: c.name }));
   const r = d.reliability;
   const closed = r.made - r.pending;
   const others = d.children.filter((c) => !c.in_session);
@@ -252,8 +250,8 @@ export function ParentView({ id }: { id: string }) {
         </div>
 
         <div className="space-y-5">
-          <Card title="Log a call" description={`Logged by ${viewer.full_name || viewer.email}. Without a campaign the call still shows here and counts for promises.`}>
-            <CallForm parentId={id} today={d.today} graceDays={d.grace_days} campaigns={callCampaigns} />
+          <Card title="Log a call" description={`Logged by ${viewer.full_name || viewer.email}. A call about anything: fees, studies, a PTM or a parent's question.`}>
+            <CallForm parentId={id} today={d.today} graceDays={d.grace_days} />
           </Card>
 
           <Card title="Keeps promises?" description="Promises from calls and student notes. Kept = paid (the promised amount, if one was given) by the date plus the grace days.">
@@ -289,7 +287,7 @@ export function ParentView({ id }: { id: string }) {
                           {x.promised_amount ? rupees(x.promised_amount) : "Payment"} by {fmtDate(x.promised_date)}
                         </span>
                         <span className="block text-caption text-muted">
-                          {x.source === "note" ? `Note on ${x.student_name ?? "a child"}` : (x.campaign_name ?? "Call")} · made {fmtDate(x.made_on)}
+                          {x.source === "note" ? `Note on ${x.student_name ?? "a child"}` : "Call"} · made {fmtDate(x.made_on)}
                           {x.kept_on && x.timing && <> · {TIMING_LABELS[x.timing]}</>}
                           {x.status === "partial" && <> · {rupees(x.paid)} paid</>}
                         </span>
@@ -400,7 +398,7 @@ export function ParentView({ id }: { id: string }) {
                 {d.activities.map((a) => (
                   <li key={a.participant_id} className="rounded-2xl bg-fill-2 p-3.5 text-subhead">
                     <div className="flex items-start justify-between gap-2">
-                      <Link href={`/recovery/${a.campaign_id}`} className="font-medium text-ink hover:text-accent">
+                      <Link href={`/activities/${a.activity_id}`} className="font-medium text-ink hover:text-accent">
                         {a.name}
                       </Link>
                       <ParticipantBadge response={a.response} />

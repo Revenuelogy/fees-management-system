@@ -43,11 +43,25 @@ export async function receipt(viewer: Viewer, id: string) {
       [id],
     );
     if (!pay) return null;
-    const [student, reversal] = await Promise.all([
+    const [student, reversal, source] = await Promise.all([
       db.rpc<Student360>("student_360", { p_student: pay.student_id }),
       db.one<ReceiptData["reversal"]>("select id, receipt_no, paid_on, remarks from public.payments where reverses_payment_id = $1", [id]),
+      db.one<NonNullable<ReceiptData["source"]>>(
+        `select rc.call_id, rc.participant_id,
+                case when rc.call_id is not null
+                     then 'Call on ' || to_char(c.call_date, 'FMDD Mon YYYY') || coalesce(' by ' || coalesce(nullif(pf.full_name, ''), pf.email), '')
+                     else 'Activity: ' || a.name end as label,
+                case when rc.call_id is not null then '/parents/' || c.parent_id else '/activities/' || a.id end as href
+           from public.recovery_credits rc
+           left join public.parent_calls c on c.id = rc.call_id
+           left join public.profiles pf on pf.id = c.created_by
+           left join public.recovery_participants rp on rp.id = rc.participant_id
+           left join public.recovery_activities a on a.id = rp.activity_id
+          where rc.payment_id = $1`,
+        [id],
+      ),
     ]);
-    return { payment: pay, student, reversal };
+    return { payment: pay, student, reversal, source };
   });
   if (!data) throw notFound("That receipt does not exist.");
   return data;
@@ -62,11 +76,12 @@ export type CollectInput = {
   remarks: string | null;
   /** what the payment should pay for, chosen at the counter (paise per charge) */
   targets: { charge_id: string; amount: number }[];
-  /** the recovery activity this payment came from (a participation of the student), if any */
+  /** what brought the payment in: a call to the family or an activity of the student (a participation), if any */
+  credit_call_id: string | null;
   credit_participant_id: string | null;
 };
 
-/** Record a payment (collect_payment allocates it and numbers the receipt), credited to an activity when chosen. */
+/** Record a payment (collect_payment allocates it and numbers the receipt), counted for a call or an activity when chosen. */
 export function collect(viewer: Viewer, input: CollectInput) {
   return orNotFound(
     write(viewer, async (db) => {
@@ -79,13 +94,13 @@ export function collect(viewer: Viewer, input: CollectInput) {
         p_remarks: input.remarks,
         p_targets: input.targets,
       });
-      if (input.credit_participant_id) {
-        await db.rpc("credit_recovery_payment", { p_participant: input.credit_participant_id, p_payment: r.payment_id });
+      if (input.credit_call_id || input.credit_participant_id) {
+        await db.rpc("set_payment_source", { p_payment: r.payment_id, p_call: input.credit_call_id, p_participant: input.credit_participant_id });
       }
       return r;
     }),
-    /^(Student|Participant) not found/,
-    "That student or activity does not exist.",
+    /^(Student|Call|Participant) not found/,
+    "That student, call or activity does not exist.",
   );
 }
 

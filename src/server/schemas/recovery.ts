@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
-import { ATTITUDES, BEHAVIOURS, ECONOMIC, OUTCOMES, PARTICIPANT_RESPONSES, PICKED_BY, RELATIONS, RESPONSES, phoneDigits } from "@/lib/recovery";
+import {
+  ATTITUDES, BEHAVIOURS, ECONOMIC, OUTCOMES, PARTICIPANT_RESPONSES, PICKED_BY, PURPOSES, RELATIONS, RESPONSES, phoneDigits,
+} from "@/lib/recovery";
 import { EMAIL_RE, id, isoDate, optionalDate, optionalText, paise, requiredText } from "@/server/validate";
 
 const PHONE = "Enter a phone number with 6 to 15 digits.";
@@ -47,9 +49,7 @@ export const ParentUpdateBody = ParentFields.extend({
 
 export const CallBody = z
   .object({
-    campaign_id: id("Unknown campaign.")
-      .nullish()
-      .transform((v) => v ?? null),
+    purpose: z.enum(PURPOSES, { error: "Choose what the call was about." }).default("fees"),
     call_date: optionalDate("Enter the date of the call."),
     outcome: z.enum(OUTCOMES, { error: "Choose whether the call got through." }),
     picked_by: choice(PICKED_BY, "Choose who picked up."),
@@ -62,11 +62,10 @@ export const CallBody = z
       .transform((v) => v ?? null),
     follow_up_on: optionalDate("The next call date is not a valid date."),
   })
-  .refine((b) => b.promised_amount === null || b.promised_date !== null, "Enter the date they promised to pay by.");
+  .refine((b) => b.promised_amount === null || b.promised_date !== null, "Enter the date they promised to pay by.")
+  .refine((b) => b.purpose === "fees" || (b.response === null && b.promised_date === null), "A promise to pay is recorded on fee calls.");
 
-const days = (message: string, max: number) => z.number({ error: message }).int(message).min(1, message).max(max, message);
-
-const CampaignBase = z.object({
+const ActivityBase = z.object({
   name: requiredText("Give it a name.", 200),
   description: optionalText(2000),
   start_date: isoDate("Enter the start date."),
@@ -76,27 +75,17 @@ const CampaignBase = z.object({
     .positive("The target is not a valid rupee amount.")
     .nullish()
     .transform((v) => v ?? null),
-  class_ids: z.array(id("Choose a valid class.")).max(100).default([]),
-  min_due: paise("The minimum due is not a valid rupee amount.").positive("The minimum due must be more than ₹0.").default(100),
-  silent_days: days("Days without payment must be between 1 and 730.", 730).nullable().default(60),
-  high_due: paise("The big-dues limit is not a valid rupee amount.").positive("The big-dues limit must be more than ₹0.").nullable().default(2000000),
-  include_old_dues: z.boolean().default(true),
-  include_broken: z.boolean().default(true),
-  recall_days: days("Days between calls must be between 1 and 90.", 90).default(7),
 });
 
 const endAfterStart = (b: { start_date: string; end_date: string | null }) => b.end_date === null || b.end_date >= b.start_date;
 const END_BEFORE_START = "The end date cannot be before the start date.";
 
-export const CampaignFields = CampaignBase.refine(endAfterStart, END_BEFORE_START);
+export const ActivityFields = ActivityBase.refine(endAfterStart, END_BEFORE_START);
 
-export const CampaignCreateBody = CampaignBase.extend({
-  kind: z.enum(["calls", "activity"], { error: "Choose calls or an activity." }),
-  /** activity only: students taking part from the start (e.g. the student whose profile it was created from) */
+export const ActivityCreateBody = ActivityBase.extend({
+  /** students taking part from the start (e.g. the student whose profile it was created from) */
   student_ids: z.array(id("Unknown student.")).max(500).default([]),
-})
-  .refine(endAfterStart, END_BEFORE_START)
-  .refine((b) => b.kind === "activity" || b.student_ids.length === 0, "Students are added to activities, not to call campaigns.");
+}).refine(endAfterStart, END_BEFORE_START);
 
 export const ParticipantsBody = z
   .object({
@@ -113,3 +102,39 @@ export const ParticipantPatch = z.object({
   response: z.enum(PARTICIPANT_RESPONSES, { error: "Choose a response." }),
   note: optionalText(1000),
 });
+
+/** Take families from today's call list: the next `count` (default: the school's batch size), or one family. */
+export const TakeCallsBody = z.object({
+  count: z.number({ error: "Choose how many families." }).int().min(1, "Take at least one family.").max(100, "Take at most 100 families at a time.").nullish(),
+  parent_id: id("Unknown family.").nullish(),
+});
+
+/** Give back one family (or, without parent_id, every family of mine not called yet). */
+export const ReleaseCallsBody = z.object({ parent_id: id("Unknown family.").nullish() });
+
+/** What brought a receipt in: a call, an activity (participation), or nothing (both null). */
+export const PaymentSourceBody = z
+  .object({
+    call_id: id("Unknown call.")
+      .nullish()
+      .transform((v) => v ?? null),
+    participant_id: id("Unknown activity.")
+      .nullish()
+      .transform((v) => v ?? null),
+  })
+  .refine((b) => b.call_id === null || b.participant_id === null, "Choose a call or an activity, not both.");
+
+const whole = (message: string, min: number, max: number) => z.number({ error: message }).int(message).min(min, message).max(max, message);
+
+export const CallRulesBody = z.object({
+  min_overdue: paise("Enter the smallest overdue amount to call about.").positive("The smallest overdue amount must be more than ₹0."),
+  skip_paid_days: whole("Days after a payment must be between 0 and 180.", 0, 180),
+  gap_days: whole("Days between calls must be between 1 and 60.", 1, 60),
+  high_due: paise("Enter the high-dues amount.").positive("The high-dues amount must be more than ₹0."),
+  batch: whole("Families per batch must be between 1 and 100.", 1, 100),
+  grace_days: whole("Grace days must be between 0 and 30.", 0, 30),
+});
+
+export const PeriodQuery = z
+  .object({ from: isoDate("Choose the first day."), to: isoDate("Choose the last day.") })
+  .refine((q) => q.from <= q.to, "The first day must not be after the last day.");

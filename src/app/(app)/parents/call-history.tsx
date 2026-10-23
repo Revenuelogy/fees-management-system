@@ -3,8 +3,8 @@
 import { useTransition } from "react";
 import { Ban, PhoneCall, PhoneMissed, PhoneOff, PhoneOutgoing, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { fmtDate, fmtTime } from "@/lib/format";
-import { OUTCOME_LABELS, PICKED_BY_LABELS, RESPONSE_LABELS, type CallOutcome } from "@/lib/recovery";
+import { fmtDate, fmtTime, rupees } from "@/lib/format";
+import { OUTCOME_LABELS, PICKED_BY_LABELS, PURPOSE_LABELS, RESPONSE_LABELS, type CallOutcome } from "@/lib/recovery";
 import type { ParentCall } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Empty } from "@/components/ui/empty";
@@ -19,7 +19,7 @@ const ICON: Record<CallOutcome, React.ElementType> = {
   wrong_number: Ban,
 };
 
-/** Every call to the family, newest first: who picked up, what they said and how the promise turned out. */
+/** Every call to the family, newest first: what it was about, who picked up, what they said and how the promise turned out. */
 export function CallHistory({ parentId, calls, canDelete, limit }: { parentId: string; calls: ParentCall[]; canDelete: boolean; limit?: number }) {
   if (calls.length === 0) return <Empty title="No calls yet" icon={PhoneCall}>Calls logged for this family show here with what was said.</Empty>;
   const shown = limit ? calls.slice(0, limit) : calls;
@@ -49,11 +49,14 @@ export function CallHistory({ parentId, calls, canDelete, limit }: { parentId: s
                   {canDelete && <DeleteCallButton parentId={parentId} callId={c.id} />}
                 </span>
               </div>
-              {c.response && (
-                <div className="mt-1">
-                  <Badge tone={c.response === "will_pay" ? "accent" : c.response === "refused" || c.response === "complaint" ? "critical" : "neutral"}>
-                    {RESPONSE_LABELS[c.response]}
-                  </Badge>
+              {(c.response || c.purpose !== "fees") && (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {c.purpose !== "fees" && <Badge tone="neutral">{PURPOSE_LABELS[c.purpose].label}</Badge>}
+                  {c.response && (
+                    <Badge tone={c.response === "will_pay" ? "accent" : c.response === "refused" || c.response === "complaint" ? "critical" : "neutral"}>
+                      {RESPONSE_LABELS[c.response]}
+                    </Badge>
+                  )}
                 </div>
               )}
               {c.summary && <p className="mt-1.5 whitespace-pre-wrap text-subhead text-ink">{c.summary}</p>}
@@ -69,9 +72,9 @@ export function CallHistory({ parentId, calls, canDelete, limit }: { parentId: s
                 </p>
               )}
               {c.follow_up_on && <p className="mt-1 text-footnote text-accent">Call again on {fmtDate(c.follow_up_on)}</p>}
+              {c.recovered > 0 && <p className="mt-1 text-footnote font-medium text-good-ink">{rupees(c.recovered)} paid because of this call</p>}
               <p className="mt-1 text-caption text-muted">
                 {c.author ?? "Staff"} · {fmtTime(c.called_at)}
-                {c.campaign_name && <> · {c.campaign_name}</>}
               </p>
             </div>
           </li>

@@ -161,7 +161,7 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
           label="Promises open"
           value={num(promised.length)}
           sub={promised.length > 0 ? <>{rupeesShort(sum(promised, (p) => p.promise_amount ?? 0))} promised</> : "No open promise"}
-          href="/recovery"
+          href="/calls"
         />
       </div>
 

@@ -1,8 +1,8 @@
 // Shapes returned by the API and the database RPCs behind it (db/migrations). Money is integer paise.
 
 import type {
-  Attitude, Behaviour, CallOutcome, CallResponse, Economic, ParticipantResponse, PickedBy, PromiseStatus, PromiseTiming,
-  QueueReason, QueueState, Relation,
+  ActivityVerdict, Attitude, Behaviour, CallOutcome, CallPurpose, CallReason, CallResponse, CallState, Economic,
+  ParticipantResponse, PickedBy, PromiseStatus, PromiseTiming, Relation,
 } from "@/lib/recovery";
 
 export type AppRole = "admin" | "accountant" | "principal" | "teacher";
@@ -71,6 +71,16 @@ export interface SchoolSettings {
   session_start_month: number;
   /** a promise counts as kept when paid within this many days after the promised date */
   promise_grace_days: number;
+  /** call list rules: families owing at least this much (paise) are called */
+  call_min_overdue: number;
+  /** families who paid in this many days are not called */
+  call_skip_paid_days: number;
+  /** days to wait after a call that got through */
+  call_gap_days: number;
+  /** "high dues" from this amount (paise) */
+  call_high_due: number;
+  /** families a caller takes at a time */
+  call_batch: number;
 }
 
 export interface Student {
@@ -653,6 +663,8 @@ export interface ReceiptData {
   student: Student360;
   /** the entry that cancelled this receipt, if any */
   reversal: { id: string; receipt_no: string; paid_on: string; remarks: string | null } | null;
+  /** the call or activity the receipt is counted for (fee recovery), if any */
+  source: { call_id: string | null; participant_id: string | null; label: string; href: string } | null;
 }
 
 /** GET /api/analytics/reconciliation */
@@ -755,7 +767,7 @@ export interface AuditRow {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Fee recovery: parents (families), calls and promises, campaigns and activities
+// Fee recovery: parents (families), calls and promises, the daily call list, activities and the dashboard
 // ---------------------------------------------------------------------------------------------
 
 export interface Parent {
@@ -845,10 +857,11 @@ export interface ParentCall {
   promised_date: string | null;
   promised_amount: number | null;
   follow_up_on: string | null;
-  campaign_id: string | null;
-  campaign_name: string | null;
+  purpose: CallPurpose;
   author: string | null;
   promise: PromiseResult | null;
+  /** receipts counted at the counter as paid because of this call */
+  recovered: number;
 }
 
 /** A promise from a call or a student note, and how it turned out. */
@@ -857,7 +870,6 @@ export interface FamilyPromise {
   source_id: string;
   student_id: string | null;
   student_name: string | null;
-  campaign_name: string | null;
   made_on: string;
   promised_date: string;
   promised_amount: number | null;
@@ -972,7 +984,7 @@ export interface Parent360 {
   sessions: { session_id: string; session_name: string; is_current: boolean; net: number; paid: number; remaining: number }[];
   activities: {
     participant_id: string;
-    campaign_id: string;
+    activity_id: string;
     name: string;
     status: "active" | "closed";
     start_date: string;
@@ -985,73 +997,76 @@ export interface Parent360 {
   }[];
 }
 
-export type CampaignKind = "calls" | "activity";
+// ---------------------------------------------------------------------------------------------
+// The daily call list (GET /api/calls)
+// ---------------------------------------------------------------------------------------------
 
-export interface RecoveryCampaign {
-  id: string;
-  kind: CampaignKind;
-  name: string;
-  description: string | null;
-  start_date: string;
-  end_date: string | null;
-  status: "active" | "closed";
-  target_amount: number | null;
-  class_ids: string[];
-  min_due: number;
-  silent_days: number | null;
-  high_due: number | null;
-  include_old_dues: boolean;
-  include_broken: boolean;
-  recall_days: number;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
+export interface CallListChild {
+  student_id: string;
+  full_name: string;
+  class_name: string | null;
+  section: string | null;
+  total_overdue: number;
 }
 
-export type CampaignInfo = RecoveryCampaign & { created_by_name: string | null; classes: { id: string; name: string }[] };
-
-/** A family on a call campaign's list. */
-export interface CallQueueRow {
+/** A family on today's call list (to call, called today, or taken by a caller today). */
+export interface CallListRow {
   parent_id: string;
   name: string;
   phone: string;
   alt_phone: string | null;
   relation: Relation;
+  best_time_to_call: string | null;
   economic_status: Economic | null;
   payment_behaviour: Behaviour | null;
-  attitude: Attitude | null;
-  best_time_to_call: string | null;
-  state: QueueState;
-  next_call_on: string | null;
+  state: CallState;
+  /** place on today's list (families to call only) */
+  rank: number | null;
   priority: number;
-  reasons: QueueReason[];
+  /** why the family is on the list; the first is the main reason */
+  reasons: CallReason[];
+  next_call_on: string | null;
   total_overdue: number;
-  total_pending: number;
   prev_pending: number;
   last_paid_on: string | null;
+  last_paid_amount: number | null;
   days_since_payment: number | null;
-  children: { student_id: string; full_name: string; class_name: string | null; section: string | null; total_overdue: number }[];
-  calls: number;
-  first_call_on: string | null;
+  children: CallListChild[];
   last_call_on: string | null;
   last_outcome: CallOutcome | null;
   last_response: CallResponse | null;
   last_summary: string | null;
-  follow_up_on: string | null;
+  last_caller_name: string | null;
+  /** fee calls in a row that did not get through */
+  unanswered: number;
   promise_date: string | null;
   promise_amount: number | null;
   promise_status: PromiseStatus | null;
   promise_deadline: string | null;
   promise_paid: number | null;
+  assigned_to: string | null;
+  assigned_name: string | null;
+  /** the fee call logged today */
+  today_call: null | {
+    id: string;
+    outcome: CallOutcome;
+    response: CallResponse | null;
+    promised_date: string | null;
+    promised_amount: number | null;
+    follow_up_on: string | null;
+    called_at: string;
+    caller_id: string | null;
+    caller_name: string | null;
+  };
 }
 
-export interface CampaignCall {
+/** A call made today (about anything). */
+export interface TodayCall {
   id: string;
   parent_id: string;
   parent_name: string;
   phone: string;
-  call_date: string;
-  called_at: string;
+  purpose: CallPurpose;
   outcome: CallOutcome;
   picked_by: PickedBy | null;
   response: CallResponse | null;
@@ -1059,53 +1074,256 @@ export interface CampaignCall {
   promised_date: string | null;
   promised_amount: number | null;
   follow_up_on: string | null;
-  author: string | null;
-  promise_status: PromiseStatus | null;
-  promise_timing: PromiseTiming | null;
+  called_at: string;
+  caller_id: string | null;
+  caller_name: string | null;
 }
 
-export interface CallCampaignStats {
+/** One caller's calls in a window (today, yesterday, last 7 or 30 days). */
+export interface CallerWindow {
   calls: number;
-  parents_called: number;
+  families: number;
+  fee_calls: number;
   connected: number;
-  calls_today: number;
+  not_reached: number;
   promises: number;
   promised_amount: number;
   kept: number;
-  kept_early: number;
-  kept_on_date: number;
-  kept_grace: number;
-  partial: number;
   broken: number;
-  pending: number;
-  promise_paid: number;
-  /** money the called families paid from their first call in the campaign to its end (or today) */
+  by_purpose: Partial<Record<CallPurpose, number>>;
+  /** receipts paid in the window that were counted for the caller's calls */
   recovered: number;
-  families_paid: number;
-  due: number;
-  due_overdue: number;
-  promised: number;
-  waiting: number;
-  cleared: number;
-  off_list: number;
 }
 
-interface CampaignDetailBase {
-  today: string;
-  session: { id: string; name: string } | null;
+export interface CallRules {
+  min_overdue: number;
+  skip_paid_days: number;
+  gap_days: number;
+  high_due: number;
+  batch: number;
   grace_days: number;
 }
 
-/** GET /api/recovery/campaigns/[id] for a call campaign */
-export interface CallCampaignDetail extends CampaignDetailBase {
-  kind: "calls";
-  campaign: CampaignInfo;
-  stats: CallCampaignStats;
-  rows: CallQueueRow[];
-  by_outcome: Partial<Record<CallOutcome, number>>;
-  by_response: Partial<Record<CallResponse, number>>;
-  by_staff: { name: string; calls: number; connected: number; promises: number }[];
-  recent_calls: CampaignCall[];
+export interface CallBoard {
+  today: string;
+  me: {
+    id: string;
+    name: string | null;
+    /** families I took from today's list */
+    taken: number;
+    /** of them, still to call */
+    left: number;
+    stats: Record<"today" | "yesterday" | "week" | "month", CallerWindow>;
+  };
+  rules: CallRules;
+  counts: {
+    due: number;
+    /** to call and not taken by anyone yet */
+    due_open: number;
+    due_overdue: number;
+    called: number;
+    promised: number;
+    promised_amount: number;
+    paid_recently: number;
+    waiting: number;
+    broken: number;
+    call_back: number;
+  };
+  rows: CallListRow[];
+  promises_due: {
+    parent_id: string;
+    name: string;
+    phone: string;
+    promise_date: string;
+    promise_amount: number | null;
+    promise_deadline: string;
+    promise_paid: number | null;
+    total_overdue: number;
+  }[];
+  calls_today: TodayCall[];
+  team: { user_id: string; name: string; is_me: boolean; calls: number; connected: number; promises: number; taken: number; left: number }[];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Recovery dashboard (GET /api/recovery?from&to)
+// ---------------------------------------------------------------------------------------------
+
+export type RecoverySource = "calls" | "activities" | "direct";
+
+export interface RecoveryDashboard {
+  period: { from: string; to: string; days: number; prev_from: string; prev_to: string; bucket: "day" | "week" | "month"; today: string };
+  money: {
+    received: number;
+    receipts: number;
+    families: number;
+    students: number;
+    /** the same number of days just before */
+    prev_received: number;
+    by_source: Record<RecoverySource, { amount: number; receipts: number; families: number }>;
+    by_kind: Partial<Record<AllocationKind, number>>;
+    trend: { start: string; calls: number; activities: number; direct: number; receipts: number }[];
+    by_behaviour: { behaviour: Behaviour | null; amount: number; families: number }[];
+  };
+  calls: {
+    calls: number;
+    families: number;
+    fee_calls: number;
+    connected: number;
+    not_reached: number;
+    callers: number;
+    per_day: number;
+    by_purpose: Partial<Record<CallPurpose, number>>;
+    by_outcome: Partial<Record<CallOutcome, number>>;
+    by_response: Partial<Record<CallResponse, number>>;
+    promises: number;
+    promised_amount: number;
+    kept: number;
+    kept_on_time: number;
+    partial: number;
+    broken: number;
+    pending: number;
+    promise_paid: number;
+    /** receipts of the period counted for a call */
+    recovered: number;
+    trend: { start: string; calls: number; connected: number }[];
+    by_caller: {
+      user_id: string;
+      name: string;
+      calls: number;
+      families: number;
+      connected: number;
+      promises: number;
+      kept: number;
+      broken: number;
+      recovered: number;
+    }[];
+  };
+  /** families we spoke to about fees vs other families with dues */
+  impact: {
+    spoke: number;
+    spoke_paid: number;
+    spoke_amount: number;
+    spoke_pct: number | null;
+    others: number;
+    others_paid: number;
+    others_amount: number;
+    others_pct: number | null;
+    /** how many times as likely to pay after we spoke to them */
+    lift: number | null;
+  };
+  activities: {
+    id: string;
+    name: string;
+    status: "active" | "closed";
+    start_date: string;
+    end_date: string | null;
+    participants: number;
+    recovered: number;
+    receipts: number;
+    students_paid: number;
+  }[];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Student activities
+// ---------------------------------------------------------------------------------------------
+
+export interface RecoveryActivity {
+  id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string | null;
+  status: "active" | "closed";
+  target_amount: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** An activity with how it is doing (GET /api/activities). */
+export interface ActivitySummary {
+  id: string;
+  name: string;
+  description: string | null;
+  status: "active" | "closed";
+  start_date: string;
+  end_date: string | null;
+  target_amount: number | null;
+  created_at: string;
+  created_by_name: string | null;
+  days_running: number;
+  participants: number;
+  classes: string[];
+  positive: number;
+  partial: number;
+  negative: number;
+  pending: number;
+  /** students who paid anything since it started */
+  payers: number;
+  /** students with a receipt counted for it */
+  won: number;
+  /** students who owed (paid since the start, or owe now) */
+  owed: number;
+  owing_now: number;
+  won_pct: number | null;
+  paid_since: number;
+  credited: number;
+  credited_receipts: number;
+  overdue_now: number;
+  verdict: ActivityVerdict;
+}
+
+export interface ActivityStudentRow {
+  participant_id: string;
+  activity_id: string;
+  activity_name: string;
+  activity_status: "active" | "closed";
+  student_id: string;
+  full_name: string;
+  admission_no: string;
+  class_id: string | null;
+  class_name: string | null;
+  section: string | null;
+  response: ParticipantResponse;
+  note: string | null;
+  added_on: string;
+  paid_since: number;
+  credited: number;
+  total_overdue: number;
+  fee_status: FeeStatus | null;
+}
+
+export interface ActivitiesOverview {
+  today: string;
+  activities: ActivitySummary[];
+  /** running activities by class */
+  by_class: {
+    class_id: string | null;
+    class_name: string;
+    activities: number;
+    students: number;
+    positive: number;
+    negative: number;
+    payers: number;
+    paid_since: number;
+    credited: number;
+    overdue_now: number;
+  }[];
+  students: ActivityStudentRow[];
+  totals: {
+    running: number;
+    closed: number;
+    credited: number;
+    credited_running: number;
+    paid_since: number;
+    good: number;
+    poor: number;
+    students: number;
+    students_running: number;
+    positive: number;
+    negative: number;
+  };
 }
 
 export interface ActivityParticipant {
@@ -1128,124 +1346,59 @@ export interface ActivityParticipant {
   added_on: string;
   updated_at: string;
   /** paid by the student between the activity's start and its end (or today) */
-  paid_during: number;
+  paid_since: number;
   /** receipts the accountant counted for this activity */
   credited: number;
   /** receipts since the activity started */
   receipts: { payment_id: string; receipt_no: string; paid_on: string; amount: number; credited_here: boolean; credited_elsewhere: string | null }[];
 }
 
-export interface ActivityStats {
-  participants: number;
-  positive: number;
-  partial: number;
-  negative: number;
-  pending: number;
-  credited: number;
-  credited_receipts: number;
-  paid_during: number;
-  payers: number;
-  overdue_now: number;
-  owing_now: number;
-  recovered: number;
-}
-
-/** GET /api/recovery/campaigns/[id] for a student activity */
-export interface ActivityDetail extends CampaignDetailBase {
-  kind: "activity";
-  campaign: CampaignInfo;
-  stats: ActivityStats;
+/** GET /api/activities/[id] */
+export interface ActivityDetail {
+  activity: RecoveryActivity & { created_by_name: string | null };
+  today: string;
+  session: { id: string; name: string } | null;
+  stats: {
+    participants: number;
+    positive: number;
+    partial: number;
+    negative: number;
+    pending: number;
+    credited: number;
+    credited_receipts: number;
+    paid_since: number;
+    payers: number;
+    won: number;
+    owed: number;
+    overdue_now: number;
+    owing_now: number;
+    days_running: number;
+    verdict: ActivityVerdict;
+  };
   rows: ActivityParticipant[];
 }
 
-export type CampaignDetail = CallCampaignDetail | ActivityDetail;
+// ---------------------------------------------------------------------------------------------
+// Student side (GET /api/students/[id]/recovery)
+// ---------------------------------------------------------------------------------------------
 
-export interface CampaignSummary {
-  id: string;
-  kind: CampaignKind;
-  name: string;
-  description: string | null;
-  status: "active" | "closed";
-  start_date: string;
-  end_date: string | null;
-  target_amount: number | null;
-  created_at: string;
-  calls: number;
-  parents_called: number;
-  connected: number;
-  last_call_on: string | null;
-  promises: number;
-  kept: number;
-  broken: number;
-  promises_pending: number;
-  to_call: number | null;
-  promised_now: number | null;
-  participants: number;
-  positive: number;
-  partial: number;
-  negative: number;
-  pending: number;
-  credited_receipts: number;
-  families_paid: number;
-  recovered: number;
-}
-
-export interface PromiseListRow {
-  parent_id: string;
-  name: string;
-  phone: string;
-  promised_date: string;
-  promised_amount: number | null;
-  deadline: string;
-  paid: number;
-  status?: PromiseStatus;
-  source: "call" | "note";
-  campaign_name: string | null;
-  student_name: string | null;
-}
-
-/** GET /api/recovery */
-export interface RecoveryOverview {
-  today: string;
-  grace_days: number;
-  kpis: {
-    active_campaigns: number;
-    active_call_campaigns: number;
-    families_to_call: number;
-    recovered_calls: number;
-    recovered_activities: number;
-    participants: number;
-    positive: number;
-    calls_today: number;
-    calls_week: number;
-    connected_week: number;
-    kept_90: number;
-    partial_90: number;
-    broken_90: number;
-    kept_pct_90: number | null;
-    on_time_90: number;
-    promises_pending: number;
-    promised_pending_amount: number;
-    promises_due_week: number;
-  };
-  campaigns: CampaignSummary[];
-  upcoming_promises: PromiseListRow[];
-  broken_promises: PromiseListRow[];
-}
-
-/** GET /api/students/[id]/recovery */
 export interface StudentRecovery {
   parent: null | Pick<
     Parent,
     "id" | "name" | "phone" | "alt_phone" | "relation" | "economic_status" | "payment_behaviour" | "attitude" | "best_time_to_call" | "concerns" | "priorities"
   >;
   siblings: { student_id: string; full_name: string; admission_no: string; status: Student["status"]; class_name: string | null; section: string | null }[];
-  calls: Pick<ParentCall, "id" | "call_date" | "outcome" | "picked_by" | "response" | "summary" | "promised_date" | "promised_amount" | "campaign_name" | "author">[];
+  /** the family's latest calls, newest first */
+  calls: (Pick<ParentCall, "id" | "call_date" | "purpose" | "outcome" | "picked_by" | "response" | "summary" | "promised_date" | "promised_amount" | "author"> & {
+    promise_status: PromiseStatus | null;
+  })[];
+  /** the call the fee counter suggests as the reason for a payment today */
+  suggested_call_id: string | null;
   promise: null | { promised_date: string; promised_amount: number | null; deadline: string; paid: number; status: PromiseStatus; timing: PromiseTiming | null; source: "call" | "note" };
   reliability: null | { made: number; kept: number; partial: number; broken: number; pending: number };
   activities: {
     participant_id: string;
-    campaign_id: string;
+    activity_id: string;
     name: string;
     description: string | null;
     status: "active" | "closed";
@@ -1260,7 +1413,7 @@ export interface StudentRecovery {
     updated_at: string;
     updated_by_name: string | null;
     /** what the student paid from the start to the end (or today) */
-    paid_during: number;
+    paid_since: number;
     /** receipts counted for the activity */
     credited: number;
     credited_receipts: number;

@@ -173,14 +173,14 @@ export async function linkByPhone(viewer: Viewer) {
 // Calls
 // ---------------------------------------------------------------------------------------------
 
-/** Log a call (any staff member). The promise, if any, decides when the family is called again. */
+/** Log a call about anything (any staff member). On a fee call, the promise decides when the family is called again. */
 export async function logCall(viewer: Viewer, parentId: string, c: CallInput) {
   const callId = await orNotFound(
     write(viewer, (db) =>
       db.rpc<string>("log_parent_call", {
         p_parent: parentId,
         p_outcome: c.outcome,
-        p_campaign: c.campaign_id,
+        p_purpose: c.purpose,
         p_call_date: c.call_date,
         p_picked_by: c.picked_by,
         p_response: c.response,
@@ -190,8 +190,8 @@ export async function logCall(viewer: Viewer, parentId: string, c: CallInput) {
         p_follow_up_on: c.follow_up_on,
       }),
     ),
-    /^(Parent|Campaign) not found/,
-    "That parent or campaign does not exist.",
+    /^Parent not found/,
+    "That parent does not exist.",
   );
   const promise = c.promised_date
     ? ` Promise: ${c.promised_amount ? rupees(c.promised_amount) : "payment"} by ${fmtDate(c.promised_date)}.`
