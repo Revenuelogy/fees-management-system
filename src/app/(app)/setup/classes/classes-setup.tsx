@@ -21,7 +21,7 @@ export function ClassesSetup() {
   return (
     <>
       <PageHeader
-        title="Classes & fee heads"
+        title="Classes & fee types"
         description="Shared by every session."
         info="Classes and the kinds of fees you charge are shared by all sessions. Inactive ones are hidden from new setups but kept for history."
       />
@@ -46,11 +46,11 @@ export function ClassesSetup() {
         <Card
           id="fee-heads"
           className="scroll-mt-20"
-          title="Fee heads"
+          title="Fee types"
           description="Priority decides what a payment clears first when it does not say what it is for: lower numbers are cleared first."
         >
           <div className={`${GRID} hidden border-b border-line pb-1.5 text-caption font-medium uppercase tracking-wide text-muted sm:grid`}>
-            <span>Fee head</span>
+            <span>Fee type</span>
             <span className="text-right">Priority</span>
             <span>Status</span>
             <span className="sr-only">Actions</span>
@@ -60,13 +60,13 @@ export function ClassesSetup() {
               <FeeHeadRow key={h.id} head={h} />
             ))}
           </div>
-          {heads.length === 0 && <p className="py-3 text-footnote text-ink-2">No fee heads yet. Typical ones: Tuition Fee, Annual Charges, Exam Fee, Transport Fee.</p>}
+          {heads.length === 0 && <p className="py-3 text-footnote text-ink-2">No fee types yet. Typical ones: Tuition Fee, Annual Charges, Exam Fee, Transport Fee.</p>}
           <AddFeeHeadRow nextPriority={nextPriority} />
           <div className="mt-4 flex gap-2 rounded-2xl bg-fill-2 px-3 py-2.5 text-footnote text-ink-2">
             <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
             <p>
               Changing a priority re-runs payment allocation for every student automatically, so what past payments are shown as having
-              paid for may shift between fee heads. Totals received never change. A fee head can only be deleted while it is unused;
+              paid for may shift between fee types. Totals received never change. A fee type can only be deleted while it is unused;
               otherwise untick “Active”.
             </p>
           </div>

@@ -40,9 +40,9 @@ export function ConcessionTool({
       <form onSubmit={onSubmit} className="space-y-3">
         <input type="hidden" name="student_id" value={studentId} />
         <input type="hidden" name="session_id" value={sessionId} />
-        <Field label="Fee head" htmlFor="conc-head">
+        <Field label="Fee type" htmlFor="conc-head">
           <Select id="conc-head" name="fee_head_id" defaultValue="">
-            <option value="">All fee heads</option>
+            <option value="">All fee types</option>
             {feeHeads.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name}
@@ -142,7 +142,7 @@ export function RegenerateTool({
               Also reset existing lines to the structure
               <span className="block text-caption text-muted">
                 Structure lines get the class amount again and lines no longer in the structure are removed. Lines edited or added by hand
-                (Manual) and opening dues are never touched. Concessions are kept (capped at the new amount).
+                (Manual) and old balance are never touched. Concessions are kept (capped at the new amount).
               </span>
             </span>
           </label>
@@ -179,15 +179,15 @@ export function OpeningDueTool({
     <Card
       title={
         <span className="inline-flex items-center gap-2">
-          <History className="size-4 text-muted" aria-hidden /> Add previous-session dues
+          <History className="size-4 text-muted" aria-hidden /> Add old balance from an earlier year
         </span>
       }
-      description="Opening balance carried from before this app. It is added to the first installment of the chosen session with a top-priority fee head, so payments clear it first."
+      description="Opening balance carried from before this app. It is added to the first installment of the chosen session with a top-priority fee type, so payments clear it first."
     >
       <form onSubmit={onSubmit} className="space-y-3">
         <input type="hidden" name="student_id" value={studentId} />
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Dues belong to" htmlFor="open-session">
+          <Field label="Year it is from" htmlFor="open-session">
             <Select id="open-session" name="session_id" defaultValue={defaultSessionId}>
               {sessions.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -200,7 +200,7 @@ export function OpeningDueTool({
             <Input id="open-amount" name="amount" inputMode="decimal" required placeholder="e.g. 4500" />
           </Field>
         </div>
-        <Field label="Fee head" htmlFor="open-head" hint="Created if it does not exist. Adding again to the same head adds to it.">
+        <Field label="Fee type" htmlFor="open-head" hint="Created if it does not exist. Adding again to the same head adds to it.">
           <Input id="open-head" name="fee_head" defaultValue="Previous Dues" />
         </Field>
         <Field label="Note" htmlFor="open-note">
@@ -219,7 +219,7 @@ export function OpeningDueTool({
           </p>
         )}
         <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? "Adding…" : "Add dues"}
+          {pending ? "Adding…" : "Add old balance"}
         </Button>
       </form>
     </Card>

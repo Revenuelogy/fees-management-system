@@ -25,14 +25,25 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
 - **The browser never talks to the database.** Pages and components get data only from `/api/*`.
 - Plain PostgreSQL only: no Supabase objects (`auth` schema, `anon` / `authenticated` roles, `auth.uid()`).
   The signed-in user is `public.current_user_id()` (the `app.user_id` setting of the transaction).
+- **One set of money words** everywhere (labels, tooltips, CSV headers, printouts, server messages): `MONEY` in
+  `src/lib/glossary.ts` (Total fee, Received, Due now, Due later, Balance = Due now + Due later, Old balance,
+  To recover now = Due now + Old balance, Old balance received, Paid in advance, Days since last payment) and the
+  status tags in `components/ui/status.tsx` (Paid up, Part paid, Nothing paid this year, Old balance only, Free).
+  Never show Pending, Overdue, Gap, Missing, Still to come / owes, Behind, Not paying, Old dues, Arrears, Balance
+  brought forward, Silent or Fee heads (say Fee types). No "This session / Including old dues" toggle: Old
+  balance is its own figure or column, never added into a this-year total. `installmentName()` /
+  `oldBalanceLabel()` show carried-forward installments as "Old balance (2025-26)".
 
 ## Layout
 - `src/app/(app)/…` signed-in screens. Each `page.tsx` is a thin server component (metadata, params, search
   params) that renders a client view (`*-view.tsx`). `layout.tsx` renders `AppShell` (sidebar, search,
-  session switcher), which loads `/api/bootstrap` once.
+  session switcher, Collect pill in the phone top bar), which loads `/api/bootstrap` once. `/` is **Home**
+  (`home-view.tsx`): five cards that each load `/api/home/{fees,today,chase,classes}` and fail on their own; the SQL
+  is `home_*` in `db/migrations/*_home.sql`.
 - `src/app/api/**/route.ts` the REST API. Handlers are thin: `api(access, fn)` from `src/server/http.ts`
-  (session + role check: `signed-in | staff | writer | admin`, same-origin check for writes, errors → JSON
-  `{ error }`), zod validation with `readBody` / `readQuery` / `pathParam` and helpers in `src/server/validate.ts`,
+  (session + role check: `signed-in | caller | staff | writer | admin`, same-origin check for writes, errors →
+  JSON `{ error }`). `caller` = the calling endpoints (staff and callers); `staff` = school-wide figures and
+  everything else staff may read (callers get 403), zod validation with `readBody` / `readQuery` / `pathParam` and helpers in `src/server/validate.ts`,
   then a service call. Route files export only HTTP handlers; shared schemas live in `src/server/schemas`.
 - `src/server/` backend only (`import "server-only"`):
   - `db.ts` pool (`DATABASE_URL`), type parsers (bigint/numeric → number, dates stay `YYYY-MM-DD`),
@@ -45,8 +56,8 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
     recovery).
   - `auth/` scrypt passwords (`password.mjs`, shared with `scripts/db.mjs`), DB-backed sessions in `app_sessions`
     (httpOnly cookie `fms_auth`), login rate limit.
-- `src/lib/` shared by both sides: `types.ts` (RPC and API shapes), `format.ts`, `roles.ts` (`isStaff / canWrite /
-  isAdmin`), `context.ts` (`flag()` / `param()` for search params), `dates.ts`, `text.ts`, `import-columns.ts`,
+- `src/lib/` shared by both sides: `types.ts` (RPC and API shapes), `format.ts`, `glossary.ts` (the money words),
+  `roles.ts` (`isStaff / canCall / isCaller / canWrite / isAdmin`), `context.ts` (`flag()` / `param()` for search params), `dates.ts`, `text.ts`, `import-columns.ts`,
   `action-state.ts` (`ActionState`, `friendlyError()` used by the API), `recovery.ts` (fee recovery keys used by zod
   and the screens, with their labels; `phoneDigits()` / `fmtPhone()`).
 - Fee recovery: families are `parents` keyed by phone (the `students_link_parent` trigger links students). Calls
@@ -56,12 +67,19 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
   the dashboard (`recovery_dashboard(from, to)`), activities (`recovery_activities`, `activities_overview`,
   `activity_detail`) and what brought a receipt in (`recovery_credits`: a call or an activity participation, set by
   `set_payment_source`) are SQL in `db/migrations/*_recovery.sql` and `*_daily_calls.sql`. Calls are open to all
-  staff (`log_parent_call`, taking families); everything else needs a writer. Shared badges live in
+  staff (`log_parent_call`, taking families); everything else needs a writer.
+- **Caller role** (`*_caller_access.sql`): callers read every family like staff (`is_staff()`), write only calls,
+  student notes and activity responses (`set_participant_response`), and never see school figures (`sees_school()`,
+  checked by the `home_*` functions). The API allows them only `caller` endpoints; the shell gives them the
+  caller menu (`CALLER_NAV`: My calls, `/find`, `/promises`), lands them on `/calls?tab=mine`, and shows
+  `NoAccessHere` on any page `callerMayOpen()` refuses. The family call page (`calls/[parentId]`) shows the
+  family read-only (`family-profile.tsx`) beside the call form; a caller's student profile has no Fee plan, Edit
+  or Collect. Demo caller: `pooja@school.test`. Shared badges live in
   `src/components/recovery.tsx`; the call form and call history in `src/app/(app)/parents/`; pages: `/recovery`
   (dashboard), `/calls`, `/activities`.
 - `src/lib/api/` browser side: `useApi(url)` (SWR; pass `null` to wait), `api.get/post/put/patch/delete`, `apiUrl()`,
   `submit()` for form handlers, `refreshAll()`. A 401 sends the browser to `/login`, a missing role to `/no-access`.
-- In client views: `useApp()` gives `viewer`, `writer`, `admin`, `session` (picked in the top bar, cookie
+- In client views: `useApp()` gives `viewer`, `writer`, `admin`, `caller`, `session` (picked in the top bar, cookie
   `fms_session`), `sessions`, `classes`, `settings`. Wrap writer/admin screens in `<RequireRole role="writer|admin">`.
   Render `<Pending queries={[…]} />` until every query has data (skeleton, 404 card or error with retry).
 - UI kit `src/components/ui/*`: `Card` (`description` renders as an ⓘ `InfoTip`), `Kpi/KpiGrid/IconTile`,
@@ -91,5 +109,5 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
 
 ## Local dev
 Any PostgreSQL 13+ (pgTAP only for `db:test`) → copy `.env.example` to `.env.local` and set `DATABASE_URL` →
-`npm run db:reset` (migrations + demo seed, login `admin@school.test` / `admin12345`) → `npm run dev`.
+`npm run db:reset` (migrations + demo seed, login `admin@school.test` / `admin12345`; caller `pooja@school.test`) → `npm run dev`.
 Checks: `npm run typecheck`, `npm run lint`, `npm run db:test`.

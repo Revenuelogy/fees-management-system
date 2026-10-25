@@ -5,7 +5,7 @@ import type {
   ParticipantResponse, PickedBy, PromiseStatus, PromiseTiming, Relation,
 } from "@/lib/recovery";
 
-export type AppRole = "admin" | "accountant" | "principal" | "teacher";
+export type AppRole = "admin" | "accountant" | "principal" | "caller" | "teacher";
 export type PaymentMode = "cash" | "upi" | "cheque" | "bank_transfer" | "card" | "other";
 export type AllocationKind = "current" | "arrears" | "advance";
 export type FeeStatus = "paid_up" | "partial" | "not_paying" | "arrears_only" | "free" | "no_plan";
@@ -515,6 +515,10 @@ export interface Student360Payment {
   cancelled: boolean;
   outstanding_before: number;
   pct_of_outstanding: number | null;
+  /** what the receipt went to: this year's fees, old balance of earlier years, paid in advance */
+  current: number;
+  arrears: number;
+  advance: number;
   allocations: AllocationLine[];
 }
 
@@ -1419,4 +1423,102 @@ export interface StudentRecovery {
     credited_receipts: number;
   }[];
   today: string;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Callers: Find a family (GET /api/families/search) and Promises (GET /api/promises)
+// ---------------------------------------------------------------------------------------------
+
+export interface FamilySearchRow {
+  parent_id: string;
+  name: string;
+  phone: string;
+  alt_phone: string | null;
+  relation: Relation;
+  children: { student_id: string; full_name: string; admission_no: string; status: Student["status"]; class_name: string | null; section: string | null }[];
+}
+
+export interface OpenPromises {
+  today: string;
+  grace_days: number;
+  promises: {
+    parent_id: string;
+    name: string;
+    phone: string;
+    source: "call" | "note";
+    student_name: string | null;
+    made_on: string;
+    made_by_name: string | null;
+    promised_date: string;
+    promised_amount: number | null;
+    deadline: string;
+    paid: number;
+    /** promised date minus today (0 = today) */
+    days_left: number;
+    /** what the family owes now: due now this year + old balance */
+    total_overdue: number;
+    children: string[];
+  }[];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Home (GET /api/home/*): money words from the glossary (src/lib/glossary.ts)
+// ---------------------------------------------------------------------------------------------
+
+export interface HomeFees {
+  session: { id: string; name: string; is_current: boolean; start_date: string; end_date: string };
+  total_fee: number;
+  received: number;
+  due_now: number;
+  due_later: number;
+  /** Due now + Due later */
+  balance: number;
+  old_balance: number;
+  old_balance_received: number;
+  received_pct: number | null;
+  /** Due now + Old balance */
+  to_recover: number;
+  students_to_recover: number;
+  /** of them, nothing received against this year's fees */
+  nothing_paid: number;
+}
+
+export interface HomeToday {
+  today: string;
+  /** YYYY-MM */
+  month: string;
+  received_today: number;
+  receipts_today: number;
+  received_month: number;
+  receipts_month: number;
+  to_call: number;
+  broken: number;
+  promises_today: number;
+  promised_today: number;
+}
+
+export interface HomeChase {
+  /** families on today's call list */
+  total: number;
+  rows: {
+    parent_id: string;
+    name: string;
+    rank: number;
+    reason: CallReason | null;
+    /** Due now + Old balance of the family */
+    to_recover: number;
+    child: string | null;
+    class_name: string | null;
+    more_children: number;
+  }[];
+}
+
+export interface HomeClass {
+  class_id: string;
+  class_name: string;
+  students: number;
+  total_fee: number;
+  received: number;
+  due_now: number;
+  received_pct: number | null;
 }

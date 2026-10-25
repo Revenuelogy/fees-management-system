@@ -69,7 +69,7 @@ export function SessionPanel({
         <span>No.</span>
         <span>Installment name</span>
         <span>Due date</span>
-        <span>Billed</span>
+        <span>Fees assigned</span>
         <span className="sr-only">Actions</span>
       </div>
       {installments.length === 0 && <p className="py-3 text-footnote text-ink-2">No installments yet. Add the first one below.</p>}
@@ -126,8 +126,8 @@ function InstallmentRow({ inst }: { inst: InstallmentInfo }) {
         required
         className="col-start-2 sm:col-start-auto"
       />
-      <span className="col-start-2 text-footnote text-muted sm:col-start-auto" title="Student charge lines billed against this installment">
-        {inst.charges ? plural(inst.charges, "charge") : "Not billed yet"}
+      <span className="col-start-2 text-footnote text-muted sm:col-start-auto" title="Fee lines assigned to students on this installment">
+        {inst.charges ? plural(inst.charges, "fee line") : "No fees assigned yet"}
       </span>
       <div className="col-start-2 flex gap-1.5 sm:col-start-auto">
         <Button type="submit" name="intent" value="save" size="sm" disabled={pending}>
@@ -140,7 +140,7 @@ function InstallmentRow({ inst }: { inst: InstallmentInfo }) {
           size="sm"
           variant="ghost"
           disabled={pending}
-          title={inst.charges ? "Cannot delete: students are billed against this installment" : "Delete installment"}
+          title={inst.charges ? "Cannot delete: students have fees assigned on this installment" : "Delete installment"}
           aria-label={`Delete installment ${inst.number}`}
           data-confirm={`Delete installment ${inst.number} (${inst.name})? Its amounts in the fee structure are removed too.`}
         >

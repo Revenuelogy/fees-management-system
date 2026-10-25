@@ -21,7 +21,7 @@ export function TargetView({ id }: { id: string }) {
     <div className="space-y-5">
       <PageHeader
         title={`${Number(t.target_pct)}% by ${fmtDate(t.target_date)}`}
-        description="Share of fees due by that date that should be collected"
+        description="Share of the fees due by that date that should be received"
         crumbs={[{ label: "Installments", href: "/installments" }]}
       />
       <section className="rounded-[28px] bg-surface p-6 shadow-card sm:p-8">
@@ -34,8 +34,8 @@ export function TargetView({ id }: { id: string }) {
             {[
               ["Due by then", rupeesShort(p.expected), ""],
               ["Goal", rupeesShort(p.goal), ""],
-              ["Collected", rupeesShort(p.received), ""],
-              ["Still needed", reached ? "Reached" : rupeesShort(p.gap), reached ? "text-good-ink" : "text-critical-ink"],
+              ["Received", rupeesShort(p.received), ""],
+              ["Short of the goal", reached ? "Reached" : rupeesShort(p.gap), reached ? "text-good-ink" : "text-critical-ink"],
             ].map(([l, v, c]) => (
               <div key={l}>
                 <p className="text-footnote text-ink-2">{l}</p>
@@ -48,9 +48,9 @@ export function TargetView({ id }: { id: string }) {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Card
           className="xl:col-span-2"
-          title="Who closes the gap"
+          title="Who would make it up"
           subtitle={reached ? undefined : `${p.students_to_close.length} students, largest balances first`}
-          description="The list stops once these students' dues add up to the gap."
+          description="The list stops once these students' unpaid fees add up to the amount short of the goal."
         >
           <DataTable
             rows={p.students_to_close.map((s) => ({ ...s, who: `${s.class_name}${s.phone ? " · " + s.phone : ""}` })) as unknown as Record<string, unknown>[]}
@@ -58,10 +58,10 @@ export function TargetView({ id }: { id: string }) {
             totals
             pageSize={20}
             exportName="target-call-list"
-            exportMeta={[t.name, `Gap ${rupeesShort(p.gap)}`]}
+            exportMeta={[t.name, `Short of the goal: ${rupeesShort(p.gap)}`]}
             columns={[
               { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
-              { key: "remaining", label: "Owes", type: "money", total: true, alertPositive: true },
+              { key: "remaining", label: "Due by then", type: "money", total: true, alertPositive: true },
               { key: "cumulative", label: "Running total", type: "money", hideOnMobile: true },
             ]}
             empty="The target has been reached."

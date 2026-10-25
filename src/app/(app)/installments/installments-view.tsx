@@ -7,6 +7,7 @@ import { useApi } from "@/lib/api/hooks";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
 import { fmtDate, rupees, rupeesShort } from "@/lib/format";
+import { MONEY } from "@/lib/glossary";
 import type { InstallmentRow, TargetProgress } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -18,15 +19,15 @@ import { NoSession } from "@/components/no-session";
 import { TargetForm, DeleteTargetButton } from "./target-form";
 
 const STATUS = {
-  upcoming: { label: "Upcoming", tone: "neutral" },
+  upcoming: { label: "Due later", tone: "neutral" },
   open: { label: "Open", tone: "accent" },
   closed: { label: "Closed", tone: "neutral" },
 } as const;
 
 const TIMING_LEGEND = [
-  { label: "On time", className: "bg-series-1" },
-  { label: "Late", className: "bg-series-2" },
-  { label: "Missing", className: "bg-series-track" },
+  { label: "Received on time", className: "bg-series-1" },
+  { label: "Received late", className: "bg-series-1/40" },
+  { label: MONEY.balance.label, className: "bg-series-track" },
 ];
 
 export function InstallmentsView() {
@@ -47,8 +48,8 @@ export function InstallmentsView() {
     <div className="space-y-5">
       <PageHeader
         title="Installments"
-        description={`${session.name} · ${rupeesShort(tot.received)} of ${rupeesShort(tot.expected)} collected`}
-        info="Collected = money allocated to each installment, whenever it was paid. Open an installment to see which classes and students make up the gap."
+        description={`${session.name} · ${rupeesShort(tot.received)} received of ${rupeesShort(tot.expected)} total fee`}
+        info={`Received = money that went to each installment, whenever it was paid. ${MONEY.due_now.label} = an installment past its due date that is not paid; ${MONEY.due_later.label.toLowerCase()} = its due date has not come yet. Open an installment to see which classes and students it is due from.`}
       />
 
       {rows.length === 0 ? (
@@ -80,11 +81,11 @@ export function InstallmentsView() {
                   </Ring>
                   <dl className="grid flex-1 gap-2.5 text-footnote">
                     <div>
-                      <dt className="text-ink-2">Collected</dt>
+                      <dt className="text-ink-2">{MONEY.received.label}</dt>
                       <dd className="text-title3 font-semibold tabular text-ink">{rupeesShort(r.received)}</dd>
                     </div>
                     <div>
-                      <dt className="text-ink-2">Gap</dt>
+                      <dt className="text-ink-2">{r.status === "upcoming" ? MONEY.due_later.label : MONEY.due_now.label}</dt>
                       <dd className={`text-title3 font-semibold tabular ${r.gap > 0 && r.status !== "upcoming" ? "text-critical-ink" : "text-ink"}`}>{rupeesShort(r.gap)}</dd>
                     </div>
                   </dl>
@@ -93,9 +94,9 @@ export function InstallmentsView() {
                   <StackedBar
                     total={r.expected}
                     segments={[
-                      { value: r.on_time, className: "bg-series-1", label: "On time", display: rupees(r.on_time) },
-                      { value: r.late, className: "bg-series-2", label: "Late", display: rupees(r.late) },
-                      { value: r.gap, className: "bg-series-track", label: "Missing", display: rupees(r.gap) },
+                      { value: r.on_time, className: "bg-series-1", label: "Received on time", display: rupees(r.on_time) },
+                      { value: r.late, className: "bg-series-1/40", label: "Received late", display: rupees(r.late) },
+                      { value: r.gap, className: "bg-series-track", label: r.status === "upcoming" ? MONEY.due_later.label : MONEY.due_now.label, display: rupees(r.gap) },
                     ]}
                   />
                   <div className="mt-2.5 flex items-center justify-between text-caption text-muted">
@@ -110,14 +111,14 @@ export function InstallmentsView() {
               </Link>
             ))}
           </div>
-          <Card title="Whole year" description="Money received by each due date, received late, and still missing. A growing grey part means the shortfall is being carried forward.">
+          <Card title="Whole year" description="Money received by each due date, received late, and the balance not yet received (due now and due later). A growing grey part means unpaid fees are being carried forward.">
             <StackedBar
               height="h-4"
               total={tot.expected}
               segments={[
-                { value: tot.on_time, className: "bg-series-1", label: "On time", display: rupees(tot.on_time) },
-                { value: tot.late, className: "bg-series-2", label: "Late", display: rupees(tot.late) },
-                { value: tot.gap, className: "bg-series-track", label: "Missing", display: rupees(tot.gap) },
+                { value: tot.on_time, className: "bg-series-1", label: "Received on time", display: rupees(tot.on_time) },
+                { value: tot.late, className: "bg-series-1/40", label: "Received late", display: rupees(tot.late) },
+                { value: tot.gap, className: "bg-series-track", label: MONEY.balance.label, display: rupees(tot.gap) },
               ]}
             />
             <Legend
@@ -132,7 +133,7 @@ export function InstallmentsView() {
         </>
       )}
 
-      <Card title="Targets" description="Set a goal like “90% of fees due by 31 December”. Each target shows the gap and who would close it.">
+      <Card title="Targets" description="Set a goal like “90% of fees due by 31 December”. Each target shows how much is short and which students would make it up.">
         {targets.length === 0 && <p className="mb-2 text-subhead text-ink-2">No targets yet.</p>}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {targets.map((t, i) => {

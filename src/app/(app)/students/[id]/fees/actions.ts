@@ -40,7 +40,7 @@ export async function addCharge(_prev: ActionState, formData: FormData): Promise
   const concession = parseRupees(text(formData, "concession") ?? "0");
   if (!isUuid(studentId)) return { error: "Unknown student." };
   if (!isUuid(installmentId)) return { error: "Choose an installment." };
-  if (!isUuid(feeHeadId)) return { error: "Choose a fee head." };
+  if (!isUuid(feeHeadId)) return { error: "Choose a fee type." };
   if (amount === null || amount <= 0) return { error: "Enter an amount greater than zero (₹)." };
   if (concession === null || concession < 0) return { error: "Enter a valid concession (₹)." };
   if (concession > amount) return { error: "Concession cannot be more than the amount." };
@@ -64,7 +64,7 @@ export async function applyConcession(_prev: ActionState, formData: FormData): P
   const mode = text(formData, "mode");
   const from = Number(text(formData, "from_installment") ?? "1");
   if (!isUuid(studentId) || !isUuid(sessionId)) return { error: "Unknown student or session." };
-  if (feeHead && !isUuid(feeHead)) return { error: "Choose a fee head." };
+  if (feeHead && !isUuid(feeHead)) return { error: "Choose a fee type." };
   if (mode !== "percent" && mode !== "amount" && mode !== "clear") return { error: "Choose how to apply the concession." };
   if (!Number.isInteger(from) || from < 1) return { error: "Choose the installment to start from." };
 
@@ -107,7 +107,7 @@ export async function addOpeningDue(_prev: ActionState, formData: FormData): Pro
   const sessionId = text(formData, "session_id");
   const amount = parseRupees(text(formData, "amount"));
   if (!isUuid(studentId)) return { error: "Unknown student." };
-  if (!isUuid(sessionId)) return { error: "Choose the session the dues belong to." };
+  if (!isUuid(sessionId)) return { error: "Choose the year the old balance is from." };
   if (amount === null || amount <= 0) return { error: "Enter an amount greater than zero (₹)." };
   return submit(
     () =>

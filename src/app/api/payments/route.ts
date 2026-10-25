@@ -32,7 +32,7 @@ const Body = z
   .refine((b) => !["cheque", "upi", "bank_transfer"].includes(b.mode) || b.reference_no, {
     error: (iss) => ((iss.input as { mode?: string }).mode === "cheque" ? "Enter the cheque number." : "Enter the transaction / UTR reference."),
   })
-  .refine((b) => b.targets.reduce((a, t) => a + t.amount, 0) <= b.amount, "The amounts allocated to dues add up to more than the amount received.");
+  .refine((b) => b.targets.reduce((a, t) => a + t.amount, 0) <= b.amount, "The amounts given to the fees add up to more than the amount received.");
 
 /** Collect a fee payment (optionally counted for the call or the activity that brought it in). Returns the receipt's id and number. */
 export const POST = api("writer", async ({ req, viewer }) => collect(viewer, await readBody(req, Body)));

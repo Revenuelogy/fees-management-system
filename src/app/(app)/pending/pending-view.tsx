@@ -13,6 +13,7 @@ import { Segmented, withParams } from "@/components/ui/segmented";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { FEE_STATUS, STATUS_STYLE } from "@/components/ui/status";
+import { MONEY, moneyHint } from "@/lib/glossary";
 import { NoSession } from "@/components/no-session";
 import { PrintButton } from "@/components/ui/print-button";
 
@@ -21,7 +22,6 @@ export function PendingView({ sp }: { sp: SearchParams }) {
   const balances = useApi<StudentBalance[]>(session ? apiUrl("/api/analytics/balances", { session: session.id }) : null);
   if (!session) return <NoSession />;
   if (!balances.data) return <Pending queries={[balances]} />;
-  const arrears = flag(sp.arrears, false);
   const due = flag(sp.due, false);
   const prev = flag(sp.prev, false);
   const unassigned = flag(sp.unassigned, false);
@@ -30,7 +30,8 @@ export function PendingView({ sp }: { sp: SearchParams }) {
 
   const all = balances.data;
 
-  const owed = (r: StudentBalance) => (due ? (arrears ? r.total_overdue : r.overdue) : arrears ? r.total_pending : r.pending);
+  // this year (Balance, or Due now) and Old balance stay separate figures; a student is listed when either is owed
+  const owed = (r: StudentBalance) => (due ? r.overdue : r.pending) + r.prev_pending;
   const rows = all
     .filter((r) => owed(r) > 0)
     .filter((r) => !prev || r.prev_pending > 0)
@@ -40,20 +41,19 @@ export function PendingView({ sp }: { sp: SearchParams }) {
     .map((r) => ({
       ...r,
       class_label: r.class_name ?? "Not enrolled / left",
-      owed: owed(r),
-      show_pending: arrears ? r.total_pending : r.pending,
-      show_overdue: arrears ? r.total_overdue : r.overdue,
       collect: "Collect",
     }));
 
   const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0);
   const url = (extra: Record<string, string | boolean | undefined>) =>
-    withParams("/pending", { arrears: arrears || undefined, due: due || undefined, prev: prev || undefined, unassigned: unassigned || undefined, status, class: classId, ...extra });
+    withParams("/pending", { due: due || undefined, prev: prev || undefined, unassigned: unassigned || undefined, status, class: classId, ...extra });
+  const className = classId ? classes.find((c) => c.id === classId)?.name : undefined;
   const meta = [
     `Session ${session.name}`,
-    arrears ? "Including previous dues" : "Current session only",
-    due ? "Overdue only (installments already due)" : "All pending (incl. installments not yet due)",
-    ...(prev ? ["Only students with previous dues"] : []),
+    due ? "Due now (installments past their due date) and old balance" : "Balance (all of this year's fees not yet received) and old balance",
+    ...(prev ? ["Only students with an old balance"] : []),
+    ...(unassigned ? ["Only students not enrolled this year / left"] : []),
+    ...(className ? [`Class: ${className}`] : []),
     ...(status ? [`Status: ${FEE_STATUS[status]?.label}`] : []),
     `As of ${fmtDate(todayIST())}`,
   ];
@@ -61,10 +61,10 @@ export function PendingView({ sp }: { sp: SearchParams }) {
   const columns = [
     { key: "full_name", label: "Student", type: "person" as const, href: "/students/{student_id}", sub: "who" },
     { key: "phone", label: "Phone", hideOnMobile: true },
-    { key: "show_pending", label: "Pending", type: "money" as const, total: true },
-    { key: "show_overdue", label: "Overdue", type: "money" as const, total: true, alertPositive: true },
-    { key: "prev_pending", label: "Old dues", type: "money" as const, total: true, dimZero: true, hideOnMobile: true },
-    { key: "days_since_payment", label: "Silent", type: "number" as const, hideOnMobile: true },
+    { key: "pending", label: MONEY.balance.label, type: "money" as const, total: true },
+    { key: "overdue", label: MONEY.due_now.label, type: "money" as const, total: true, alertPositive: true },
+    { key: "prev_pending", label: MONEY.old_balance.label, type: "money" as const, total: true, dimZero: true },
+    { key: "days_since_payment", label: MONEY.days_since_payment.label, type: "number" as const, hideOnMobile: true },
     { key: "fee_status", label: "Status", type: "status" as const },
     ...(writer ? [{ key: "collect", label: "", type: "action" as const, href: "/collect/{student_id}", sortable: false }] : []),
   ];
@@ -73,41 +73,40 @@ export function PendingView({ sp }: { sp: SearchParams }) {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Pending fees"
-        description={`${session.name} · ${rows.length} students`}
-        info="Who owes what. Filter, sort, export to Excel (CSV) or print the list for calls."
+        title="Fees due"
+        description={`${session.name} · ${rows.length} students${className ? ` · ${className}` : ""}`}
+        info={`Who has fees due. ${moneyHint("balance")} ${moneyHint("due_now")} ${moneyHint("old_balance")} Filter, sort, export to Excel (CSV) or print the list for calls.`}
         actions={<PrintButton label="Print" />}
       >
         <Segmented
           options={[
-            { label: "This session", href: url({ arrears: undefined }), active: !arrears },
-            { label: "Including old dues", href: url({ arrears: true }), active: arrears },
-          ]}
-        />
-        <Segmented
-          options={[
-            { label: "All pending", href: url({ due: undefined }), active: !due, title: "Includes installments not yet due" },
-            { label: "Overdue only", href: url({ due: true }), active: due, title: "Only installments whose due date has passed" },
+            { label: "Balance", href: url({ due: undefined }), active: !due, title: "All of this year's fees not yet received, including installments due later" },
+            { label: "Due now", href: url({ due: true }), active: due, title: "Only installments whose due date has passed" },
           ]}
         />
         <Segmented
           options={[
             { label: "Everyone", href: url({ prev: undefined, unassigned: undefined }), active: !prev && !unassigned },
-            { label: "Has old dues", href: url({ prev: true, arrears: true, unassigned: undefined }), active: prev },
-            { label: "Left school", href: url({ unassigned: true, arrears: true, prev: undefined }), active: unassigned },
+            { label: "Has old balance", href: url({ prev: true, unassigned: undefined }), active: prev },
+            { label: "Left school", href: url({ unassigned: true, prev: undefined }), active: unassigned },
           ]}
         />
+        {className && (
+          <Link href={url({ class: undefined })} className="inline-flex h-8 items-center gap-1 rounded-full bg-ink px-3 text-footnote font-medium text-surface">
+            {className} ✕
+          </Link>
+        )}
       </PageHeader>
 
       <div className="print-only mb-3 text-sm">
-        <b>Pending fees · {session.name}</b> — {meta.join(" · ")}
+        <b>Fees due · {session.name}</b> — {meta.join(" · ")}
       </div>
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: "Pending", value: rupeesShort(sum((r) => r.show_pending)), tone: "text-ink" },
-          { label: "Overdue", value: rupeesShort(sum((r) => r.show_overdue)), tone: "text-critical-ink" },
-          { label: arrears ? "Old dues (included)" : "Old dues (not included)", value: rupeesShort(sum((r) => r.prev_pending)), tone: "text-serious-ink" },
+          { label: MONEY.balance.label, value: rupeesShort(sum((r) => r.pending)), tone: "text-ink" },
+          { label: MONEY.due_now.label, value: rupeesShort(sum((r) => r.overdue)), tone: "text-critical-ink" },
+          { label: MONEY.old_balance.label, value: rupeesShort(sum((r) => r.prev_pending)), tone: "text-serious-ink" },
           { label: "Students", value: String(rows.length), tone: "text-ink" },
         ].map((x) => (
           <div key={x.label} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
@@ -147,13 +146,13 @@ export function PendingView({ sp }: { sp: SearchParams }) {
             },
             { key: "section", label: "Section", options: [...new Set(rows.map((r) => r.section).filter(Boolean))].sort().map((s) => ({ value: s as string, label: s as string })) },
           ]}
-          defaultSort={{ key: "show_overdue", dir: "desc" }}
+          defaultSort={{ key: "overdue", dir: "desc" }}
           totals
           pageSize={50}
-          exportName={`pending-fees-${session.name}`}
+          exportName={`fees-due-${session.name}`}
           exportMeta={meta}
           columns={columns}
-          empty="No pending fees with these filters."
+          empty="No fees due with these filters."
         />
       </Card>
     </div>

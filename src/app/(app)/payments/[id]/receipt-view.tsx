@@ -9,10 +9,10 @@ import type { ReceiptData } from "@/lib/types";
 import { useApp } from "@/components/layout/app-shell";
 import { NotFoundCard, Pending } from "@/components/ui/page-state";
 import { LinkButton } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { CancelReceipt, ReceiptSource } from "./receipt-actions";
 import { PrintButton } from "@/components/ui/print-button";
 import { cn } from "@/lib/cn";
+import { installmentName, oldBalanceLabel } from "@/lib/glossary";
 
 export function ReceiptView({ id, sp }: { id: string; sp: SearchParams }) {
   const { settings, writer } = useApp();
@@ -153,13 +153,14 @@ export function ReceiptView({ id, sp }: { id: string; sp: SearchParams }) {
               <tbody className="tabular">
                 {p.allocations.map((a, i) => (
                   <tr key={i} className="border-b border-line/70">
-                    <td className="py-1.5 text-ink">{a.fee_head ?? "Advance (adjusted against future fees)"}</td>
+                    <td className="py-1.5 text-ink">{a.fee_head ?? "Paid in advance (used as future fees fall due)"}</td>
                     <td className="py-1.5 text-ink-2">
                       {a.installment ? (
-                        <>
-                          {a.session} · {a.installment}
-                          {a.kind === "arrears" && <Badge tone="serious" className="ml-1.5 print:border print:border-line">Old dues</Badge>}
-                        </>
+                        a.kind === "arrears" ? (
+                          oldBalanceLabel(a.session, a.installment)
+                        ) : (
+                          `${a.session} · ${installmentName(a.installment)}`
+                        )
                       ) : (
                         "—"
                       )}
@@ -190,11 +191,11 @@ export function ReceiptView({ id, sp }: { id: string; sp: SearchParams }) {
               {!p.is_reversal && (
                 <>
                   <div>
-                    <div className="text-muted">Outstanding before</div>
+                    <div className="text-muted">Left to pay before (incl. old balance)</div>
                     <div className="font-medium tabular">{rupees(p.outstanding_before)}</div>
                   </div>
                   <div>
-                    <div className="text-muted">Balance after this receipt</div>
+                    <div className="text-muted">Left to pay after this receipt</div>
                     <div className="font-semibold tabular">{rupees(balanceAfter)}</div>
                   </div>
                 </>
@@ -202,7 +203,7 @@ export function ReceiptView({ id, sp }: { id: string; sp: SearchParams }) {
             </div>
             {p.remarks && !p.is_reversal && <p className="mt-2 text-footnote text-ink-2">Remarks: {p.remarks}</p>}
             {nowOutstanding !== balanceAfter && !p.is_reversal && (
-              <p className="mt-2 text-caption text-muted">Total outstanding as on {fmtDate(d.today)}: {rupees(nowOutstanding)}</p>
+              <p className="mt-2 text-caption text-muted">Left to pay as on {fmtDate(d.today)} (incl. old balance): {rupees(nowOutstanding)}</p>
             )}
 
             <footer className="mt-8 flex items-end justify-between gap-4 text-caption text-muted">

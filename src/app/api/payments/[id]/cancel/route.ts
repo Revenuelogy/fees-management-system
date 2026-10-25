@@ -8,5 +8,5 @@ const Body = z.object({ reason: requiredText("Give a reason for cancelling (e.g.
 /** Cancel a receipt with a reason (a reversing entry dated today; the original stays on record). */
 export const POST = api<{ id: string }>("writer", async ({ req, params, viewer }) => {
   await cancel(viewer, pathParam(id(), params.id), (await readBody(req, Body)).reason);
-  return { ok: true, message: "Receipt cancelled. The dues it cleared are open again." };
+  return { ok: true, message: "Receipt cancelled. The fees it cleared are due again." };
 });

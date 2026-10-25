@@ -5,7 +5,7 @@
 //   node scripts/db.mjs seed                    load db/seed.sql (demo data, local only)
 //   node scripts/db.mjs reset [--force]         drop everything, migrate and seed (local databases only, unless --force)
 //   node scripts/db.mjs test                    run the pgTAP tests in db/tests (needs the pgtap extension)
-//   node scripts/db.mjs create-user --email <e> --password <p> [--name <n>] [--role admin|accountant|principal|teacher]
+//   node scripts/db.mjs create-user --email <e> --password <p> [--name <n>] [--role admin|accountant|principal|caller|teacher]
 //   node scripts/db.mjs set-password --email <e> --password <p>
 
 import { readdir, readFile } from "node:fs/promises";
@@ -18,7 +18,7 @@ import { hashPassword } from "../src/server/auth/password.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIGRATIONS = path.join(ROOT, "db", "migrations");
 const TESTS = path.join(ROOT, "db", "tests");
-const ROLES = ["admin", "accountant", "principal", "teacher"];
+const ROLES = ["admin", "accountant", "principal", "caller", "teacher"];
 
 for (const file of [".env.local", ".env"]) {
   try {
@@ -101,7 +101,7 @@ async function seed() {
   try {
     const sql = await readFile(path.join(ROOT, "db", "seed.sql"), "utf8");
     await inTransaction(client, () => client.query(sql));
-    console.log("Loaded demo data. Sign in as admin@school.test / admin12345.");
+    console.log("Loaded demo data. Sign in as admin@school.test / admin12345 (caller: pooja@school.test, same password).");
   } finally {
     client.release();
   }

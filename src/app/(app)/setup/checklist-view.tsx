@@ -83,13 +83,13 @@ export function ChecklistView() {
     },
     {
       key: "heads",
-      title: "Fee heads",
+      title: "Fee types",
       done: activeHeads > 0,
       detail:
         activeHeads === 0
-          ? "No fee heads yet. Add the kinds of fees you charge (Tuition, Annual charges, Exam, Transport, …)."
-          : `${plural(activeHeads, "active fee head")}`,
-      links: [{ href: "/setup/classes#fee-heads", label: "Fee heads" }],
+          ? "No fee types yet. Add the kinds of fees you charge (Tuition, Annual charges, Exam, Transport, …)."
+          : `${plural(activeHeads, "active fee type")}`,
+      links: [{ href: "/setup/classes#fee-heads", label: "Fee types" }],
     },
     {
       key: "structure",
@@ -126,17 +126,17 @@ export function ChecklistView() {
     },
     {
       key: "charges",
-      title: "Charges generated",
+      title: "Fees assigned to students",
       done: enrolled > 0 && withoutPlan === 0,
       blocked: enrolled === 0,
       detail:
         enrolled === 0
           ? "Enrol students first."
           : withoutPlan === null
-            ? "Could not check charges."
+            ? "Could not check the fees assigned."
             : withoutPlan === 0
               ? "Every enrolled student has a fee plan for the session."
-              : `${plural(withoutPlan, "enrolled student has", "enrolled students have")} no charges yet. Open the fee structure and use “Apply to students”.`,
+              : `${plural(withoutPlan, "enrolled student has", "enrolled students have")} no fees assigned yet. Open the fee structure and use “Apply to students”.`,
       links: [{ href: "/setup/fee-structure", label: "Apply fee structure" }],
     },
   ];
@@ -214,7 +214,7 @@ export function ChecklistView() {
             <HelpStep n={1} href="/setup/sessions" title="Sessions & installments">
               The academic year and its due dates.
             </HelpStep>
-            <HelpStep n={2} href="/setup/classes" title="Classes & fee heads">
+            <HelpStep n={2} href="/setup/classes" title="Classes & fee types">
               What you teach and what you charge.
             </HelpStep>
             <HelpStep n={3} href="/setup/fee-structure" title="Fee structure">
@@ -223,7 +223,7 @@ export function ChecklistView() {
             <HelpStep n={4} href="/setup/import" title="Students">
               Import them, or promote last year&apos;s.
             </HelpStep>
-            <HelpStep n={5} href="/setup/fee-structure" title="Generate charges">
+            <HelpStep n={5} href="/setup/fee-structure" title="Assign fees to students">
               Apply the fee structure to students.
             </HelpStep>
             <HelpStep n={6} href="/collect" title="Collect fees">
@@ -233,7 +233,7 @@ export function ChecklistView() {
           <p className="mt-4 border-t border-line pt-3 text-footnote text-muted">
             Moving from another system? Import{" "}
             <Link href="/setup/import?tab=dues" className="font-medium text-accent hover:underline">
-              opening dues
+              old balances
             </Link>{" "}
             and{" "}
             <Link href="/setup/import?tab=payments" className="font-medium text-accent hover:underline">

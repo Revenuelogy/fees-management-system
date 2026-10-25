@@ -7,7 +7,7 @@ import { id } from "@/server/validate";
 type P = { id: string };
 
 /** Parent 360: children and family balances in `session` (default: the running one), payments, calls, promises. */
-export const GET = api<P>("staff", async ({ req, params, viewer }) => {
+export const GET = api<P>("caller", async ({ req, params, viewer }) => {
   const { session } = readQuery(req, z.object({ session: id("Unknown session.").optional() }));
   return get360(viewer, pathParam(id(), params.id), session ?? null);
 });

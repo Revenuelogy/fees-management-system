@@ -29,7 +29,7 @@ type Activity = StudentRecovery["activities"][number];
  * running one. Receipts are counted for an activity on its own page (or at the fee counter).
  */
 export function ActivitiesCard({ studentId, studentName, overdue }: { studentId: string; studentName: string; overdue: number }) {
-  const { writer } = useApp();
+  const { writer, caller } = useApp();
   const res = useApi<StudentRecovery>(`/api/students/${studentId}/recovery`);
   const running = useApi<RecoveryActivity[]>(writer ? "/api/activities?running=1" : null);
   const [mode, setMode] = useState<"list" | "new" | "join">("list");
@@ -92,7 +92,7 @@ export function ActivitiesCard({ studentId, studentName, overdue }: { studentId:
       ) : (
         <ul className={notice || mode !== "list" ? "mt-4 space-y-3" : "space-y-3"}>
           {activities.map((a) => (
-            <ActivityItem key={a.participant_id} a={a} first={first} writer={writer} />
+            <ActivityItem key={a.participant_id} a={a} first={first} writer={writer} linkable={!caller} />
           ))}
         </ul>
       )}
@@ -100,7 +100,8 @@ export function ActivitiesCard({ studentId, studentName, overdue }: { studentId:
   );
 }
 
-function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer: boolean }) {
+/** Anybody who sees the profile records the family's response (callers too); receipts are counted by the accountant. */
+function ActivityItem({ a, first, writer, linkable }: { a: Activity; first: string; writer: boolean; linkable: boolean }) {
   const { state, pending, onSubmit } = useFormAction(saveResponse);
   const others = a.participants - 1;
   return (
@@ -109,9 +110,13 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
         <IconTile icon={Sparkles} color="indigo" size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/activities/${a.activity_id}`} className="text-subhead font-semibold text-ink hover:text-accent">
-              {a.name}
-            </Link>
+            {linkable ? (
+              <Link href={`/activities/${a.activity_id}`} className="text-subhead font-semibold text-ink hover:text-accent">
+                {a.name}
+              </Link>
+            ) : (
+              <span className="text-subhead font-semibold text-ink">{a.name}</span>
+            )}
             <ParticipantBadge response={a.response} />
             <Badge>{others > 0 ? `with ${others} other${others === 1 ? "" : "s"}` : `just ${first}`}</Badge>
             {a.status === "closed" && <Badge>Closed</Badge>}
@@ -144,32 +149,28 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
         ) : null}
       </dl>
 
-      {writer ? (
-        <form onSubmit={onSubmit} className="mt-3 grid items-end gap-2 sm:grid-cols-[180px_1fr_auto]">
-          <input type="hidden" name="activity_id" value={a.activity_id} />
-          <input type="hidden" name="participant_id" value={a.participant_id} />
-          <Field label="Response" htmlFor={`sresp-${a.participant_id}`}>
-            <Select id={`sresp-${a.participant_id}`} name="response" defaultValue={a.response}>
-              {PARTICIPANT_RESPONSES.map((x) => (
-                <option key={x} value={x}>
-                  {PARTICIPANT_LABELS[x].label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="What the family said" htmlFor={`snote-${a.participant_id}`}>
-            <Input id={`snote-${a.participant_id}`} name="note" defaultValue={a.note ?? ""} placeholder="e.g. Will pay after the first class" />
-          </Field>
-          <Button type="submit" size="sm" disabled={pending}>
-            {pending ? "Saving…" : "Save"}
-          </Button>
-          <div className="sm:col-span-3">
-            <FormError message={state.error} />
-          </div>
-        </form>
-      ) : (
-        a.note && <p className="mt-3 text-footnote text-ink">{a.note}</p>
-      )}
+      <form onSubmit={onSubmit} className="mt-3 grid items-end gap-2 sm:grid-cols-[180px_1fr_auto]">
+        <input type="hidden" name="activity_id" value={a.activity_id} />
+        <input type="hidden" name="participant_id" value={a.participant_id} />
+        <Field label="Response" htmlFor={`sresp-${a.participant_id}`}>
+          <Select id={`sresp-${a.participant_id}`} name="response" defaultValue={a.response}>
+            {PARTICIPANT_RESPONSES.map((x) => (
+              <option key={x} value={x}>
+                {PARTICIPANT_LABELS[x].label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="What the family said" htmlFor={`snote-${a.participant_id}`}>
+          <Input id={`snote-${a.participant_id}`} name="note" defaultValue={a.note ?? ""} placeholder="e.g. Will pay after the first class" />
+        </Field>
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Saving…" : "Save"}
+        </Button>
+        <div className="sm:col-span-3">
+          <FormError message={state.error} />
+        </div>
+      </form>
 
       <p className="mt-2 flex flex-wrap items-center justify-between gap-2 text-caption text-muted">
         <span>
@@ -182,9 +183,11 @@ function ActivityItem({ a, first, writer }: { a: Activity; first: string; writer
             </>
           )}
         </span>
-        <Link href={`/activities/${a.activity_id}`} className="font-medium text-accent">
-          {writer ? "Count receipts for it" : "Open activity"}
-        </Link>
+        {linkable && (
+          <Link href={`/activities/${a.activity_id}`} className="font-medium text-accent">
+            {writer ? "Count receipts for it" : "Open activity"}
+          </Link>
+        )}
       </p>
     </li>
   );
@@ -231,7 +234,7 @@ function NewActivity({
             id="act_description"
             name="description"
             rows={2}
-            placeholder="e.g. 30 minutes of speaking practice after school, three days a week; parents asked to clear the pending installment"
+            placeholder="e.g. 30 minutes of speaking practice after school, three days a week; parents asked to clear the installment due"
           />
         </Field>
         <Field label="Starts *" htmlFor="act_start">
@@ -240,7 +243,7 @@ function NewActivity({
         <Field label="Ends" htmlFor="act_end" hint="Optional.">
           <Input id="act_end" name="end_date" type="date" />
         </Field>
-        <Field label="Fees to recover (₹)" htmlFor="act_target" hint={overdue > 0 ? `Overdue now: ${rupees(overdue)}.` : "Optional."}>
+        <Field label="Fees to recover (₹)" htmlFor="act_target" hint={overdue > 0 ? `To recover now: ${rupees(overdue)}.` : "Optional."}>
           <Input id="act_target" name="target_amount" inputMode="decimal" />
         </Field>
       </div>

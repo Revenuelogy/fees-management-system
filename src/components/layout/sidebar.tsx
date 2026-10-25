@@ -4,17 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  CalendarDays, FileText, Hourglass, IndianRupee, Layers, LayoutGrid, Menu, PhoneCall, Receipt, School, Settings,
-  SlidersHorizontal, Sparkles, TrendingUp, Users, UsersRound, X,
+  CalendarClock, CalendarDays, FileText, Hourglass, IndianRupee, Layers, LayoutGrid, Menu, PhoneCall, Receipt, School, Search,
+  Settings, SlidersHorizontal, Sparkles, TrendingUp, Users, UsersRound, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { AppRole } from "@/lib/types";
 import { IconTile } from "@/components/ui/kpi";
-import { NAV } from "./nav";
+import { isCaller } from "@/lib/roles";
+import { CALLER_HOME, CALLER_NAV, NAV } from "./nav";
 
 const ICONS: Record<string, React.ElementType> = {
-  CalendarDays, FileText, Hourglass, Layers, LayoutGrid, PhoneCall, Receipt, School, Settings, SlidersHorizontal, Sparkles, TrendingUp, Users,
-  UsersRound,
+  CalendarClock, CalendarDays, FileText, Hourglass, Layers, LayoutGrid, PhoneCall, Receipt, School, Search, Settings, SlidersHorizontal,
+  Sparkles, TrendingUp, Users, UsersRound,
 };
 
 function isActive(pathname: string, href: string, match?: string[]) {
@@ -27,6 +28,8 @@ export function Sidebar({ role, schoolName, canCollect }: { role: AppRole; schoo
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const collectActive = pathname.startsWith("/collect");
+  const caller = isCaller(role);
+  const groups = caller ? CALLER_NAV : NAV;
 
   const nav = (
     <nav
@@ -47,7 +50,7 @@ export function Sidebar({ role, schoolName, canCollect }: { role: AppRole; schoo
           <IndianRupee className="size-4" strokeWidth={2.4} /> Collect fee
         </Link>
       )}
-      {NAV.map((g) => {
+      {groups.map((g) => {
         const items = g.items.filter((i) => !i.roles || i.roles.includes(role));
         if (items.length === 0) return null;
         return (
@@ -81,7 +84,7 @@ export function Sidebar({ role, schoolName, canCollect }: { role: AppRole; schoo
   );
 
   const brand = (
-    <Link href="/" className="flex items-center gap-3 px-5 pb-5 pt-5">
+    <Link href={caller ? CALLER_HOME : "/"} className="flex items-center gap-3 px-5 pb-5 pt-5">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-[11px] bg-gradient-to-b from-[#2c8cff] to-[#0062c4] text-[17px] font-bold text-white shadow-[0_2px_6px_rgba(0,98,196,0.35)]">
         ₹
       </span>

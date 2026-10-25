@@ -1,6 +1,7 @@
 -- =============================================================================
 -- Demo data for local development (`npm run db:reset` runs this file).
--- Creates a login:  admin@school.test / admin12345
+-- Creates a login:  admin@school.test / admin12345 (and three more staff with the same password: an accountant,
+-- the principal and a caller who only phones families)
 -- Two sessions (2025-26 closed, 2026-27 running), ~330 students, realistic
 -- payment behaviour (early, on-time, late, partial, defaulters), arrears,
 -- concessions, transport, cancelled receipts and a few notes.
@@ -24,17 +25,19 @@ begin
   end if;
 end $$;
 
--- Two more staff members who call parents (password admin12345): an accountant and the principal ----------------
+-- Three more staff members who call parents (password admin12345): an accountant, the principal and a caller ------
 do $$
 declare v_hash text := 'scrypt$16384$8$1$r1wYA357eU3Hvu03+PwNhw==$mf5rDXRi60HMbMzRAoa/40vfkyTTETb3E44HsmmHsmNMr9V8ojHqbJGGC+TbnXlqi9xwpEpfLHXrAUw34Findw==';
 begin
   insert into public.app_users (id, email, password_hash)
   select v.id, v.email, v_hash
     from (values ('22222222-2222-2222-2222-222222222222'::uuid, 'neha@school.test'),
-                 ('33333333-3333-3333-3333-333333333333'::uuid, 'ravi@school.test')) v(id, email)
+                 ('33333333-3333-3333-3333-333333333333'::uuid, 'ravi@school.test'),
+                 ('aaaaaaaa-4444-4444-4444-444444444444'::uuid, 'pooja@school.test')) v(id, email)
    where not exists (select 1 from public.app_users u where lower(u.email) = v.email);
   update public.profiles set full_name = 'Neha Joshi', role = 'accountant' where id = '22222222-2222-2222-2222-222222222222';
   update public.profiles set full_name = 'Ravi Mehta', role = 'principal' where id = '33333333-3333-3333-3333-333333333333';
+  update public.profiles set full_name = 'Pooja Verma', role = 'caller' where id = 'aaaaaaaa-4444-4444-4444-444444444444';
 end $$;
 
 -- School data -------------------------------------------------------------------
@@ -86,6 +89,7 @@ declare
   uid      uuid := '11111111-1111-1111-1111-111111111111';
   u_neha   uuid := '22222222-2222-2222-2222-222222222222';
   u_ravi   uuid := '33333333-3333-3333-3333-333333333333';
+  u_pooja  uuid := 'aaaaaaaa-4444-4444-4444-444444444444';
   v_act1   uuid;
   v_act2   uuid;
   v_act3   uuid;
@@ -343,7 +347,7 @@ begin
               when c.outcome = 'busy' then 'Cut the call; try in the evening.'
               when c.outcome = 'switched_off' then 'Phone switched off.'
               when c.resp = 'will_pay' then (array['Will pay after salary.', 'Said they will come to the office and pay.',
-                                                   'Promised to clear the overdue installment.', 'Will pay by UPI.'])[1 + (c.h / 29) % 4]
+                                                   'Promised to clear the installment that is due.', 'Will pay by UPI.'])[1 + (c.h / 29) % 4]
               when c.resp = 'needs_time' then 'Asked for a few more weeks; crop money expected next month.'
               when c.resp = 'financial_issue' then 'Lost job recently; asked about a concession.'
               when c.resp = 'complaint' then 'Unhappy about the bus timing; wants to meet the principal before paying.'
@@ -352,7 +356,7 @@ begin
          case when c.outcome = 'connected' and c.resp = 'will_pay' and (c.h / 17) % 3 <> 0
               then ((5000 + ((c.h / 19) % 6) * 2500) * 100)::bigint end as promised_amount,
          case when c.outcome = 'connected' and c.resp = 'call_later' then c.call_date + 3 + ((c.h / 31) % 5)::int end as follow_up_on,
-         (array[uid, u_neha, u_neha, u_ravi])[1 + (c.h / 53) % 4] as caller
+         (array[uid, u_neha, u_pooja, u_ravi])[1 + (c.h / 53) % 4] as caller
     from c;
 
   insert into public.parent_calls (parent_id, purpose, call_date, called_at, outcome, picked_by, response, summary,
@@ -403,7 +407,7 @@ begin
   insert into public.recovery_activities (name, description, start_date, target_amount, created_by, created_at)
   values ('English speaking club',
           'Extra spoken-English practice three days a week for Class 6 and 7 students whose parents worry about it. '
-          || 'Parents were asked to clear pending fees so the school can run it.',
+          || 'Parents were asked to clear the fees due so the school can run it.',
           v_today - 25, 20000000, uid, (v_today - 25)::timestamp + interval '9 hours')
   returning id into v_act1;
   insert into public.recovery_activities (name, description, start_date, end_date, created_by, created_at)
@@ -414,7 +418,7 @@ begin
   insert into public.recovery_activities (name, description, start_date, target_amount, created_by, created_at)
   values ('Maths remedial classes',
           'Extra maths classes after school for Class 9 and 10 students who scored low in the unit tests. '
-          || 'Parents were reminded of pending fees at the first class.',
+          || 'Parents were reminded of the fees due at the first class.',
           v_today - 20, 30000000, u_neha, (v_today - 20)::timestamp + interval '9 hours')
   returning id into v_act3;
 
@@ -525,7 +529,7 @@ begin
   select ss.id,
          (array['Father called, will pay after salary on the 10th.',
                 'Promised to clear Installment 1 dues this month.',
-                'Requested fee concession, pending with principal.',
+                'Requested fee concession, waiting for the principal.',
                 'Phone not reachable. Sent reminder on WhatsApp.'])[1 + floor(random() * 4)::int],
          case when random() < 0.6 then v_today + floor(random() * 20)::int end,
          case when random() < 0.6 then (round((5000 + random() * 10000) / 500) * 500 * 100)::bigint end,
@@ -540,11 +544,13 @@ begin
   perform set_config('fees.skip_realloc', 'off', true);
   perform public.reallocate_all();
 
-  -- today's call list: Neha and Ravi took families from it and have called a few of them already
+  -- today's call list: Neha, Ravi and Pooja (the caller) took families from it and have called a few of them already
   perform set_config('app.user_id', u_neha::text, true);
   perform public.take_calls(10);
   perform set_config('app.user_id', u_ravi::text, true);
   perform public.take_calls(6);
+  perform set_config('app.user_id', u_pooja::text, true);
+  perform public.take_calls(8);
   perform set_config('app.user_id', '', true);
 
   insert into public.parent_calls (parent_id, purpose, call_date, called_at, outcome, picked_by, response, summary,
@@ -553,7 +559,7 @@ begin
          (array['connected', 'no_answer', 'connected', 'busy'])[a.rn],
          (array['father', null, 'mother', null])[a.rn],
          (array['will_pay', null, 'needs_time', null])[a.rn],
-         (array['Will pay the overdue installment at the counter on Saturday.', 'No answer.',
+         (array['Will pay the installment due at the counter on Saturday.', 'No answer.',
                 'Waiting for the harvest money; asked us to call next week.', 'Cut the call.'])[a.rn],
          case when a.rn = 1 then v_today + 3 end,
          case when a.rn = 1 then 1000000::bigint end,
@@ -561,5 +567,5 @@ begin
          a.assigned_to
     from (select x.*, row_number() over (partition by x.assigned_to order by x.assigned_at, x.parent_id)::int as rn
             from public.call_assignments x where x.call_date = v_today) a
-   where a.rn <= case when a.assigned_to = u_neha then 4 else 2 end;
+   where a.rn <= case when a.assigned_to in (u_neha, u_pooja) then 4 else 2 end;
 end $$;

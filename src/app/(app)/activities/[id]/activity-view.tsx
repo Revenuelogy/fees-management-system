@@ -6,7 +6,7 @@ import { useApi } from "@/lib/api/hooks";
 import { Check, HandCoins, Pencil, Phone, Sparkles, Users, Wallet, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { fmtDate, num, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
-import { PARTICIPANT_LABELS, PARTICIPANT_RESPONSES, VERDICT_LABELS, fmtPhone, type ParticipantResponse } from "@/lib/recovery";
+import { PARTICIPANT_LABELS, PARTICIPANT_RESPONSES, VERDICT_LABELS, fmtPhone, type ParticipantResponse, activityWhen } from "@/lib/recovery";
 import type { ActionState } from "@/lib/action-state";
 import type { ActivityDetail, ActivityParticipant } from "@/lib/types";
 import { useApp } from "@/components/layout/app-shell";
@@ -56,7 +56,7 @@ function Detail({ d, tab }: { d: ActivityDetail; tab?: string }) {
       <PageHeader
         title={c.name}
         crumbs={[{ label: "Activities", href: "/activities" }, { label: c.name }]}
-        description={`From ${fmtDate(c.start_date)}${c.end_date ? ` to ${fmtDate(c.end_date)}` : ""}${c.status === "closed" ? " · closed" : ""}`}
+        description={`From ${fmtDate(c.start_date)}${c.end_date ? ` to ${fmtDate(c.end_date)}` : ""} · ${activityWhen(c, d.today)}`}
         actions={
           writer && (
             <LinkButton href={`${base}/edit`}>
@@ -71,7 +71,7 @@ function Detail({ d, tab }: { d: ActivityDetail; tab?: string }) {
           </Badge>
           {s.owed > 0 && (
             <span className="text-footnote text-ink-2">
-              {s.won} of {s.owed} students who owe paid because of it ({pct(ratioPct(s.won, s.owed), 0)})
+              {s.won} of {s.owed} families paid because of it ({pct(ratioPct(s.won, s.owed), 0)})
             </span>
           )}
         </div>
@@ -79,7 +79,7 @@ function Detail({ d, tab }: { d: ActivityDetail; tab?: string }) {
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={Users} color="indigo" label="Students" value={num(s.participants)} sub={<>{num(s.owing_now)} still owe {rupeesShort(s.overdue_now)} overdue</>} />
+        <Kpi icon={Users} color="indigo" label="Students" value={num(s.participants)} sub={<>{num(s.owing_now)} with fees due · {rupeesShort(s.overdue_now)} to recover</>} />
         <Kpi
           icon={Sparkles}
           color="green"
@@ -185,7 +185,7 @@ function AddStudents({ activityId }: { activityId: string }) {
           </Field>
           <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
             <input type="checkbox" name="only_with_dues" defaultChecked className="size-4 accent-[var(--accent)]" />
-            Only students with overdue fees
+            Only students with fees due now or old balance
           </label>
           <div className="sm:col-span-2">
             <Button type="submit" disabled={pending}>
@@ -267,7 +267,7 @@ function Participant({ r, activityId, writer, since }: { r: ActivityParticipant;
           <p className={cn("text-headline font-semibold tabular", r.total_overdue > 0 ? "text-critical-ink" : "text-good-ink")}>
             {r.total_overdue > 0 ? rupeesShort(r.total_overdue) : "Clear"}
           </p>
-          <p className="text-caption text-muted">{r.total_overdue > 0 ? "overdue now" : "nothing overdue"}</p>
+          <p className="text-caption text-muted">{r.total_overdue > 0 ? "to recover" : "nothing due now"}</p>
         </div>
       </div>
 

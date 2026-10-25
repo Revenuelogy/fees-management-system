@@ -141,7 +141,7 @@ function Dashboard({ d, period }: { d: RecoveryDashboard; period: Period }) {
             </p>
             {(m.by_kind.arrears ?? 0) > 0 && (
               <p className="mt-1.5 text-footnote text-ink-2">
-                Includes <span className="font-medium text-serious-ink">{rupeesShort(m.by_kind.arrears ?? 0)}</span> of old dues.
+                Includes <span className="font-medium text-serious-ink">{rupeesShort(m.by_kind.arrears ?? 0)}</span> old balance received.
               </p>
             )}
           </div>
@@ -184,7 +184,7 @@ function Dashboard({ d, period }: { d: RecoveryDashboard; period: Period }) {
             ) : d.impact.lift !== null && d.impact.lift >= 1.1 ? (
               <>
                 Calling works: families we spoke to paid <b>{d.impact.lift}×</b> as often ({pct(d.impact.spoke_pct, 0)} against {pct(d.impact.others_pct, 0)} of
-                other families with dues).
+                other families with fees due).
               </>
             ) : d.impact.lift !== null && d.impact.lift < 0.9 ? (
               <>
@@ -318,10 +318,10 @@ function Dashboard({ d, period }: { d: RecoveryDashboard; period: Period }) {
         <div className="space-y-5">
           <Card
             title="Does calling make a difference?"
-            description="Families we spoke to about fees in the period (paid on or after the call) against the other families with dues (owing now, or who paid overdue fees in the period)."
+            description="Families we spoke to about fees in the period (paid on or after the call) against the other families with fees due (something to recover now, or who paid fees due now in the period)."
           >
             {d.impact.spoke === 0 && d.impact.others === 0 ? (
-              <p className="text-footnote text-muted">No families with dues in this period.</p>
+              <p className="text-footnote text-muted">No families with fees due in this period.</p>
             ) : (
               <div className="space-y-4">
                 <Compare

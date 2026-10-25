@@ -6,7 +6,9 @@ import type { Db } from "@/server/db";
 import { badRequest, notFound } from "@/server/http";
 import type { ActivityFields, CallRulesBody, ParticipantPatch, ParticipantsBody } from "@/server/schemas/recovery";
 import { orNotFound } from "@/server/services/analytics";
-import type { ActivitiesOverview, ActivityDetail, CallBoard, RecoveryActivity, RecoveryDashboard, StudentRecovery } from "@/lib/types";
+import type {
+  ActivitiesOverview, ActivityDetail, CallBoard, FamilySearchRow, OpenPromises, RecoveryActivity, RecoveryDashboard, StudentRecovery,
+} from "@/lib/types";
 
 // Fee recovery: the dashboard, the daily call list (and the families each caller takes from it), student
 // activities, and what brought a receipt in (a call or an activity). Figures come from the SQL functions in
@@ -26,6 +28,16 @@ export function dashboard(viewer: Viewer, from: string, to: string) {
 /** Today's call list, today's calls and the viewer's own figures (so cached per user). */
 export function callBoard(viewer: Viewer) {
   return read(viewer, "call-board", [viewer.id], (db) => db.rpc<CallBoard>("call_board"));
+}
+
+/** Families matching a parent's name or phone, or a child's name, admission number, parents' names or phone. */
+export function searchFamilies(viewer: Viewer, q: string) {
+  return read(viewer, "family-search", [q], (db) => db.rpcRows<FamilySearchRow>("search_families", { p_query: q }));
+}
+
+/** Each family's open promise, soonest first. */
+export function openPromises(viewer: Viewer) {
+  return read(viewer, "open-promises", [], (db) => db.rpc<OpenPromises>("open_promises"));
 }
 
 export function activities(viewer: Viewer) {
@@ -178,13 +190,9 @@ export async function addParticipants(viewer: Viewer, activityId: string, p: z.o
 
 export async function updateParticipant(viewer: Viewer, activityId: string, id: string, p: z.output<typeof ParticipantPatch>) {
   await write(viewer, async (db) => {
-    const row = await db.one(
-      `update public.recovery_participants
-          set response = $3, note = $4, updated_by = public.current_user_id(), updated_at = now()
-        where id = $1 and activity_id = $2 returning id`,
-      [id, activityId, p.response, p.note],
-    );
+    const row = await db.one("select 1 from public.recovery_participants where id = $1 and activity_id = $2", [id, activityId]);
     if (!row) throw notFound("This student is no longer in the activity.");
+    await db.rpc("set_participant_response", { p_participant: id, p_response: p.response, p_note: p.note });
   });
   return { message: "Saved." };
 }

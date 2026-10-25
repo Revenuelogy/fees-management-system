@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { MODE_LABELS, fmtDate, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
 import { ATTITUDE_LABELS, BEHAVIOUR_LABELS, ECONOMIC_LABELS, RELATION_LABELS, TIMING_LABELS, fmtPhone } from "@/lib/recovery";
 import type { Parent360 } from "@/lib/types";
+import { MONEY } from "@/lib/glossary";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
 import { Breadcrumbs } from "@/components/ui/page-header";
@@ -80,6 +81,9 @@ export function ParentView({ id }: { id: string }) {
               {fmtPhone(p.alt_phone)}
             </a>
           )}
+          <LinkButton href={`/calls/${id}`} variant={t && t.total_overdue > 0 ? "primary" : undefined}>
+            <Phone className="size-4" /> Call this family
+          </LinkButton>
           {writer && (
             <LinkButton href={`/parents/${id}/edit`}>
               <Pencil className="size-4" /> Edit profile
@@ -92,21 +96,21 @@ export function ParentView({ id }: { id: string }) {
         <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={Wallet} color="blue" size="sm" /> Family should pay
+              <IconTile icon={Wallet} color="blue" size="sm" /> {MONEY.total_fee.label}
             </p>
             <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(supposed)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
-              {t.prev_opening > 0 ? <>incl. {rupeesShort(t.prev_opening)} old dues</> : d.session?.name}
+              {t.prev_opening > 0 ? <>incl. {rupeesShort(t.prev_opening)} old balance</> : d.session?.name}
               {t.concession > 0 && <> · {rupeesShort(t.concession)} concession</>}
             </p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={CheckCircle2} color="green" size="sm" /> Has paid
+              <IconTile icon={CheckCircle2} color="green" size="sm" /> {MONEY.received.label}
             </p>
             <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(paid)}</p>
             <Meter value={ratioPct(paid, supposed)} className="mt-3.5" color="bg-good" track="bg-good-soft" />
-            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of what was due</p>
+            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of the total fee</p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
@@ -120,8 +124,8 @@ export function ParentView({ id }: { id: string }) {
                     height="h-1.5"
                     segments={[
                       { value: lp.current, className: "bg-series-1", label: "This year", display: rupees(lp.current) },
-                      { value: lp.arrears, className: "bg-series-2", label: "Old dues", display: rupees(lp.arrears) },
-                      { value: lp.advance, className: "bg-series-3", label: "Advance", display: rupees(lp.advance) },
+                      { value: lp.arrears, className: "bg-series-2", label: MONEY.old_balance.label, display: rupees(lp.arrears) },
+                      { value: lp.advance, className: "bg-series-3", label: MONEY.advance.label, display: rupees(lp.advance) },
                     ]}
                   />
                 </div>
@@ -136,12 +140,12 @@ export function ParentView({ id }: { id: string }) {
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={AlertTriangle} color={t.total_overdue > 0 ? "red" : "green"} size="sm" /> Still owes
+              <IconTile icon={AlertTriangle} color={t.total_overdue > 0 ? "red" : "green"} size="sm" /> {MONEY.balance.label}
             </p>
             <p className={cn("figure mt-3 text-[28px] leading-none", t.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(t.total_pending)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
-              {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} overdue now</> : "Nothing overdue"}
-              {t.prev_pending > 0 && <> · {rupeesShort(t.prev_pending)} old dues</>}
+              {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} to recover</> : "Nothing due now"}
+              {t.prev_pending > 0 && <> · incl. {rupeesShort(t.prev_pending)} old balance</>}
             </p>
           </div>
         </div>
@@ -149,7 +153,7 @@ export function ParentView({ id }: { id: string }) {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
-          <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, including old dues` : undefined}>
+          <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, with each child's old balance` : undefined}>
             {d.children.length === 0 ? (
               <Empty title="No children linked">
                 {writer ? (
@@ -185,7 +189,7 @@ export function ParentView({ id }: { id: string }) {
                           {c.total_pending > 0 ? rupeesShort(c.total_pending) : "Clear"}
                         </span>
                         <span className="text-caption text-muted">
-                          {c.total_overdue > 0 ? `${rupeesShort(c.total_overdue)} overdue` : c.total_pending > 0 ? "not due yet" : "nothing owed"}
+                          {c.total_overdue > 0 ? `${rupeesShort(c.total_overdue)} to recover` : c.total_pending > 0 ? "due later" : "paid up"}
                         </span>
                       </div>
                       <Meter value={c.paid_pct} className="mt-2" color={c.total_overdue > 0 ? "bg-series-1" : "bg-good"} track="bg-surface" />
@@ -235,8 +239,8 @@ export function ParentView({ id }: { id: string }) {
                       <span className="text-ink-2">· {pay.full_name}</span>
                       <span className="block text-caption text-muted">
                         {MODE_LABELS[pay.mode]}
-                        {pay.arrears > 0 && <> · {rupees(pay.arrears)} to old dues</>}
-                        {pay.advance > 0 && <> · {rupees(pay.advance)} advance</>}
+                        {pay.arrears > 0 && <> · {rupees(pay.arrears)} cleared old balance</>}
+                        {pay.advance > 0 && <> · {rupees(pay.advance)} paid in advance</>}
                         {pay.cancelled && <span className="font-semibold text-critical-ink"> · cancelled</span>}
                         {pay.is_reversal && <span className="font-semibold text-ink-2"> · cancellation</span>}
                       </span>
@@ -313,7 +317,7 @@ export function ParentView({ id }: { id: string }) {
               <div>
                 <p className="text-caption font-medium text-muted">Records show</p>
                 <p className="mt-0.5 text-subhead text-ink">{HABIT[d.behaviour.profile]}</p>
-                {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Carried dues into {d.session?.name ?? "this session"}</p>}
+                {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Has old balance carried into {d.session?.name ?? "this year"}</p>}
                 {d.behaviour.suggested && d.behaviour.suggested !== p.payment_behaviour && (
                   <p className="mt-1.5 inline-flex items-center gap-1.5 text-footnote text-accent">
                     <Sparkles className="size-3.5" aria-hidden /> Looks like “{BEHAVIOUR_LABELS[d.behaviour.suggested].label}”
@@ -375,7 +379,7 @@ export function ParentView({ id }: { id: string }) {
           </Card>
 
           {d.sessions.length > 0 && (
-            <Card title="By session" description="What the family owes for each year. Dues left in earlier years are old dues.">
+            <Card title="By session" description="What is left to pay for each year. What is left from earlier years is the old balance.">
               <ul className="space-y-3">
                 {d.sessions.map((s) => (
                   <li key={s.session_id}>

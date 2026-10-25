@@ -127,10 +127,10 @@ export const PaymentSourceBody = z
 const whole = (message: string, min: number, max: number) => z.number({ error: message }).int(message).min(min, message).max(max, message);
 
 export const CallRulesBody = z.object({
-  min_overdue: paise("Enter the smallest overdue amount to call about.").positive("The smallest overdue amount must be more than ₹0."),
+  min_overdue: paise("Enter the smallest amount to recover that the call list starts at.").positive("The smallest amount to recover must be more than ₹0."),
   skip_paid_days: whole("Days after a payment must be between 0 and 180.", 0, 180),
   gap_days: whole("Days between calls must be between 1 and 60.", 1, 60),
-  high_due: paise("Enter the high-dues amount.").positive("The high-dues amount must be more than ₹0."),
+  high_due: paise("Enter the large amount to recover.").positive("The large amount to recover must be more than ₹0."),
   batch: whole("Families per batch must be between 1 and 100.", 1, 100),
   grace_days: whole("Grace days must be between 0 and 30.", 0, 30),
 });

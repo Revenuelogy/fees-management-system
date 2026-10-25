@@ -59,9 +59,10 @@ function useAction() {
 }
 
 function Board({ d, tab: tabParam }: { d: CallBoard; tab?: string }) {
-  const { admin } = useApp();
+  const { admin, caller } = useApp();
   const me = d.me;
-  const tab = TABS.find((t) => t.key === tabParam)?.key ?? (me.taken === 0 && d.counts.due_open > 0 ? "all" : "mine");
+  // a caller always opens on their own list
+  const tab = TABS.find((t) => t.key === tabParam)?.key ?? (!caller && me.taken === 0 && d.counts.due_open > 0 ? "all" : "mine");
   const mine = d.rows.filter((r) => r.assigned_to === me.id);
   const due = d.rows.filter((r) => r.state === "due");
   const action = useAction();
@@ -135,7 +136,7 @@ function Board({ d, tab: tabParam }: { d: CallBoard; tab?: string }) {
         </div>
 
         <div className="space-y-5">
-          <Card title="Not on today's list" description="Families with dues the rules keep off today's list. They come back on their own.">
+          <Card title="Not on today's list" description="Families with fees due that the rules keep off today's list. They come back on their own.">
             <ul className="space-y-2.5 text-subhead">
               <Off icon={MessageSquareText} label="Promised to pay, waiting for the date" n={d.counts.promised} extra={d.counts.promised_amount > 0 ? rupeesShort(d.counts.promised_amount) : null} />
               <Off icon={HandCoins} label={`Paid in the last ${d.rules.skip_paid_days} days`} n={d.counts.paid_recently} />
@@ -200,9 +201,9 @@ function Rules({ d }: { d: CallBoard }) {
   const r = d.rules;
   return (
     <>
-      The list is made fresh every day: families owing {rupees(r.min_overdue)} or more in overdue fees, except those who paid in the last {r.skip_paid_days} days,
+      The list is made fresh every day: families with {rupees(r.min_overdue)} or more to recover (due now + old balance), except those who paid in the last {r.skip_paid_days} days,
       those waiting for a promised date (plus {r.grace_days} grace {r.grace_days === 1 ? "day" : "days"}) and those called recently ({r.gap_days} days after a
-      call that got through, the next day if nobody picked up). Broken promises and call-backs come first, then the biggest and oldest dues.
+      call that got through, the next day if nobody picked up). Broken promises and call-backs come first, then the largest and oldest amounts to recover.
     </>
   );
 }
@@ -386,7 +387,7 @@ function EveryoneList({ rows, meId }: { rows: CallListRow[]; meId: string }) {
   );
 }
 
-/** One family on the list: why they are on it, what they owe, the last contact, and the way to call. */
+/** One family on the list: why they are on it, what there is to recover, the last contact, and the way to call. */
 function FamilyRow({ r, take, takenBy }: { r: CallListRow; take?: boolean; takenBy?: string | null }) {
   const action = useAction();
   const main = r.reasons[0];
@@ -434,7 +435,7 @@ function FamilyRow({ r, take, takenBy }: { r: CallListRow; take?: boolean; taken
             <PromiseLine date={r.promise_date} amount={r.promise_amount} status={r.promise_status} />
           </p>
         ) : r.state === "cleared" ? (
-          <p className="mt-1 text-footnote text-good-ink">No dues to call about now.</p>
+          <p className="mt-1 text-footnote text-good-ink">Nothing to recover now.</p>
         ) : (
           <p className="mt-1 text-footnote text-muted">
             {r.last_paid_on
@@ -454,8 +455,8 @@ function FamilyRow({ r, take, takenBy }: { r: CallListRow; take?: boolean; taken
       </div>
       <div className="flex shrink-0 items-center gap-2 max-sm:w-full max-sm:justify-between max-sm:pl-11">
         <span className="text-right">
-          <span className="block text-subhead font-semibold tabular text-critical-ink">{rupeesShort(r.total_overdue)}</span>
-          <span className="block text-caption text-muted">overdue</span>
+          <span className="block text-subhead font-semibold tabular text-critical-ink" title="To recover now: due now + old balance">{rupeesShort(r.total_overdue)}</span>
+          <span className="block text-caption text-muted">to recover</span>
         </span>
         {take ? (
           <Button size="sm" disabled={action.pending} onClick={() => action.run(() => takeFamily(r.parent_id))} title="Add to my list">

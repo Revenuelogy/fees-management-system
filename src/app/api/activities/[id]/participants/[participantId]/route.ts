@@ -5,8 +5,8 @@ import { id } from "@/server/validate";
 
 type P = { id: string; participantId: string };
 
-/** Record a student's response (fees deposited, part, declined) with a note. */
-export const PATCH = api<P>("writer", async ({ req, params, viewer }) =>
+/** Record a family's response (fees deposited, part, declined) with a note. Callers do this after a call. */
+export const PATCH = api<P>("caller", async ({ req, params, viewer }) =>
   updateParticipant(viewer, pathParam(id(), params.id), pathParam(id(), params.participantId), await readBody(req, ParticipantPatch)),
 );
 

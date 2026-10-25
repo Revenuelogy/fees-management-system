@@ -66,13 +66,13 @@ export function SchoolProfileForm({ settings }: { settings: SchoolSettings }) {
 const RULES = [
   {
     value: "oldest_first",
-    label: "Oldest dues first — previous sessions before current fees (recommended)",
+    label: "Oldest fees first — old balance before this year's fees (recommended)",
     hint: "A payment first clears unpaid fees from earlier sessions, then this session's installments in due-date order.",
   },
   {
     value: "current_first",
-    label: "Current session first, then oldest dues",
-    hint: "A payment first clears the running session's installments; older dues are cleared only after that.",
+    label: "This year first, then old balance",
+    hint: "A payment first clears the running session's installments; old balance is cleared only after that.",
   },
 ] as const;
 
@@ -84,7 +84,7 @@ export function AllocationRuleForm({ current }: { current: SchoolSettings["alloc
   return (
     <Card
       title="Payment allocation rule"
-      description="How a payment is split across a student's dues when the counter does not pick specific installments."
+      description="How a payment is split across a student's unpaid fees when the counter does not pick specific installments."
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <fieldset className="space-y-2">
@@ -140,10 +140,10 @@ export function CallRulesForm({ settings }: { settings: SchoolSettings }) {
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Call families owing at least (₹ overdue)" htmlFor="min_overdue">
+          <Field label="Call families with at least this much to recover (₹)" htmlFor="min_overdue" hint="To recover now = due now + old balance.">
             <Input id="min_overdue" name="min_overdue" inputMode="decimal" required defaultValue={toRupeeInput(settings.call_min_overdue)} />
           </Field>
-          <Field label="High dues from (₹)" htmlFor="high_due" hint="Families owing this much are called first.">
+          <Field label="Large amount to recover from (₹)" htmlFor="high_due" hint="Families with this much to recover are called first.">
             <Input id="high_due" name="high_due" inputMode="decimal" required defaultValue={toRupeeInput(settings.call_high_due)} />
           </Field>
           <Field label="Skip families who paid in the last (days)" htmlFor="skip_paid_days" hint="A family that paid recently is not called.">

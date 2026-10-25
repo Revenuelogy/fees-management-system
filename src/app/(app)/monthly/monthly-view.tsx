@@ -7,6 +7,7 @@ import { apiUrl } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
 import { useApp } from "@/components/layout/app-shell";
 import { PageSkeleton } from "@/components/ui/page-state";
+import { MONEY } from "@/lib/glossary";
 import { MODE_LABELS, addMonths, fmtDate, fmtDateTime, monthLabel, monthsBetween, pct, ratioPct, rupees, rupeesShort, todayIST } from "@/lib/format";
 import type { MonthPayment, MonthSummary, NonPayer } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
@@ -34,16 +35,15 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
           ? sessionMonths[sessionMonths.length - 1]
           : sessionMonths[0];
   const carry = flag(sp.carry, true);
-  const arrears = flag(sp.arrears, false);
   const view = param(sp.view) === "unpaid" ? "unpaid" : "paid";
 
-  const sumRes = useApi<MonthSummary>(session ? apiUrl(`/api/analytics/months/${month}`, { carry, arrears }) : null);
+  const sumRes = useApi<MonthSummary>(session ? apiUrl(`/api/analytics/months/${month}`, { carry }) : null);
   const payRes = useApi<MonthPayment[]>(session ? `/api/analytics/months/${month}/payments` : null);
-  const nonRes = useApi<NonPayer[]>(session ? apiUrl(`/api/analytics/months/${month}/non-payers`, { carry, arrears }) : null);
+  const nonRes = useApi<NonPayer[]>(session ? apiUrl(`/api/analytics/months/${month}/non-payers`, { carry }) : null);
   if (!session) return <NoSession />;
 
   const url = (extra: Record<string, string | number | boolean | undefined>) =>
-    withParams("/monthly", { month, carry: carry ? undefined : false, arrears: arrears || undefined, view: view === "unpaid" ? "unpaid" : undefined, ...extra });
+    withParams("/monthly", { month, carry: carry ? undefined : false, view: view === "unpaid" ? "unpaid" : undefined, ...extra });
 
   const allMonths = sessions
     .slice()
@@ -94,7 +94,7 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
         title={m.label}
         description={
           <>
-            {m.session.name} · {isCurrent ? `${s.days_left} days left` : m.status === "past" ? "Month ended" : "Upcoming"}
+            {m.session.name} · {isCurrent ? `${s.days_left} days left` : m.status === "past" ? "Month ended" : "Not started yet"}
             {m.closed && (
               <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-fill px-2 py-0.5 text-caption font-semibold text-ink-2" title={`Frozen ${fmtDateTime(m.closed.closed_at)}`}>
                 <Lock className="size-3" /> Closed
@@ -102,19 +102,13 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
             )}
           </>
         }
-        info="Expected = what was still unpaid on the 1st for installments due this month (plus earlier unpaid installments and old dues if switched on). Collected = every rupee received during the month."
+        info={`Fees due = what was still unpaid on the 1st for this year's installments due this month (with "All fees due so far", also earlier unpaid installments). Received this month = every rupee that came in during the month, split into this year, ${MONEY.old_balance.label.toLowerCase()} and ${MONEY.advance.label.toLowerCase()}.`}
         actions={stepper}
       >
         <Segmented
           options={[
             { label: "Due this month", href: url({ carry: false }), active: !carry },
-            { label: "All dues so far", href: url({ carry: undefined }), active: carry },
-          ]}
-        />
-        <Segmented
-          options={[
-            { label: "This session", href: url({ arrears: undefined }), active: !arrears },
-            { label: "Including old dues", href: url({ arrears: true }), active: arrears },
+            { label: "All fees due so far", href: url({ carry: undefined }), active: carry },
           ]}
         />
       </PageHeader>
@@ -128,18 +122,18 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
       <section className="animate-rise rounded-[28px] bg-surface p-6 shadow-card sm:p-8">
         <div className="flex flex-col gap-8 md:flex-row md:items-center">
           <div className="min-w-0 flex-1">
-            <p className="text-subhead font-medium text-ink-2">{isCurrent ? "Collected so far" : "Collected"}</p>
+            <p className="text-subhead font-medium text-ink-2">Received this month</p>
             <p className="figure mt-1 text-[44px] leading-none text-ink sm:text-display">{rupeesShort(s.received)}</p>
             <p className="mt-2 text-body text-ink-2">
-              against <span className="font-semibold text-ink">{rupeesShort(s.expected)}</span> expected · {s.payments_count} receipts
+              against <span className="font-semibold text-ink">{rupeesShort(s.expected)}</span> fees due · {s.payments_count} receipts
             </p>
             <div className="mt-6 max-w-xl">
               <StackedBar
                 height="h-3"
                 segments={[
                   { value: s.received_current, className: "bg-series-1", label: "This year", display: rupees(s.received_current) },
-                  { value: s.received_arrears, className: "bg-series-2", label: "Old dues", display: rupees(s.received_arrears) },
-                  { value: s.received_advance, className: "bg-series-3", label: "Advance", display: rupees(s.received_advance) },
+                  { value: s.received_arrears, className: "bg-series-2", label: MONEY.old_balance.label, display: rupees(s.received_arrears) },
+                  { value: s.received_advance, className: "bg-series-3", label: MONEY.advance.label, display: rupees(s.received_advance) },
                 ]}
               />
               <Legend
@@ -152,16 +146,15 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
               />
             </div>
           </div>
-          <Ring value={pctCollected} size={176} stroke={17} className="self-center" label={`${pct(pctCollected, 0)} of expected collected`}>
+          <Ring value={pctCollected} size={176} stroke={17} className="self-center" label={`${pct(pctCollected, 0)} of fees due received`}>
             <span className="figure text-[34px] leading-none">{Math.round(pctCollected)}%</span>
-            <span className="mt-1 text-footnote text-ink-2">of expected</span>
+            <span className="mt-1 text-footnote text-ink-2">of fees due</span>
           </Ring>
         </div>
         <div className="mt-8 grid grid-cols-1 gap-3 border-t border-line pt-6 sm:grid-cols-3">
           <div>
-            <p className="text-footnote text-ink-2">{isCurrent ? "Still to come" : "Not collected"}</p>
+            <p className="text-footnote text-ink-2">{m.status === "past" ? "Not received in the month" : MONEY.due_now.label}</p>
             <p className={`mt-0.5 text-title2 font-semibold tabular ${s.still_to_come > 0 && m.status === "past" ? "text-critical-ink" : "text-ink"}`}>{rupeesShort(s.still_to_come)}</p>
-            {isCurrent && s.run_rate_needed ? <p className="text-caption text-muted">{rupeesShort(s.run_rate_needed)} a day needed</p> : null}
           </div>
           <Link href={url({ view: undefined }) + "#students"} className="group">
             <p className="text-footnote text-ink-2">Students who paid</p>
@@ -169,15 +162,15 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
             <p className="text-caption text-muted">{s.students_cleared} fully cleared</p>
           </Link>
           <Link href={url({ view: "unpaid" }) + "#students"} className="group">
-            <p className="text-footnote text-ink-2">Owed but paid nothing</p>
+            <p className="text-footnote text-ink-2">Owe fees, paid nothing this month</p>
             <p className="mt-0.5 text-title2 font-semibold tabular text-critical-ink group-hover:underline">{s.students_expected_not_paid}</p>
-            <p className="text-caption text-muted">of {s.students_expected} who owed money</p>
+            <p className="text-caption text-muted">of {s.students_expected} with fees due</p>
           </Link>
         </div>
       </section>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Card className="xl:col-span-2" title="Day by day" description="Money received per day, net of cancellations. Switch to running total to compare with what was expected.">
+        <Card className="xl:col-span-2" title="Day by day" description="Money received per day, net of cancellations. Switch to running total to compare with the fees due this month.">
           <DailyCollectionChart data={m.daily} target={s.expected} />
         </Card>
         <Card title="Payment modes">
@@ -197,12 +190,12 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
         </Card>
       </div>
 
-      <Card title="Classes" description="Collected this month and progress against each class's own expected amount. Open a class to see every student.">
+      <Card title="Classes" description="Received this month and progress against each class's own fees due. Open a class to see every student.">
         <ul className="-mx-2 divide-y divide-line">
           {classes.map((c) => (
             <li key={c.class_id ?? "none"}>
               <Link
-                href={withParams(`/monthly/${month}/${c.class_id ?? "none"}`, { carry: carry ? undefined : false, arrears: arrears || undefined })}
+                href={withParams(`/monthly/${month}/${c.class_id ?? "none"}`, { carry: carry ? undefined : false })}
                 className="group grid grid-cols-[minmax(90px,1fr)_minmax(120px,2fr)_auto] items-center gap-4 rounded-xl px-2 py-3 transition-colors hover:bg-fill-2 sm:grid-cols-[160px_1fr_110px_90px]"
               >
                 <span className="truncate text-subhead font-medium text-ink group-hover:text-accent">{c.class_name}</span>
@@ -229,7 +222,7 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
 
       <Card
         id="students"
-        title={view === "paid" ? "Paid this month" : "Owed but paid nothing"}
+        title={view === "paid" ? "Paid this month" : "Owe fees, paid nothing this month"}
         actions={
           <Segmented
             size="sm"
@@ -269,20 +262,20 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
             totals
             pageSize={25}
             exportName={`month-${month}-not-paid`}
-            exportMeta={[`Month ${m.label}`, "Expected to pay but paid nothing"]}
+            exportMeta={[`Month ${m.label}`, "Owe fees, paid nothing this month", carry ? "All fees due so far" : "Fees due this month"]}
             columns={[
               { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "class_label" },
               { key: "phone", label: "Phone", hideOnMobile: true },
               { key: "last_paid_on", label: "Last paid", type: "date", hideOnMobile: true },
-              { key: "owed", label: "Owed", type: "money", total: true, alertPositive: true },
+              { key: "owed", label: carry ? MONEY.due_now.label : "Due this month", type: "money", total: true, alertPositive: true },
             ]}
             defaultSort={{ key: "owed", dir: "desc" }}
-            empty="Everyone who owed money paid something."
+            empty="Everyone with fees due paid something."
           />
         )}
       </Card>
 
-      <p className="text-center text-caption text-muted">Expected is measured on {fmtDate(m.start)}.</p>
+      <p className="text-center text-caption text-muted">Fees due are measured on {fmtDate(m.start)}.</p>
     </div>
   );
 }

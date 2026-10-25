@@ -279,7 +279,7 @@ export async function updateCharge(viewer: Viewer, studentId: string, chargeId: 
       concession,
     });
     const net = amount - concession;
-    return { message: paid > net ? `Saved. ${rupees(paid - net)} that was paid against this line moved to other dues (or advance).` : "Saved." };
+    return { message: paid > net ? `Saved. ${rupees(paid - net)} that was paid against this line moved to other fees (or paid in advance).` : "Saved." };
   });
 }
 
@@ -292,7 +292,7 @@ export async function deleteCharge(viewer: Viewer, studentId: string, chargeId: 
     );
     if (!row) throw notFound("This fee line no longer exists.");
     await audit(db, "delete_charge", "student_charges", chargeId, { student: studentId, ...row, paid });
-    return { message: paid > 0 ? `Line deleted. ${rupees(paid)} paid against it moved to other dues (or advance).` : "Line deleted." };
+    return { message: paid > 0 ? `Line deleted. ${rupees(paid)} paid against it moved to other fees (or paid in advance).` : "Line deleted." };
   });
 }
 
@@ -314,7 +314,7 @@ export async function addCharge(
         [studentId, inst.session_id, input.installment_id, input.fee_head_id, input.amount, input.concession, input.note],
       );
     } catch (e) {
-      if (isDbError(e) && e.code === "23505") throw new ApiError(409, "This installment already has a line for that fee head. Edit that line instead.");
+      if (isDbError(e) && e.code === "23505") throw new ApiError(409, "This installment already has a line for that fee type. Edit that line instead.");
       throw e;
     }
     await audit(db, "add_charge", "student_charges", row!.id, { student: studentId, amount: input.amount, concession: input.concession });

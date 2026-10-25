@@ -32,7 +32,7 @@ export function ActivityForm({ activity, today }: { activity?: RecoveryActivity;
               name="description"
               rows={2}
               defaultValue={a?.description ?? ""}
-              placeholder="e.g. Extra spoken-English practice three days a week; parents asked to clear pending fees so the school can run it"
+              placeholder="e.g. Extra spoken-English practice three days a week; parents asked to clear the fees due so the school can run it"
             />
           </Field>
           <Field label="Fees to recover (₹)" htmlFor="target_amount" hint="Optional. Shown as progress.">

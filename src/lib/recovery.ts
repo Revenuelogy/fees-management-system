@@ -1,6 +1,9 @@
 // Fee recovery vocabulary shared by the API (validation) and the screens (labels). The keys match the CHECK
 // constraints and the call list / activity functions in db/migrations/*_recovery.sql and *_daily_calls.sql.
 
+import { daysBetween } from "./dates";
+import { fmtDateShort } from "./format";
+
 export const RELATIONS = ["father", "mother", "guardian", "other"] as const;
 export const ECONOMIC = ["low", "lower_middle", "middle", "upper_middle", "high"] as const;
 export const BEHAVIOURS = [
@@ -45,7 +48,7 @@ export const BEHAVIOUR_LABELS: Record<Behaviour, { label: string; hint: string; 
   regular: { label: "Pays on time", hint: "Pays regularly, around the due dates", tone: "good" },
   installment_wise: { label: "Pays installment-wise", hint: "Pays each installment as it falls due", tone: "good" },
   year_end: { label: "Pays at year end", hint: "Clears most of the fees in January–March", tone: "warning" },
-  carries_forward: { label: "Carries dues forward", hint: "Leaves part of the fees for the next year", tone: "serious" },
+  carries_forward: { label: "Leaves an old balance", hint: "Leaves part of the fees for the next year (old balance)", tone: "serious" },
   willing_struggling: { label: "Wants to pay, struggling", hint: "Willing, but money is tight", tone: "warning" },
   capable_not_paying: { label: "Can pay, doesn't", hint: "Has the means but delays or avoids paying", tone: "critical" },
   irregular: { label: "Irregular", hint: "Pays now and then, usually after reminders", tone: "serious" },
@@ -112,28 +115,28 @@ export const REASON_LABELS: Record<CallReason, { label: string; hint: string; to
   broken_promise: { label: "Broke a promise", hint: "Promised a date and paid nothing by it (and the grace days)", tone: "critical" },
   partial_promise: { label: "Paid less than promised", hint: "Paid only part of the promised amount by the date", tone: "serious" },
   call_back: { label: "Asked to call today", hint: "The date they asked to be called on has come", tone: "accent" },
-  high_dues: { label: "High dues", hint: "Owes more than the high-dues amount in the call list rules", tone: "serious" },
+  high_dues: { label: "Large amount to recover", hint: "To recover now is more than the large-amount figure in the call list rules", tone: "serious" },
   never_paid: { label: "Never paid", hint: "No payment on record", tone: "critical" },
   silent: { label: "No payment for 2 months", hint: "Nothing paid for 60 days or more", tone: "warning" },
-  old_dues: { label: "Old dues", hint: "Owes fees of earlier years", tone: "serious" },
-  overdue: { label: "Fees overdue", hint: "Owes fees that have fallen due", tone: "neutral" },
+  old_dues: { label: "Old balance", hint: "Has old balance left from earlier years", tone: "serious" },
+  overdue: { label: "Fees due now", hint: "Has fees whose due date has passed", tone: "neutral" },
   not_reached: { label: "Not reached last time", hint: "The last call did not get through", tone: "neutral" },
 };
 
-/** Where a family with dues stands today. */
+/** Where a family with fees due stands today. */
 export const CALL_STATES: Record<CallState, { label: string; hint: string }> = {
   due: { label: "To call today", hint: "On today's list" },
   called: { label: "Called today", hint: "A fee call was logged today" },
   promised: { label: "Promised to pay", hint: "Waiting for the date they promised (plus the grace days)" },
   paid_recently: { label: "Paid recently", hint: "Paid something recently, so not called" },
   waiting: { label: "Called recently", hint: "Called a few days ago; back on the list on the date shown" },
-  cleared: { label: "No dues now", hint: "Owes less than the amount the call list starts at" },
+  cleared: { label: "Nothing to recover now", hint: "To recover now is below the amount the call list starts at" },
 };
 
 export const VERDICT_LABELS: Record<ActivityVerdict, { label: string; hint: string; tone: Tone }> = {
-  good: { label: "Working well", hint: "Half or more of the students who owe paid because of it (or the target is reached)", tone: "good" },
-  fair: { label: "Some effect", hint: "A quarter to a half of the students who owe paid because of it", tone: "warning" },
-  poor: { label: "Not working", hint: "Fewer than a quarter of the students who owe paid because of it", tone: "critical" },
+  good: { label: "Working well", hint: "Half or more of the families with fees due paid because of it (or the target is reached)", tone: "good" },
+  fair: { label: "Some effect", hint: "A quarter to a half of the families with fees due paid because of it", tone: "warning" },
+  poor: { label: "Not working", hint: "Fewer than a quarter of the families with fees due paid because of it", tone: "critical" },
   too_early: { label: "Too early to say", hint: "Less than a week old and nothing counted for it yet", tone: "neutral" },
   no_students: { label: "No students yet", hint: "Add the students taking part", tone: "neutral" },
 };
@@ -146,6 +149,19 @@ export const PARTICIPANT_LABELS: Record<ParticipantResponse, { label: string; to
 };
 
 /** Digits of a phone number the way the database compares them (no +91 or leading 0), or null. */
+const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
+
+/** "Starts in 15 days", "Day 12" (running) or "Ended 26 Oct": never a negative day count. */
+export function activityWhen(a: { start_date: string; end_date: string | null; status: string }, today: string): string {
+  if (a.start_date > today) {
+    const n = daysBetween(today, a.start_date);
+    return n === 1 ? "Starts tomorrow" : `Starts in ${days(n)}`;
+  }
+  if (a.end_date && a.end_date < today) return `Ended ${fmtDateShort(a.end_date)}`;
+  if (a.status === "closed") return "Closed";
+  return `Running for ${days(daysBetween(a.start_date, today) + 1)}`;
+}
+
 export function phoneDigits(input: string | null | undefined): string | null {
   let d = String(input ?? "").replace(/\D/g, "");
   if (d.length === 12 && d.startsWith("91")) d = d.slice(2);

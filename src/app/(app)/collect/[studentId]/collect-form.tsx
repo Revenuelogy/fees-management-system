@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { StackedBar, Legend } from "@/components/ui/bars";
 import { KIND_LEGEND } from "@/components/ui/alloc";
 import { cn } from "@/lib/cn";
+import { installmentName, oldBalanceLabel } from "@/lib/glossary";
 
 type SessionLite = { id: string; start: string; end: string; name: string };
 
@@ -160,26 +161,26 @@ export function CollectForm({
       <section className="rounded-[var(--radius-card)] bg-surface shadow-card">
         <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5 sm:px-6">
           <div>
-            <h2 className="text-headline font-semibold text-ink">Open dues</h2>
+            <h2 className="text-headline font-semibold text-ink">Fees due</h2>
             <p className="mt-0.5 text-footnote text-ink-2">
-              <span className="font-semibold text-ink">{rupees(totalDue)}</span> unpaid
+              <span className="font-semibold text-ink">{rupees(totalDue)}</span> balance
               {totalOverdue > 0 && (
                 <>
-                  {" "}· <span className="font-semibold text-critical-ink">{rupees(totalOverdue)}</span> overdue
+                  {" "}· <span className="font-semibold text-critical-ink">{rupees(totalOverdue)}</span> due now
                 </>
               )}
-              {advance > 0 && <> · {rupees(advance)} advance held</>}
+              {advance > 0 && <> · {rupees(advance)} paid in advance</>}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {totalOverdue > 0 && (
               <Button type="button" size="sm" onClick={() => fillManual(overdueLines)}>
-                Pay overdue
+                Pay due now
               </Button>
             )}
             {totalDue > 0 && (
               <Button type="button" size="sm" onClick={() => fillManual(dues)}>
-                Pay everything
+                Pay full balance
               </Button>
             )}
           </div>
@@ -212,11 +213,11 @@ export function CollectForm({
               </button>
             ))}
           </div>
-          <span className="text-caption text-muted">{manual ? "Type what each fee gets" : order === "oldest_first" ? "Oldest dues are cleared first" : "This session is cleared first"}</span>
+          <span className="text-caption text-muted">{manual ? "Type what each fee gets" : order === "oldest_first" ? "Oldest fees are cleared first" : "This session is cleared first"}</span>
         </div>
 
         {dues.length === 0 ? (
-          <p className="px-6 py-14 text-center text-subhead text-ink-2">No dues. Anything collected now is kept as an advance.</p>
+          <p className="px-6 py-14 text-center text-subhead text-ink-2">No fees due. Anything collected now is kept as paid in advance.</p>
         ) : (
           <div className="space-y-3 p-5 sm:p-6">
             {groups.map((g) => {
@@ -241,10 +242,15 @@ export function CollectForm({
                     </button>
                     <span className={cn("size-2 rounded-full", dot)} aria-hidden />
                     <span className="text-subhead font-semibold text-ink">
-                      {g.session} · {g.inst}
+                      {kind === "arrears" ? oldBalanceLabel(g.session, g.inst) : `${g.session} · ${installmentName(g.inst)}`}
                     </span>
-                    {kind === "arrears" && <Badge tone="serious">Old dues</Badge>}
-                    {g.overdue ? <Badge tone="critical">Overdue</Badge> : <Badge>Due {fmtDate(g.due)}</Badge>}
+                    {kind === "arrears" ? (
+                      <Badge tone="serious">Old balance</Badge>
+                    ) : g.overdue ? (
+                      <Badge tone="critical">Due now</Badge>
+                    ) : (
+                      <Badge>Due {fmtDate(g.due)}</Badge>
+                    )}
                     <span className="ml-auto text-subhead tabular">
                       {allocatedHere > 0 && <span className="mr-2 font-semibold text-accent">{rupees(allocatedHere)}</span>}
                       <span className={allocatedHere > 0 ? "text-muted" : "font-semibold text-ink"}>{rupees(pendingTotal)}</span>
@@ -397,8 +403,8 @@ export function CollectForm({
               <StackedBar
                 segments={[
                   { value: split.current, className: "bg-series-1", label: "This year", display: rupees(split.current) },
-                  { value: split.arrears, className: "bg-series-2", label: "Old dues", display: rupees(split.arrears) },
-                  { value: split.advance, className: "bg-series-3", label: "Advance", display: rupees(split.advance) },
+                  { value: split.arrears, className: "bg-series-2", label: "Old balance", display: rupees(split.arrears) },
+                  { value: split.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(split.advance) },
                 ]}
               />
               <Legend
@@ -414,7 +420,7 @@ export function CollectForm({
                 <span className="font-semibold tabular">{rupees(Math.max(0, totalDue - Math.min(amount, totalDue)))}</span>
               </div>
               {totalDue > 0 && <p className="mt-0.5 text-right text-caption text-muted">clears {pct((100 * Math.min(amount, totalDue)) / totalDue, 0)} of the balance</p>}
-              {manual && unallocated > 0 && <p className="mt-1 text-caption text-muted">{rupees(unallocated)} not assigned goes to the oldest dues or advance.</p>}
+              {manual && unallocated > 0 && <p className="mt-1 text-caption text-muted">{rupees(unallocated)} not assigned goes to the oldest fees, or is kept as paid in advance.</p>}
             </div>
           )}
 

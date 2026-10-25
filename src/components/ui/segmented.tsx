@@ -12,9 +12,10 @@ export function Segmented({
   size?: "sm" | "md";
 }) {
   return (
-    <div className="inline-flex items-center gap-2">
-      {label && <span className="text-footnote text-muted">{label}</span>}
-      <div className="inline-flex rounded-[10px] bg-fill p-[2px]" role="group" aria-label={label}>
+    // on a narrow screen the options scroll inside the control instead of widening the page
+    <div className="inline-flex min-w-0 max-w-full items-center gap-2">
+      {label && <span className="shrink-0 text-footnote text-muted">{label}</span>}
+      <div className="inline-flex min-w-0 max-w-full overflow-x-auto rounded-[10px] bg-fill p-[2px]" role="group" aria-label={label}>
         {options.map((o) => (
           <Link
             key={o.label}
@@ -23,7 +24,7 @@ export function Segmented({
             scroll={false}
             aria-current={o.active ? "true" : undefined}
             className={cn(
-              "whitespace-nowrap rounded-[8px] font-medium transition-all duration-200",
+              "shrink-0 whitespace-nowrap rounded-[8px] font-medium transition-all duration-200",
               size === "sm" ? "px-2.5 py-[3px] text-caption" : "px-3 py-[5px] text-footnote",
               o.active
                 ? "bg-surface text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.04)] dark:bg-surface-3"

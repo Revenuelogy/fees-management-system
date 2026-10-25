@@ -21,6 +21,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { IconTile } from "@/components/ui/kpi";
 import { Ring } from "@/components/ui/ring";
 import { cn } from "@/lib/cn";
+import { paymentNote, paymentSplit } from "@/components/payment-note";
+import { MONEY } from "@/lib/glossary";
 import { NoteForm, DeleteNoteButton } from "./note-form";
 import { FamilyCard } from "./family-card";
 import { ActivitiesCard } from "./activities-card";
@@ -28,9 +30,9 @@ import { ActivitiesCard } from "./activities-card";
 const INST_STATUS = {
   paid: { label: "Paid", tone: "good", color: "var(--good)" },
   partial: { label: "Part paid", tone: "warning", color: "var(--series-1)" },
-  partial_overdue: { label: "Overdue", tone: "critical", color: "var(--critical)" },
-  overdue: { label: "Overdue", tone: "critical", color: "var(--critical)" },
-  upcoming: { label: "Upcoming", tone: "neutral", color: "var(--series-1)" },
+  partial_overdue: { label: "Due now", tone: "critical", color: "var(--critical)" },
+  overdue: { label: "Due now", tone: "critical", color: "var(--critical)" },
+  upcoming: { label: "Due later", tone: "neutral", color: "var(--series-1)" },
   waived: { label: "Waived", tone: "neutral", color: "var(--tile-gray)" },
 } as const;
 
@@ -43,7 +45,7 @@ const PROFILE = {
 } as const;
 
 export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
-  const { writer } = useApp();
+  const { writer, caller } = useApp();
   const res = useApi<Student360>(`/api/students/${id}/360`);
   if (!res.data) return <Pending queries={[res]} />;
   const d = res.data;
@@ -56,10 +58,17 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
   const lp = d.last_payment;
   const supposed = b ? b.expected + b.prev_opening : 0;
   const paid = b ? b.received + b.prev_recovered : 0;
+  const wentTo = lp ? paymentNote(lp, { sessionName: b?.session_name, receivedThisYear: b?.received }) : null;
 
   return (
     <div className="space-y-5">
-      <Breadcrumbs items={[{ label: "Students", href: "/students" }, ...(currentEnr ? [{ label: currentEnr.class_name, href: `/classes/${currentEnr.class_id}` }] : [])]} />
+      <Breadcrumbs
+        items={
+          caller
+            ? [{ label: "My calls", href: "/calls" }]
+            : [{ label: "Students", href: "/students" }, ...(currentEnr ? [{ label: currentEnr.class_name, href: `/classes/${currentEnr.class_id}` }] : [])]
+        }
+      />
 
       {/* Profile header */}
       <section className="flex flex-col gap-5 rounded-[28px] bg-surface p-6 shadow-card sm:flex-row sm:items-center sm:p-7">
@@ -75,6 +84,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
               .filter(Boolean)
               .join("  ·  ")}
           </p>
+          {wentTo && <p className="mt-1.5 text-subhead text-ink">{wentTo}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {st.phone && (
@@ -103,21 +113,21 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
         <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={Wallet} color="blue" size="sm" /> Should pay
+              <IconTile icon={Wallet} color="blue" size="sm" /> {MONEY.total_fee.label}
             </p>
             <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(supposed)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
-              {b.prev_opening > 0 ? <>incl. {rupeesShort(b.prev_opening)} old dues</> : b.session_name}
+              {b.prev_opening > 0 ? <>incl. {rupeesShort(b.prev_opening)} old balance</> : b.session_name}
               {b.concession > 0 && <> · {rupeesShort(b.concession)} concession</>}
             </p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={CheckCircle2} color="green" size="sm" /> Has paid
+              <IconTile icon={CheckCircle2} color="green" size="sm" /> {MONEY.received.label}
             </p>
             <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(paid)}</p>
             <Meter value={ratioPct(paid, supposed)} className="mt-3.5" color="bg-good" track="bg-good-soft" />
-            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of what was due</p>
+            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of the total fee</p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
@@ -131,13 +141,20 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                     height="h-1.5"
                     segments={[
                       { value: lp.current, className: "bg-series-1", label: "This year", display: rupees(lp.current) },
-                      { value: lp.arrears, className: "bg-series-2", label: "Old dues", display: rupees(lp.arrears) },
-                      { value: lp.advance, className: "bg-series-3", label: "Advance", display: rupees(lp.advance) },
+                      { value: lp.arrears, className: "bg-series-2", label: "Old balance", display: rupees(lp.arrears) },
+                      { value: lp.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(lp.advance) },
                     ]}
                   />
                 </div>
                 <p className="mt-2.5 text-footnote text-ink-2">
-                  {fmtDate(lp.paid_on)} · {lp.arrears > 0 && lp.current === 0 ? "went to old dues" : lp.arrears > 0 ? "this year + old dues" : lp.advance > 0 && lp.current === 0 ? "kept as advance" : "went to this year"}
+                  {fmtDate(lp.paid_on)} ·{" "}
+                  {lp.arrears > 0 && lp.current === 0
+                    ? "cleared old balance"
+                    : lp.arrears > 0
+                      ? "this year + old balance"
+                      : lp.advance > 0 && lp.current === 0
+                        ? "paid in advance"
+                        : "went to this year"}
                 </p>
               </>
             ) : (
@@ -146,12 +163,13 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
           </div>
           <div className={cn("rounded-[var(--radius-card)] p-5 shadow-card", b.total_pending > 0 ? "bg-surface" : "bg-surface")}>
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={AlertTriangle} color={b.total_overdue > 0 ? "red" : "green"} size="sm" /> Still owes
+              <IconTile icon={AlertTriangle} color={b.total_overdue > 0 ? "red" : "green"} size="sm" /> {MONEY.balance.label}
             </p>
             <p className={cn("figure mt-3 text-[28px] leading-none", b.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(b.total_pending)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
-              {b.total_overdue > 0 ? <>{rupeesShort(b.total_overdue)} overdue now</> : "Nothing overdue"}
-              {b.advance_balance > 0 && <> · {rupeesShort(b.advance_balance)} advance</>}
+              {b.overdue > 0 ? <>{rupeesShort(b.overdue)} due now</> : "Nothing due now"}
+              {b.prev_pending > 0 && <> · incl. {rupeesShort(b.prev_pending)} old balance</>}
+              {b.advance_balance > 0 && <> · {rupeesShort(b.advance_balance)} paid in advance</>}
             </p>
           </div>
         </div>
@@ -170,7 +188,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
           >
             {!ladder ? (
               <Empty title="No fee plan">
-                {writer ? <Link href={`/students/${id}/fees`} className="text-accent">Set up the fee plan</Link> : "No charges set for this student."}
+                {writer ? <Link href={`/students/${id}/fees`} className="text-accent">Set up the fee plan</Link> : "No fees assigned to this student yet."}
               </Empty>
             ) : (
               <>
@@ -198,7 +216,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                           Due {fmtDate(i.due_date)} · {rupeesShort(i.net)}
                         </p>
                         <details className="mt-2 text-caption">
-                          <summary className="cursor-pointer text-accent">Fee heads</summary>
+                          <summary className="cursor-pointer text-accent">Fee types</summary>
                           <ul className="mt-2 space-y-1">
                             {i.lines.map((l) => (
                               <li key={l.charge_id} className="flex justify-between gap-2 tabular">
@@ -240,15 +258,20 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                         <span className="text-footnote text-muted">{fmtDate(p.paid_on)}</span>
                       </div>
                       <p className="text-caption text-muted">
-                        <Link href={`/payments/${p.payment_id}`} className="font-medium text-accent">
-                          {p.receipt_no}
-                        </Link>
+                        {caller ? (
+                          <span className="font-medium text-ink-2">{p.receipt_no}</span>
+                        ) : (
+                          <Link href={`/payments/${p.payment_id}`} className="font-medium text-accent">
+                            {p.receipt_no}
+                          </Link>
+                        )}
                         {" · "}
                         {MODE_LABELS[p.mode]}
                         {p.pct_of_outstanding !== null && <> · cleared {pct(p.pct_of_outstanding, 0)} of balance</>}
                         {p.cancelled && <span className="font-semibold text-critical-ink"> · cancelled</span>}
                         {p.is_reversal && <span className="font-semibold text-ink-2"> · cancellation</span>}
                       </p>
+                      {!p.cancelled && paymentSplit(p) && <p className="mt-1 text-footnote text-ink">{paymentSplit(p)}</p>}
                       <div className="mt-2">
                         <AllocLines lines={p.allocations} compact />
                       </div>
@@ -276,7 +299,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
               ))}
             </ul>
             <div className="mt-4 flex justify-between border-t border-line pt-3 text-subhead">
-              <span className="text-ink-2">Total owed</span>
+              <span className="text-ink-2">Balance, all years</span>
               <span className="font-semibold tabular">{rupees(totalOutstanding)}</span>
             </div>
           </Card>
@@ -307,8 +330,8 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
           </Card>
 
           <Card title="Notes">
-            {writer && <NoteForm studentId={id} />}
-            <ul className={cn("space-y-2.5", writer && "mt-4")}>
+            <NoteForm studentId={id} />
+            <ul className="mt-4 space-y-2.5">
               {d.notes.length === 0 && <li className="text-footnote text-muted">No notes yet.</li>}
               {d.notes.map((n) => (
                 <li key={n.id} className="rounded-2xl bg-fill-2 p-3.5 text-subhead">

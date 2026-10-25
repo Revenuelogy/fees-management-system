@@ -11,6 +11,7 @@ import { Breadcrumbs } from "@/components/ui/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { FeeStatusBadge } from "@/components/ui/status";
 import { LinkButton } from "@/components/ui/button";
+import { paymentNote } from "@/components/payment-note";
 import { CollectForm, type PaymentSourceOption } from "./collect-form";
 
 /** Calls to the family in the last 30 days and the student's running (or just ended) activities. */
@@ -59,6 +60,7 @@ export function CollectStudent({ studentId }: { studentId: string }) {
   const st = d.student;
   const enr = d.enrollments.find((e) => e.is_current) ?? d.enrollments[0];
   const today = todayIST();
+  const wentTo = d.last_payment ? paymentNote(d.last_payment, { sessionName: d.balance?.session_name, receivedThisYear: d.balance?.received }) : null;
 
   return (
     <>
@@ -72,6 +74,7 @@ export function CollectStudent({ studentId }: { studentId: string }) {
           <p className="text-subhead text-ink-2">
             {[enr ? `${enr.class_name} · ${enr.section}${enr.roll_no ? ` · Roll ${enr.roll_no}` : ""}` : null, st.admission_no, st.father_name, st.phone].filter(Boolean).join("  ·  ")}
           </p>
+          {wentTo && <p className="mt-1 text-subhead text-ink">{wentTo}</p>}
         </div>
         <LinkButton href={`/students/${studentId}`}>View profile</LinkButton>
       </section>

@@ -5,7 +5,7 @@ import { HandCoins, Plus, Sparkles, Users, Wallet } from "lucide-react";
 import { useApi } from "@/lib/api/hooks";
 import { type SearchParams, param } from "@/lib/context";
 import { fmtDate, fmtDateShort, num, pct, ratioPct, rupeesShort } from "@/lib/format";
-import { PARTICIPANT_LABELS, PARTICIPANT_RESPONSES, VERDICT_LABELS } from "@/lib/recovery";
+import { PARTICIPANT_LABELS, PARTICIPANT_RESPONSES, VERDICT_LABELS, activityWhen } from "@/lib/recovery";
 import type { ActivitiesOverview, ActivitySummary } from "@/lib/types";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
@@ -35,8 +35,8 @@ export function ActivitiesView({ sp }: { sp: SearchParams }) {
     <div className="space-y-5">
       <PageHeader
         title="Student activities"
-        description="What is running for students, how each activity is doing and the fees it brought in."
-        info="An activity is something the school does for students that also helps recover fees: extra practice, a club, a trip open to students whose fees are paid. The accountant ticks at the fee counter which payments came in because of an activity; an activity is working well when half or more of its students who owe paid because of it."
+        description="What is running for students, how each activity is doing and the fees received because of it."
+        info="An activity is something the school does for students that also helps recover fees: extra practice, a club, a trip open to students whose fees are paid. The accountant ticks at the fee counter which payments came in because of an activity; an activity is working well when half or more of its families with fees due paid because of it."
         actions={
           writer && (
             <LinkButton href="/activities/new" variant="primary">
@@ -74,7 +74,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
         <Kpi
           icon={HandCoins}
           color="green"
-          label="Brought in"
+          label="Fees from activities"
           value={rupeesShort(t.credited)}
           hint="Receipts the accountant counted for an activity at the fee counter."
           sub={<>{rupeesShort(t.credited_running)} from running ones</>}
@@ -101,13 +101,13 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
         ) : (
           <>
             {ranked.length > 1 && (
-              <Card title="Which activities work" description="Share of the students who owe that paid because of the activity (receipt counted for it).">
+              <Card title="Which activities work" description="Share of the families with fees due that paid because of the activity (receipt counted for it).">
                 <BarList
                   rows={ranked.map((a) => ({
                     label: a.name,
                     value: a.won_pct ?? 0,
                     display: pct(a.won_pct, 0),
-                    sub: `${a.won} of ${a.owed} · ${rupeesShort(a.credited)}`,
+                    sub: `${a.won} of ${a.owed} paid · ${rupeesShort(a.credited)}`,
                     href: `/activities/${a.id}`,
                   }))}
                   max={100}
@@ -118,7 +118,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
             {running.length > 0 && (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {running.map((a) => (
-                  <ActivityCard key={a.id} a={a} />
+                  <ActivityCard key={a.id} a={a} today={d.today} />
                 ))}
               </div>
             )}
@@ -127,7 +127,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
                 <h2 className="pt-2 text-headline font-semibold text-ink">Closed</h2>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {closed.map((a) => (
-                    <ActivityCard key={a.id} a={a} />
+                    <ActivityCard key={a.id} a={a} today={d.today} />
                   ))}
                 </div>
               </>
@@ -148,7 +148,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
                 { key: "negative", label: "Declined", type: "number", total: true, hideOnMobile: true },
                 { key: "payers", label: "Paid something", type: "number", total: true, hideOnMobile: true },
                 { key: "credited", label: "Because of it", type: "money", total: true },
-                { key: "overdue_now", label: "Still overdue", type: "money", total: true, alertPositive: true },
+                { key: "overdue_now", label: "To recover now", type: "money", total: true, alertPositive: true },
               ] satisfies Column[]
             }
             exportName="activities-by-class"
@@ -176,7 +176,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
                 { key: "response_label", label: "Response" },
                 { key: "paid_since", label: "Paid since start", type: "money", total: true, hideOnMobile: true },
                 { key: "credited", label: "Because of it", type: "money", total: true },
-                { key: "total_overdue", label: "Overdue now", type: "money", total: true, alertPositive: true },
+                { key: "total_overdue", label: "To recover now", type: "money", total: true, alertPositive: true },
               ] satisfies Column[]
             }
             searchKeys={["full_name", "admission_no", "activity_name", "class_label", "note"]}
@@ -200,7 +200,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
   );
 }
 
-function ActivityCard({ a }: { a: ActivitySummary }) {
+function ActivityCard({ a, today }: { a: ActivitySummary; today: string }) {
   const v = VERDICT_LABELS[a.verdict];
   return (
     <Link href={`/activities/${a.id}`} className="group block rounded-[var(--radius-card)] bg-surface p-5 shadow-card transition-transform duration-200 hover:-translate-y-0.5">
@@ -209,7 +209,7 @@ function ActivityCard({ a }: { a: ActivitySummary }) {
           <p className="truncate text-headline font-semibold text-ink group-hover:text-accent">{a.name}</p>
           <p className="text-caption text-muted">
             {fmtDateShort(a.start_date)}
-            {a.end_date ? ` – ${fmtDateShort(a.end_date)}` : ""} · {a.days_running} {a.days_running === 1 ? "day" : "days"}
+            {a.end_date ? ` – ${fmtDateShort(a.end_date)}` : ""} · {activityWhen(a, today)}
             {a.classes.length > 0 ? ` · ${a.classes.join(", ")}` : ""}
           </p>
         </div>
@@ -227,9 +227,9 @@ function ActivityCard({ a }: { a: ActivitySummary }) {
         </div>
         <div className="text-right">
           <p className="figure text-title3 text-ink">
-            {a.won}/{a.owed}
+            {a.won} of {a.owed}
           </p>
-          <p className="text-caption text-muted">students who owe won</p>
+          <p className="text-caption text-muted">families paid</p>
         </div>
       </div>
       {a.target_amount ? <Meter value={ratioPct(a.credited, a.target_amount)} className="mt-3" color="bg-good" track="bg-good-soft" /> : null}

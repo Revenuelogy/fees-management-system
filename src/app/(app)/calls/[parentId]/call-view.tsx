@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowRight, Phone } from "lucide-react";
 import { useApi } from "@/lib/api/hooks";
-import { cn } from "@/lib/cn";
-import { fmtDate, fmtDateShort, fmtTime, rupees, rupeesShort } from "@/lib/format";
+import { fmtDate, fmtTime } from "@/lib/format";
 import { ATTITUDE_LABELS, CALL_STATES, OUTCOME_LABELS, REASON_LABELS, fmtPhone } from "@/lib/recovery";
 import type { CallBoard, CallListRow, Parent360 } from "@/lib/types";
 import { Pending } from "@/components/ui/page-state";
@@ -15,9 +13,9 @@ import { LinkButton } from "@/components/ui/button";
 import { FeeStatusBadge } from "@/components/ui/status";
 import { BehaviourBadge, EconomicBadge, PromiseLine, ReasonBadges } from "@/components/recovery";
 import { CallForm } from "../../parents/call-form";
-import { CallHistory } from "../../parents/call-history";
+import { FamilyProfile } from "./family-profile";
 
-/** One family: everything to know before and during the call, and the form to log it. */
+/** One family: everything to know before and during the call (read-only), and the form to log it. */
 export function CallView({ parentId }: { parentId: string }) {
   // no background refresh while the call is being logged
   const board = useApi<CallBoard>("/api/calls", { refreshInterval: 0, revalidateOnFocus: false });
@@ -41,7 +39,6 @@ function Workspace({ b, f, parentId }: { b: CallBoard; f: Parent360; parentId: s
   const row = b.rows.find((r) => r.parent_id === parentId);
   const next = nextFamily(b, parentId);
   const latest = f.promises[0];
-  const owing = f.children.filter((k) => k.in_session && k.total_pending > 0);
   const status = !row
     ? "Not on today's call list"
     : row.state === "due"
@@ -98,78 +95,8 @@ function Workspace({ b, f, parentId }: { b: CallBoard; f: Parent360; parentId: s
       </section>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-5">
-        <div className="space-y-5 xl:col-span-3">
-          <Card title="What to talk about" actions={<Link href={`/parents/${parentId}`} className="text-footnote font-medium text-accent">Full profile</Link>}>
-            {t && (
-              <div className="grid grid-cols-3 gap-2 rounded-2xl bg-fill-2 p-3 text-center">
-                <div>
-                  <p className="text-headline font-semibold tabular text-critical-ink">{rupeesShort(t.total_overdue)}</p>
-                  <p className="text-caption text-muted">overdue now</p>
-                </div>
-                <div>
-                  <p className={cn("text-headline font-semibold tabular", t.prev_pending > 0 ? "text-serious-ink" : "text-ink")}>{rupeesShort(t.prev_pending)}</p>
-                  <p className="text-caption text-muted">old dues</p>
-                </div>
-                <div>
-                  <p className="text-headline font-semibold tabular text-ink">{t.last_paid_on ? fmtDateShort(t.last_paid_on) : "Never"}</p>
-                  <p className="text-caption text-muted">{t.days_since_payment !== null ? `last paid · ${t.days_since_payment} days ago` : "last paid"}</p>
-                </div>
-              </div>
-            )}
-            <ul className="mt-4 space-y-2">
-              {owing.length === 0 && <li className="text-footnote text-muted">No child owes anything right now.</li>}
-              {owing.map((k) => (
-                <li key={k.student_id} className="flex items-center justify-between gap-3 text-subhead">
-                  <Link href={`/students/${k.student_id}`} className="min-w-0 truncate font-medium text-ink hover:text-accent">
-                    {k.full_name}
-                    <span className="ml-1.5 text-caption font-normal text-muted">{k.class_name ? `${k.class_name} · ${k.section}` : "Not enrolled"}</span>
-                  </Link>
-                  <span className="shrink-0 tabular">
-                    <span className={cn("font-semibold", k.total_overdue > 0 ? "text-critical-ink" : "text-ink")}>{rupees(k.total_overdue)}</span>
-                    <span className="ml-1 text-caption text-muted">of {rupeesShort(k.total_pending)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <dl className="mt-4 space-y-2.5 border-t border-line pt-4 text-subhead">
-              {[
-                ["Main concern about the child", p.concerns],
-                ["What matters most to them", p.priorities],
-                ["How they behave", p.behaviour_notes],
-              ]
-                .filter(([, v]) => v)
-                .map(([k, v]) => (
-                  <div key={k as string}>
-                    <dt className="text-caption font-medium text-muted">{k}</dt>
-                    <dd className="mt-0.5 whitespace-pre-wrap text-ink">{v}</dd>
-                  </div>
-                ))}
-              {f.reliability.made > 0 && (
-                <div>
-                  <dt className="text-caption font-medium text-muted">Promises so far</dt>
-                  <dd className="mt-0.5 text-ink">
-                    {f.reliability.kept} kept · {f.reliability.partial} in part · {f.reliability.broken} broken
-                    {f.reliability.pending > 0 && <> · {f.reliability.pending} waiting</>}
-                  </dd>
-                </div>
-              )}
-              {f.activities.some((a) => a.status === "active") && (
-                <div>
-                  <dt className="text-caption font-medium text-muted">Running activities</dt>
-                  <dd className="mt-0.5 text-ink">
-                    {f.activities
-                      .filter((a) => a.status === "active")
-                      .map((a) => `${a.name} (${a.student_name.split(" ")[0]})`)
-                      .join(", ")}
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </Card>
-
-          <Card title="Earlier calls">
-            <CallHistory parentId={parentId} calls={f.calls} canDelete={false} limit={5} />
-          </Card>
+        <div className="xl:col-span-3">
+          <FamilyProfile f={f} parentId={parentId} />
         </div>
 
         {/* on a phone the form comes right after the number to dial */}

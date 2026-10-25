@@ -7,7 +7,7 @@ export function NoSession() {
   return (
     <Card>
       <Empty title="No academic session yet" icon={CalendarRange}>
-        Create your first session (for example 2026-27, April to March) with its installments, then add classes, fee heads
+        Create your first session (for example 2026-27, April to March) with its installments, then add classes, fee types
         and the fee structure.
         <div className="mt-4">
           <LinkButton href="/setup" variant="primary">

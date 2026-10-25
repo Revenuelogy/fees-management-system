@@ -91,13 +91,13 @@ function ViewToggle<T extends string>({ value, options, onChange }: { value: T; 
 }
 
 /**
- * Month-by-month collection across a session.
- * Monthly: scheduled (neutral column) beside received (stacked by what it paid for).
- * Cumulative: running totals of scheduled vs received.
+ * Month-by-month money received across a session.
+ * Monthly: installments due (neutral column) beside received (stacked by what it paid for: this year, old balance,
+ * paid in advance; a part with nothing in it is left out of the legend).
+ * Cumulative: running totals of installments due vs received.
  */
 export function CollectionTrendChart({
   data,
-  includeArrears,
   hrefBase,
   hrefSuffix = "",
   height = 260,
@@ -114,7 +114,6 @@ export function CollectionTrendChart({
     cum_received?: number;
     is_future?: boolean;
   }[];
-  includeArrears: boolean;
   hrefBase?: string;
   hrefSuffix?: string;
   height?: number;
@@ -124,19 +123,17 @@ export function CollectionTrendChart({
   const [view, setView] = useState<"monthly" | "cumulative">("monthly");
   const hasCumulative = data.some((d) => d.cum_expected !== undefined);
 
+  const hasOld = data.some((d) => d.arrears > 0);
+  const hasAdvance = data.some((d) => d.advance > 0);
   const monthly: SeriesKey[] = [
-    { key: "expected", label: "Due", color: "var(--series-track)", shape: "rect" },
+    { key: "expected", label: "Installments due", color: "var(--series-track)", shape: "rect" },
     { key: "current", label: "This year", color: "var(--series-1)", shape: "rect" },
-    ...(includeArrears
-      ? ([
-          { key: "arrears", label: "Old dues", color: "var(--series-2)", shape: "rect" },
-          { key: "advance", label: "Advance", color: "var(--series-3)", shape: "rect" },
-        ] as SeriesKey[])
-      : []),
+    ...(hasOld ? [{ key: "arrears", label: "Old balance", color: "var(--series-2)", shape: "rect" } as SeriesKey] : []),
+    ...(hasAdvance ? [{ key: "advance", label: "Paid in advance", color: "var(--series-3)", shape: "rect" } as SeriesKey] : []),
   ];
   const cumulative: SeriesKey[] = [
-    { key: "cum_expected", label: "Due so far", color: "var(--ink-2)", shape: "line" },
-    { key: "cum_current", label: "Collected so far", color: "var(--series-1)", shape: "line" },
+    { key: "cum_expected", label: "Installments due so far", color: "var(--ink-2)", shape: "line" },
+    { key: "cum_current", label: "Received so far", color: "var(--series-1)", shape: "line" },
   ];
   const rows = data.map((d) => ({ ...d, tooltipLabel: d.label, cum_current: d.is_future ? null : d.cum_current }));
   const onClick = (e: unknown) => {
@@ -173,9 +170,9 @@ export function CollectionTrendChart({
                 content={(p) => <ChartTooltip {...(p as TooltipContentProps<number, string>)} series={monthly} footer={() => (hrefBase ? "Click to open this month" : null)} />}
               />
               <Bar dataKey="expected" fill="var(--series-track)" maxBarSize={18} radius={[6, 6, 6, 6]} isAnimationActive={false} />
-              <Bar dataKey="current" stackId="r" fill="var(--series-1)" maxBarSize={18} radius={includeArrears ? [0, 0, 6, 6] : [6, 6, 6, 6]} isAnimationActive={false} />
-              {includeArrears && <Bar dataKey="arrears" stackId="r" fill="var(--series-2)" maxBarSize={18} isAnimationActive={false} />}
-              {includeArrears && <Bar dataKey="advance" stackId="r" fill="var(--series-3)" maxBarSize={18} radius={[6, 6, 0, 0]} isAnimationActive={false} />}
+              <Bar dataKey="current" stackId="r" fill="var(--series-1)" maxBarSize={18} radius={hasOld || hasAdvance ? [0, 0, 6, 6] : [6, 6, 6, 6]} isAnimationActive={false} />
+              {hasOld && <Bar dataKey="arrears" stackId="r" fill="var(--series-2)" maxBarSize={18} radius={hasAdvance ? [0, 0, 0, 0] : [6, 6, 0, 0]} isAnimationActive={false} />}
+              {hasAdvance && <Bar dataKey="advance" stackId="r" fill="var(--series-3)" maxBarSize={18} radius={[6, 6, 0, 0]} isAnimationActive={false} />}
             </ComposedChart>
           ) : (
             <ComposedChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -6 }} onClick={onClick} style={{ cursor: hrefBase ? "pointer" : undefined }}>
@@ -213,8 +210,8 @@ export function DailyCollectionChart({
   const gid = useId().replace(/:/g, "");
   const [view, setView] = useState<"daily" | "cumulative">("daily");
   const canCumulate = data.some((d) => d.cumulative !== undefined);
-  const daily: SeriesKey[] = [{ key: "amount", label: "Collected", color: "var(--series-1)", shape: "rect" }];
-  const cum: SeriesKey[] = [{ key: "cumulative", label: "Collected so far", color: "var(--series-1)", shape: "line" }];
+  const daily: SeriesKey[] = [{ key: "amount", label: "Received", color: "var(--series-1)", shape: "rect" }];
+  const cum: SeriesKey[] = [{ key: "cumulative", label: "Received so far", color: "var(--series-1)", shape: "line" }];
   const rows = data.map((d) => ({
     ...d,
     cumulative: d.is_future ? null : d.cumulative,
@@ -224,7 +221,7 @@ export function DailyCollectionChart({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <ChartLegend items={view === "daily" ? daily : [...cum, ...(target ? [{ key: "t", label: "Expected", color: "var(--ink-2)", shape: "line" as const }] : [])]} />
+        <ChartLegend items={view === "daily" ? daily : [...cum, ...(target ? [{ key: "t", label: "Installments due this month", color: "var(--ink-2)", shape: "line" as const }] : [])]} />
         {canCumulate && (
           <ViewToggle
             value={view}
@@ -284,7 +281,7 @@ export function CumulativeChart({
 
 /**
  * Money received per day (week, month), stacked by what brought it in: a call, an activity, or the family paid on
- * its own (neutral). Blue / teal / track from the validated palette; orange stays reserved for old dues.
+ * its own (neutral). Blue / teal / track from the validated palette; orange stays reserved for old balance.
  */
 export function RecoverySourceChart({
   data,

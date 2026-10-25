@@ -6,7 +6,7 @@ import { id } from "@/server/validate";
 const Body = z
   .object({
     session_id: id("Unknown session."),
-    fee_head_id: id("Choose a fee head.").nullable(),
+    fee_head_id: id("Choose a fee type.").nullable(),
     mode: z.enum(["percent", "amount", "clear"], { error: "Choose how to apply the concession." }),
     /** percent: 0-100; amount: paise per installment line; clear: ignored */
     value: z.number({ error: "Enter the concession." }).min(0, "Enter the concession.").default(0),

@@ -31,7 +31,7 @@ export async function collectPayment(_prev: ActionState, formData: FormData): Pr
   }
   targets = targets.filter((t) => t && typeof t.charge_id === "string" && Number.isInteger(t.amount) && t.amount > 0);
   const allocated = targets.reduce((a, t) => a + t.amount, 0);
-  if (allocated > amount) return { error: "The amounts allocated to dues add up to more than the amount received." };
+  if (allocated > amount) return { error: "The amounts given to the fees add up to more than the amount received." };
 
   return submit(
     () =>

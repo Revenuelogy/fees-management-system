@@ -10,7 +10,7 @@ const Body = z.object({
 });
 
 /** Add a note or payment promise. */
-export const POST = api<{ id: string }>("writer", async ({ req, params, viewer }) => {
+export const POST = api<{ id: string }>("caller", async ({ req, params, viewer }) => {
   await addNote(viewer, pathParam(id(), params.id), await readBody(req, Body));
   return { ok: true, message: "Note saved." };
 });

@@ -11,7 +11,8 @@ import { useFormAction } from "../use-form-action";
 export const ROLE_OPTIONS: { value: AppRole | "none"; label: string }[] = [
   { value: "admin", label: "Owner / Director (admin)" },
   { value: "accountant", label: "Accountant" },
-  { value: "principal", label: "Principal / caller (read-only, makes calls)" },
+  { value: "principal", label: "Principal" },
+  { value: "caller", label: "Caller (only makes calls)" },
   { value: "teacher", label: "Teacher (no access yet)" },
   { value: "none", label: "No access" },
 ];

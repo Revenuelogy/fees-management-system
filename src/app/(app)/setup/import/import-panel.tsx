@@ -105,11 +105,11 @@ export function ImportPanel({
     }
     if (kind === "payments" && present.includes("fee_head")) {
       const u = unknownValues(parsed.rows, "fee_head", headNames);
-      if (u.length) warnings.push(<>Unknown fee heads {fmt(u)}: these rows will fail.</>);
+      if (u.length) warnings.push(<>Unknown fee types {fmt(u)}: these rows will fail.</>);
     }
     if (kind === "dues" && present.includes("fee_head")) {
       const u = unknownValues(parsed.rows, "fee_head", headNames);
-      if (u.length) warnings.push(<>New fee heads {fmt(u)} will be created with priority 0 (cleared first).</>);
+      if (u.length) warnings.push(<>New fee types {fmt(u)} will be created with priority 0 (cleared first).</>);
     }
     if (blankRequired) warnings.push(<>{plural(blankRequired, "row has", "rows have")} an empty required cell and will be reported as errors.</>);
     if (parsed.parseErrors) warnings.push(<>{plural(parsed.parseErrors, "line")} could not be read cleanly (check for stray quotes or extra commas).</>);
@@ -163,7 +163,7 @@ export function ImportPanel({
       kind === "students"
         ? `Import ${plural(parsed.rows.length, "student row")}${target ? ` and enrol them in ${target}` : " (no enrolment)"}?`
         : kind === "dues"
-          ? `Add opening dues from ${plural(parsed.rows.length, "row")}? Importing the same file twice adds the dues twice.`
+          ? `Add old balance from ${plural(parsed.rows.length, "row")}? Importing the same file twice adds it twice.`
           : `Import ${plural(parsed.rows.length, "payment")}?`;
     if (!window.confirm(question)) return;
 
@@ -264,7 +264,7 @@ export function ImportPanel({
                   </span>
                 </div>
                 {missing.length > 0 && (
-                  <FormError message={`Missing required ${missing.length === 1 ? "column" : "columns"}: ${missing.join(", ")}. Check the first row of the file against the template.`} />
+                  <FormError message={`The file needs ${missing.length === 1 ? "the column" : "the columns"} ${missing.join(", ")}. Check the first row of the file against the template.`} />
                 )}
                 {warnings.length > 0 && (
                   <ul className="space-y-1.5 rounded-2xl bg-warning-soft px-3 py-2.5 text-footnote text-ink">
@@ -334,8 +334,8 @@ export function ImportPanel({
                         className="mt-0.5 size-4 accent-[var(--accent)]"
                       />
                       <span>
-                        Generate charges from the fee structure
-                        <span className="block text-caption text-muted">Adds missing charges for everyone enrolled in the session.</span>
+                        Assign fees from the fee structure
+                        <span className="block text-caption text-muted">Assigns any fees not assigned yet to everyone enrolled in the session.</span>
                       </span>
                     </label>
                   </div>
@@ -416,7 +416,7 @@ function ResultView({
           { label: "Enrolled", value: result.enrolled },
         ]
       : kind === "dues"
-        ? [{ label: "Dues added", value: result.inserted }]
+        ? [{ label: "Old balance rows added", value: result.inserted }]
         : [
             { label: "Payments imported", value: result.inserted },
             { label: "Duplicates skipped", value: result.duplicates },
@@ -446,7 +446,7 @@ function ResultView({
         ))}
       </div>
       {kind === "students" && result.generated && (
-        <p className="text-footnote text-ink-2">Charges were generated from the fee structure for students enrolled in the session.</p>
+        <p className="text-footnote text-ink-2">Fees from the fee structure were assigned to the students enrolled in the session.</p>
       )}
       {result.errors.length > 0 && (
         <div>

@@ -35,7 +35,7 @@ export function installments(viewer: Viewer, sessionId: string) {
 
 export async function settings(viewer: Viewer) {
   const row = await read(viewer, "settings", [], (db) => db.one<SchoolSettings>("select * from public.school_settings where id = 1"));
-  if (!row) throw notFound("School settings row is missing (school_settings id = 1).");
+  if (!row) throw notFound("The school settings row does not exist (school_settings id = 1).");
   return row;
 }
 
