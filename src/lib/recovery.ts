@@ -29,7 +29,7 @@ export type PromiseStatus = "kept" | "pending" | "partial" | "broken";
 export type PromiseTiming = "early" | "on_date" | "grace";
 export type CallState = "due" | "called" | "promised" | "paid_recently" | "waiting" | "cleared";
 export type CallReason =
-  | "broken_promise" | "partial_promise" | "call_back" | "high_dues" | "never_paid" | "silent" | "old_dues" | "overdue" | "not_reached";
+  | "assigned" | "broken_promise" | "partial_promise" | "call_back" | "high_dues" | "never_paid" | "silent" | "old_dues" | "overdue" | "not_reached";
 export type ActivityVerdict = "good" | "fair" | "poor" | "too_early" | "no_students";
 
 type Tone = "neutral" | "accent" | "good" | "warning" | "serious" | "critical";
@@ -112,6 +112,7 @@ export const TIMING_LABELS: Record<PromiseTiming, string> = {
 
 /** Why a family is on today's call list (the first one is the main reason). */
 export const REASON_LABELS: Record<CallReason, { label: string; hint: string; tone: Tone }> = {
+  assigned: { label: "Assigned", hint: "Someone in the office gave this family to a caller for today", tone: "accent" },
   broken_promise: { label: "Broke a promise", hint: "Promised a date and paid nothing by it (and the grace days)", tone: "critical" },
   partial_promise: { label: "Paid less than promised", hint: "Paid only part of the promised amount by the date", tone: "serious" },
   call_back: { label: "Asked to call today", hint: "The date they asked to be called on has come", tone: "accent" },

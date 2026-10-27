@@ -38,8 +38,9 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
 - `src/app/(app)/…` signed-in screens. Each `page.tsx` is a thin server component (metadata, params, search
   params) that renders a client view (`*-view.tsx`). `layout.tsx` renders `AppShell` (sidebar, search,
   session switcher, Collect pill in the phone top bar), which loads `/api/bootstrap` once. `/` is **Home**
-  (`home-view.tsx`): five cards that each load `/api/home/{fees,today,chase,classes}` and fail on their own; the SQL
-  is `home_*` in `db/migrations/*_home.sql`.
+  (`home-view.tsx`): the year's fees, then a Today / Yesterday / 7 / 30 days switch (`src/lib/period.ts`) for the money
+  in, calls and activities (`/api/recovery`), then the school and the classes; each card loads and fails on its own.
+  The SQL is `home_*` in `db/migrations/*_home.sql` and `*_dashboards_and_assignments.sql`, and `recovery_summary`.
 - `src/app/api/**/route.ts` the REST API. Handlers are thin: `api(access, fn)` from `src/server/http.ts`
   (session + role check: `signed-in | caller | staff | writer | admin`, same-origin check for writes, errors →
   JSON `{ error }`). `caller` = the calling endpoints (staff and callers); `staff` = school-wide figures and
@@ -64,7 +65,9 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
   have a purpose (fees, performance, ptm, query, other); promises come from fee calls and student notes
   (`parent_promises`). The daily call list (`call_list`, rules in `school_settings.call_*`), the families each
   caller takes (`call_assignments`, `take_calls` / `take_call` / `release_calls`), the calling page (`call_board`),
-  the dashboard (`recovery_dashboard(from, to)`), activities (`recovery_activities`, `activities_overview`,
+  the money and what brought it in (`recovery_summary(from, to)`: Home and `/recovery`), the call analytics
+  (`call_analytics(from, to)`: the staff Calls view), families given to callers for a day (`assign_call`,
+  `unassign_call`, `call_assignments_on`; `call_assignments.assigned_by` / `note`), activities (`recovery_activities`, `activities_overview`,
   `activity_detail`) and what brought a receipt in (`recovery_credits`: a call or an activity participation, set by
   `set_payment_source`) are SQL in `db/migrations/*_recovery.sql` and `*_daily_calls.sql`. Calls are open to all
   staff (`log_parent_call`, taking families); everything else needs a writer.
@@ -72,8 +75,10 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
   student notes and activity responses (`set_participant_response`), and never see school figures (`sees_school()`,
   checked by the `home_*` functions). The API allows them only `caller` endpoints; the shell gives them the
   caller menu (`CALLER_NAV`: My calls, `/find`, `/promises`), lands them on `/calls?tab=mine`, and shows
-  `NoAccessHere` on any page `callerMayOpen()` refuses. The family call page (`calls/[parentId]`) shows the
-  family read-only (`family-profile.tsx`) beside the call form; a caller's student profile has no Fee plan, Edit
+  `NoAccessHere` on any page `callerMayOpen()` refuses. Everyone else gets the staff Calls view (`staff-calls.tsx`:
+  Overview, Callers, Today's list with "Give to…", Assign families). The family call page (`calls/[parentId]`) shows the
+  family read-only (`family-profile.tsx`) beside the call form; on `/parents/[id]` the call form opens in a
+  `Drawer` (`components/ui/drawer.tsx`); a caller's student profile has no Fee plan, Edit
   or Collect. Demo caller: `pooja@school.test`. Shared badges live in
   `src/components/recovery.tsx`; the call form and call history in `src/app/(app)/parents/`; pages: `/recovery`
   (dashboard), `/calls`, `/activities`.

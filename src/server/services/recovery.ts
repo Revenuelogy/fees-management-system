@@ -4,15 +4,16 @@ import type { Viewer } from "@/server/auth/session";
 import { audit, read, write } from "@/server/data";
 import type { Db } from "@/server/db";
 import { badRequest, notFound } from "@/server/http";
-import type { ActivityFields, CallRulesBody, ParticipantPatch, ParticipantsBody } from "@/server/schemas/recovery";
+import type { ActivityFields, AssignCallBody, CallRulesBody, ParticipantPatch, ParticipantsBody } from "@/server/schemas/recovery";
 import { orNotFound } from "@/server/services/analytics";
 import type {
-  ActivitiesOverview, ActivityDetail, CallBoard, FamilySearchRow, OpenPromises, RecoveryActivity, RecoveryDashboard, StudentRecovery,
+  ActivitiesOverview, ActivityDetail, CallAnalytics, CallAssignments, CallBoard, FamilySearchRow, OpenPromises, RecoveryActivity,
+  RecoverySummary, StudentRecovery,
 } from "@/lib/types";
 
-// Fee recovery: the dashboard, the daily call list (and the families each caller takes from it), student
-// activities, and what brought a receipt in (a call or an activity). Figures come from the SQL functions in
-// db/migrations/*_recovery.sql and *_daily_calls.sql.
+// Fee recovery: the money summary, the call analytics, the daily call list (the families each caller takes from it,
+// or is given), student activities, and what brought a receipt in (a call or an activity). Figures come from the SQL
+// functions in db/migrations/*_recovery.sql, *_daily_calls.sql and *_dashboards_and_assignments.sql.
 
 export type ActivityInput = z.output<typeof ActivityFields>;
 
@@ -20,9 +21,19 @@ export type ActivityInput = z.output<typeof ActivityFields>;
 // Reads
 // ---------------------------------------------------------------------------------------------
 
-/** Money received from `from` to `to`, what brought it in, the calls made and the activities. */
-export function dashboard(viewer: Viewer, from: string, to: string) {
-  return read(viewer, "recovery-dashboard", [from, to], (db) => db.rpc<RecoveryDashboard>("recovery_dashboard", { p_from: from, p_to: to }));
+/** Money received from `from` to `to`, what brought it in, the calls made and the activities (Home, Recovery). */
+export function summary(viewer: Viewer, from: string, to: string) {
+  return read(viewer, "recovery-summary", [from, to], (db) => db.rpc<RecoverySummary>("recovery_summary", { p_from: from, p_to: to }));
+}
+
+/** Calls from `from` to `to`: per day, outcomes, promises, every caller's effort and result, and their effect. */
+export function callAnalytics(viewer: Viewer, from: string, to: string) {
+  return read(viewer, "call-analytics", [from, to], (db) => db.rpc<CallAnalytics>("call_analytics", { p_from: from, p_to: to }));
+}
+
+/** Who has which families on a day (today by default). */
+export function assignmentsOn(viewer: Viewer, date: string | null) {
+  return read(viewer, "call-assignments", [date], (db) => db.rpc<CallAssignments>("call_assignments_on", { p_date: date ?? undefined }));
 }
 
 /** Today's call list, today's calls and the viewer's own figures (so cached per user). */
@@ -96,6 +107,22 @@ export async function releaseCalls(viewer: Viewer, parentId: string | null) {
   const n = await write(viewer, (db) => db.rpc<number>("release_calls", { p_parent: parentId ?? undefined }));
   if (parentId) return { message: n === 0 ? "That family is not on your list." : "Given back to today's list." };
   return { message: n === 0 ? "Every family on your list has been called." : `${n} ${n === 1 ? "family" : "families"} given back to today's list.` };
+}
+
+/** Give a family to a caller for a day (today by default), with a note for them. */
+export async function assignCall(viewer: Viewer, a: z.output<typeof AssignCallBody>) {
+  await orNotFound(
+    write(viewer, (db) => db.rpc("assign_call", { p_parent: a.parent_id, p_caller: a.caller_id, p_date: a.date ?? undefined, p_note: a.note })),
+    /^Parent not found/,
+    "That family does not exist.",
+  );
+  return { message: "Added to their list." };
+}
+
+/** Take a family off the list it was given to for a day (today by default). */
+export async function unassignCall(viewer: Viewer, parentId: string, date: string | null) {
+  const n = await write(viewer, (db) => db.rpc<number>("unassign_call", { p_parent: parentId, p_date: date ?? undefined }));
+  return { message: n === 0 ? "That family was not on a list that day." : "Taken off the list." };
 }
 
 /** The rules that build the call list (and the promise grace days). */

@@ -1050,6 +1050,10 @@ export interface CallListRow {
   promise_paid: number | null;
   assigned_to: string | null;
   assigned_name: string | null;
+  /** who gave the family to its caller (the caller themselves when they took it) */
+  assigned_by: string | null;
+  assigned_by_name: string | null;
+  assign_note: string | null;
   /** the fee call logged today */
   today_call: null | {
     id: string;
@@ -1154,8 +1158,19 @@ export interface CallBoard {
 
 export type RecoverySource = "calls" | "activities" | "direct";
 
-export interface RecoveryDashboard {
-  period: { from: string; to: string; days: number; prev_from: string; prev_to: string; bucket: "day" | "week" | "month"; today: string };
+export interface Period {
+  from: string;
+  to: string;
+  days: number;
+  prev_from: string;
+  prev_to: string;
+  bucket: "day" | "week" | "month";
+  today: string;
+}
+
+/** recovery_summary(): money received in a period and what brought it in, the calls made and the activities. */
+export interface RecoverySummary {
+  period: Period;
   money: {
     received: number;
     receipts: number;
@@ -1166,10 +1181,74 @@ export interface RecoveryDashboard {
     by_source: Record<RecoverySource, { amount: number; receipts: number; families: number }>;
     by_kind: Partial<Record<AllocationKind, number>>;
     trend: { start: string; calls: number; activities: number; direct: number; receipts: number }[];
-    by_behaviour: { behaviour: Behaviour | null; amount: number; families: number }[];
   };
   calls: {
     calls: number;
+    families: number;
+    connected: number;
+    promises: number;
+    promised_amount: number;
+    callers: number;
+    /** receipts of the period counted for a call */
+    recovered: number;
+    families_paid: number;
+  };
+  activities: {
+    /** running today */
+    running: number;
+    /** not started yet */
+    starting: number;
+    /** students taking part in the running ones */
+    students: number;
+    list: {
+      id: string;
+      name: string;
+      status: "active" | "closed";
+      start_date: string;
+      end_date: string | null;
+      participants: number;
+      recovered: number;
+      receipts: number;
+      students_paid: number;
+    }[];
+  };
+}
+
+export interface CallerFigures {
+  user_id: string;
+  name: string;
+  role: AppRole | null;
+  calls: number;
+  families: number;
+  connected: number;
+  not_reached: number;
+  /** days with at least one call */
+  days: number;
+  calls_per_day: number;
+  connect_pct: number | null;
+  promises: number;
+  promised_amount: number;
+  kept: number;
+  /** broken or kept only in part */
+  broken: number;
+  pending: number;
+  /** kept of the promises whose date has passed */
+  kept_pct: number | null;
+  /** receipts of the period counted for their calls */
+  recovered: number;
+  receipts: number;
+  families_paid: number;
+  /** money after their calls per call made */
+  per_call: number | null;
+}
+
+/** call_analytics(): calls in a period, every caller's effort and result, and whether calling makes a difference. */
+export interface CallAnalytics {
+  period: Period;
+  calls: {
+    calls: number;
+    /** the same number of days just before */
+    prev_calls: number;
     families: number;
     fee_calls: number;
     connected: number;
@@ -1189,20 +1268,11 @@ export interface RecoveryDashboard {
     promise_paid: number;
     /** receipts of the period counted for a call */
     recovered: number;
-    trend: { start: string; calls: number; connected: number }[];
-    by_caller: {
-      user_id: string;
-      name: string;
-      calls: number;
-      families: number;
-      connected: number;
-      promises: number;
-      kept: number;
-      broken: number;
-      recovered: number;
-    }[];
+    families_paid: number;
+    trend: { start: string; calls: number; connected: number; promises: number }[];
+    by_caller: CallerFigures[];
   };
-  /** families we spoke to about fees vs other families with dues */
+  /** families we spoke to about fees vs other families with fees due */
   impact: {
     spoke: number;
     spoke_paid: number;
@@ -1215,16 +1285,28 @@ export interface RecoveryDashboard {
     /** how many times as likely to pay after we spoke to them */
     lift: number | null;
   };
-  activities: {
-    id: string;
+}
+
+/** call_assignments_on(): who has which families on a day. */
+export interface CallAssignments {
+  date: string;
+  today: string;
+  max_date: string;
+  callers: { user_id: string; name: string; role: AppRole; families: number; called: number }[];
+  rows: {
+    parent_id: string;
     name: string;
-    status: "active" | "closed";
-    start_date: string;
-    end_date: string | null;
-    participants: number;
-    recovered: number;
-    receipts: number;
-    students_paid: number;
+    phone: string;
+    children: { full_name: string; class_name: string | null }[];
+    to_recover: number;
+    assigned_to: string;
+    assigned_name: string | null;
+    assigned_by: string | null;
+    assigned_by_name: string | null;
+    note: string | null;
+    assigned_at: string;
+    /** a fee call was logged for the family that day */
+    called: boolean;
   }[];
 }
 
@@ -1481,6 +1563,13 @@ export interface HomeFees {
   students_to_recover: number;
   /** of them, nothing received against this year's fees */
   nothing_paid: number;
+  /** students enrolled this year, their families and classes, and students by status */
+  school: {
+    students: number;
+    families: number;
+    classes: number;
+    status: { paid_up: number; partial: number; not_paying: number; arrears_only: number; free: number };
+  };
 }
 
 export interface HomeToday {
@@ -1495,22 +1584,6 @@ export interface HomeToday {
   broken: number;
   promises_today: number;
   promised_today: number;
-}
-
-export interface HomeChase {
-  /** families on today's call list */
-  total: number;
-  rows: {
-    parent_id: string;
-    name: string;
-    rank: number;
-    reason: CallReason | null;
-    /** Due now + Old balance of the family */
-    to_recover: number;
-    child: string | null;
-    class_name: string | null;
-    more_children: number;
-  }[];
 }
 
 export interface HomeClass {

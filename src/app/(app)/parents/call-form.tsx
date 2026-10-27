@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Ban, PhoneCall, PhoneMissed, PhoneOff, PhoneOutgoing } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { addDays } from "@/lib/dates";
@@ -40,7 +40,7 @@ const SUMMARY_HINT: Record<CallPurpose, string> = {
 /**
  * Log one call: what it was about, did it get through, who picked up and what was said. On a fee call: what they
  * said about paying and the date (and amount) they promised. With `nextHref`, "Save & next" opens the next family
- * on the caller's list.
+ * on the caller's list; `onSaved` runs after a call is saved (e.g. to close the drawer it is in).
  */
 export function CallForm({
   parentId,
@@ -48,12 +48,14 @@ export function CallForm({
   graceDays,
   nextHref,
   defaultPurpose = "fees",
+  onSaved,
 }: {
   parentId: string;
   today: string;
   graceDays: number;
   nextHref?: string | null;
   defaultPurpose?: CallPurpose;
+  onSaved?: (message: string | undefined) => void;
 }) {
   const { state, pending, onSubmit, formRef } = useFormAction(logCall, { resetOnSuccess: true });
   const [purpose, setPurpose] = useState<CallPurpose>(defaultPurpose);
@@ -69,6 +71,13 @@ export function CallForm({
       setBackDate(false);
     }
   }
+  // tell the page once per saved call (not when "Save & next" opens the next family)
+  const told = useRef(state);
+  useEffect(() => {
+    if (told.current === state) return;
+    told.current = state;
+    if (state.ok && !state.redirect) onSaved?.(state.message);
+  }, [state, onSaved]);
   const connected = outcome === "connected";
   const fees = purpose === "fees";
 

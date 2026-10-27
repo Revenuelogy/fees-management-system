@@ -1,4 +1,5 @@
-// Taking families from today's call list and giving them back (API: /api/calls/take, /api/calls/release).
+// Taking families from today's call list and giving them back (API: /api/calls/take, /api/calls/release), and giving a
+// family to a caller for a day (/api/calls/assign, /api/calls/unassign).
 // Logging a call is in ../parents/actions.ts (logCall).
 
 import { api, submit } from "@/lib/api/client";
@@ -20,4 +21,14 @@ export function takeFamily(parentId: string): Promise<ActionState> {
 /** One family back to today's list, or (no id) every family of mine not called yet. */
 export function releaseCalls(parentId?: string): Promise<ActionState> {
   return submit(() => api.post<Result>("/api/calls/release", parentId ? { parent_id: parentId } : {}), withMessage);
+}
+
+/** Give a family to a caller for a day (today when no date), with a note for them (API: /api/calls/assign). */
+export function assignFamily(parentId: string, callerId: string, date: string | null, note: string | null): Promise<ActionState> {
+  return submit(() => api.post<Result>("/api/calls/assign", { parent_id: parentId, caller_id: callerId, date, note }), withMessage);
+}
+
+/** Take a family off the list it was given to for a day (API: /api/calls/unassign). */
+export function unassignFamily(parentId: string, date: string | null): Promise<ActionState> {
+  return submit(() => api.post<Result>("/api/calls/unassign", { parent_id: parentId, date }), withMessage);
 }

@@ -24,9 +24,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Ring } from "@/components/ui/ring";
 import { Empty } from "@/components/ui/empty";
-import { FormError, FormSuccess, Input } from "@/components/ui/form";
+import { FormError, FormSuccess, Input, Select } from "@/components/ui/form";
+import { InfoTip } from "@/components/ui/info-tip";
 import { PromiseLine } from "@/components/recovery";
-import { releaseCalls, takeCalls, takeFamily } from "./actions";
+import { assignFamily, releaseCalls, takeCalls, takeFamily } from "./actions";
+import { StaffCalls } from "./staff-calls";
 
 const TABS = [
   { key: "mine", label: "My list" },
@@ -44,12 +46,23 @@ const WINDOWS = [
 /**
  * The calling page. Every day the system lists the families to call, best first, each with its main reason.
  * A caller takes a batch ("my list"), calls, and logs what was said; called families move to "Called today".
+ * Staff who run the calling (admin, accountant, principal) see the analytics, the callers and the assignments
+ * around the same list (StaffCalls).
  */
 export function CallsView({ sp }: { sp: SearchParams }) {
+  const { caller } = useApp();
+  if (!caller) return <StaffCalls sp={sp} />;
+  return <CallBoardView tab={param(sp.tab)} />;
+}
+
+/** Today's list as a caller sees it; `embedded` inside the staff view (no page header, links keep the view). */
+export function CallBoardView({ tab, embedded, callers }: { tab?: string; embedded?: boolean; callers?: Caller[] }) {
   const res = useApi<CallBoard>("/api/calls");
   if (!res.data) return <Pending queries={[res]} />;
-  return <Board d={res.data} tab={param(sp.tab)} />;
+  return <Board d={res.data} tab={tab} embedded={embedded} callers={callers} />;
 }
+
+type Caller = { user_id: string; name: string };
 
 function useAction() {
   const [pending, start] = useTransition();
@@ -58,8 +71,9 @@ function useAction() {
   return { pending, state, run };
 }
 
-function Board({ d, tab: tabParam }: { d: CallBoard; tab?: string }) {
+function Board({ d, tab: tabParam, embedded, callers }: { d: CallBoard; tab?: string; embedded?: boolean; callers?: Caller[] }) {
   const { admin, caller } = useApp();
+  const tabHref = (t: string) => withParams("/calls", embedded ? { view: "list", tab: t } : { tab: t });
   const me = d.me;
   // a caller always opens on their own list
   const tab = TABS.find((t) => t.key === tabParam)?.key ?? (!caller && me.taken === 0 && d.counts.due_open > 0 ? "all" : "mine");
@@ -70,21 +84,40 @@ function Board({ d, tab: tabParam }: { d: CallBoard; tab?: string }) {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Calls"
-        description={`${fmtDate(d.today)} · ${num(d.counts.due)} ${d.counts.due === 1 ? "family" : "families"} to call today, best first.`}
-        info={<Rules d={d} />}
-        actions={
-          <>
+      {embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-subhead text-ink-2">
+            {fmtDate(d.today)} · {num(d.counts.due)} {d.counts.due === 1 ? "family" : "families"} to call today, best first.
+            <InfoTip align="start">
+              <Rules d={d} />
+            </InfoTip>
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
             <CallAnyFamily />
             {admin && (
               <Link href="/settings#call-rules" className="text-footnote font-medium text-accent">
                 List rules
               </Link>
             )}
-          </>
-        }
-      />
+          </div>
+        </div>
+      ) : (
+        <PageHeader
+          title="Calls"
+          description={`${fmtDate(d.today)} · ${num(d.counts.due)} ${d.counts.due === 1 ? "family" : "families"} to call today, best first.`}
+          info={<Rules d={d} />}
+          actions={
+            <>
+              <CallAnyFamily />
+              {admin && (
+                <Link href="/settings#call-rules" className="text-footnote font-medium text-accent">
+                  List rules
+                </Link>
+              )}
+            </>
+          }
+        />
+      )}
 
       {/* my day: my list and my figures */}
       <section className="grid gap-5 rounded-[28px] bg-surface p-6 shadow-card lg:grid-cols-[auto_minmax(0,1fr)]">
@@ -126,12 +159,12 @@ function Board({ d, tab: tabParam }: { d: CallBoard; tab?: string }) {
           <Segmented
             options={TABS.map((t) => ({
               label: `${t.label} ${t.key === "mine" ? mine.length : t.key === "all" ? due.length : d.calls_today.length}`,
-              href: withParams("/calls", { tab: t.key }),
+              href: tabHref(t.key),
               active: t.key === tab,
             }))}
           />
           {tab === "mine" && <MyList rows={mine} canTake={d.counts.due_open > 0} batch={d.rules.batch} />}
-          {tab === "all" && <EveryoneList rows={due} meId={me.id} />}
+          {tab === "all" && <EveryoneList rows={due} meId={me.id} callers={callers} />}
           {tab === "done" && <CalledToday d={d} />}
         </div>
 
@@ -346,7 +379,7 @@ function MyList({ rows, canTake, batch }: { rows: CallListRow[]; canTake: boolea
   );
 }
 
-function EveryoneList({ rows, meId }: { rows: CallListRow[]; meId: string }) {
+function EveryoneList({ rows, meId, callers }: { rows: CallListRow[]; meId: string; callers?: Caller[] }) {
   const [q, setQ] = useState("");
   const [shown, setShown] = useState(40);
   const needle = q.trim().toLowerCase();
@@ -372,7 +405,13 @@ function EveryoneList({ rows, meId }: { rows: CallListRow[]; meId: string }) {
       </div>
       <ul className="divide-y divide-line">
         {filtered.slice(0, shown).map((r) => (
-          <FamilyRow key={r.parent_id} r={r} take={r.assigned_to === null} takenBy={r.assigned_to && r.assigned_to !== meId ? r.assigned_name : null} />
+          <FamilyRow
+            key={r.parent_id}
+            r={r}
+            take={r.assigned_to === null}
+            takenBy={r.assigned_to && r.assigned_to !== meId ? r.assigned_name : null}
+            callers={callers}
+          />
         ))}
       </ul>
       {filtered.length > shown && (
@@ -388,7 +427,7 @@ function EveryoneList({ rows, meId }: { rows: CallListRow[]; meId: string }) {
 }
 
 /** One family on the list: why they are on it, what there is to recover, the last contact, and the way to call. */
-function FamilyRow({ r, take, takenBy }: { r: CallListRow; take?: boolean; takenBy?: string | null }) {
+function FamilyRow({ r, take, takenBy, callers }: { r: CallListRow; take?: boolean; takenBy?: string | null; callers?: Caller[] }) {
   const action = useAction();
   const main = r.reasons[0];
   const kids = r.children.map((k) => `${k.full_name.split(" ")[0]}${k.class_name ? ` (${k.class_name})` : ""}`).join(", ");
@@ -452,13 +491,39 @@ function FamilyRow({ r, take, takenBy }: { r: CallListRow; take?: boolean; taken
           </p>
         )}
         {takenBy && <p className="mt-0.5 text-caption text-muted">With {takenBy} today</p>}
+        {r.assigned_by && r.assigned_by !== r.assigned_to && (
+          <p className="mt-0.5 text-caption text-accent">
+            Given by {r.assigned_by_name ?? "the office"}
+            {r.assign_note && <span className="text-ink"> · “{r.assign_note}”</span>}
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2 max-sm:w-full max-sm:justify-between max-sm:pl-11">
         <span className="text-right">
           <span className="block text-subhead font-semibold tabular text-critical-ink" title="To recover now: due now + old balance">{rupeesShort(r.total_overdue)}</span>
           <span className="block text-caption text-muted">to recover</span>
         </span>
-        {take ? (
+        {callers && callers.length > 0 ? (
+          <Select
+            aria-label={`Give ${r.name} to a caller for today`}
+            value=""
+            disabled={action.pending}
+            onChange={(e) => {
+              const to = e.target.value;
+              if (to) action.run(() => assignFamily(r.parent_id, to, null, null));
+            }}
+            className="h-9 w-[120px] text-footnote"
+          >
+            <option value="">{r.assigned_to ? "Move to…" : "Give to…"}</option>
+            {callers
+              .filter((c) => c.user_id !== r.assigned_to)
+              .map((c) => (
+                <option key={c.user_id} value={c.user_id}>
+                  {c.name}
+                </option>
+              ))}
+          </Select>
+        ) : take ? (
           <Button size="sm" disabled={action.pending} onClick={() => action.run(() => takeFamily(r.parent_id))} title="Add to my list">
             <Hand className="size-3.5" /> Take
           </Button>

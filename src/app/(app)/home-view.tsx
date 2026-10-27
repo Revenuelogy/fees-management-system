@@ -1,34 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ChevronRight, IndianRupee, RotateCw } from "lucide-react";
+import { AlertTriangle, ChevronRight, IndianRupee, PhoneCall, RotateCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { apiUrl } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
-import { fmtDate, num, rupees, rupeesShort } from "@/lib/format";
-import { MONEY } from "@/lib/glossary";
-import { REASON_LABELS } from "@/lib/recovery";
+import { type SearchParams, param } from "@/lib/context";
+import { fmtDate, num, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
+import { MONEY, type MoneyWord } from "@/lib/glossary";
+import { QUICK_PERIODS, paymentsHref, resolvePeriod, type Period } from "@/lib/period";
 import { plural } from "@/lib/text";
-import type { HomeChase, HomeClass, HomeFees, HomeToday, SetupChecklist } from "@/lib/types";
+import type { HomeClass, HomeFees, HomeToday, RecoverySummary, SetupChecklist } from "@/lib/types";
 import { useApp } from "@/components/layout/app-shell";
 import { NoSession } from "@/components/no-session";
-import { Badge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
+import { Legend, StackedBar } from "@/components/ui/bars";
+import { Segmented, withParams } from "@/components/ui/segmented";
+import { FEE_STATUS, STATUS_STYLE } from "@/components/ui/status";
 
 type Query<T> = { data?: T; error?: Error; mutate: () => unknown };
 
 const WEEKDAY = new Intl.DateTimeFormat("en-IN", { weekday: "long", timeZone: "UTC" });
 
 /**
- * Home: how much came in, how much is due, and what to do today, read in a few seconds. Every number opens the
- * page that explains it. Each card loads (and fails) on its own.
+ * Home: the whole school on one screen, numbers first. The year's fee position (Total fee, Received, Balance, Due now,
+ * Old balance, To recover now), then what happened today, yesterday or in the last 7 / 30 days (money in and where it
+ * came from, calls, activities), then the school and its classes. Every number opens the page that explains it; each
+ * card loads (and fails) on its own.
  */
-export function HomeView() {
+export function HomeView({ sp }: { sp: SearchParams }) {
   const { session, writer, settings } = useApp();
   if (!session) return <NoSession />;
   const today = new Date().toLocaleDateString("en-CA", { timeZone: settings.timezone || "Asia/Kolkata" });
-  const past = session.end_date < today;
+  const period = resolvePeriod(param(sp.period), undefined, undefined, today, null, "today");
 
   return (
     <div className="space-y-5">
@@ -53,13 +58,18 @@ export function HomeView() {
 
       {writer && <NeedsAttention sessionId={session.id} sessionName={session.name} />}
 
-      <div className={cn("grid grid-cols-1 gap-5", past ? "min-[900px]:grid-cols-[5fr_4fr]" : "min-[900px]:grid-cols-[5fr_4fr_4fr]")}>
-        <FeesCards sessionId={session.id} />
-        {past ? null : <TodayCard />}
-      </div>
+      <FeePosition sessionId={session.id} sessionName={session.name} />
+
+      <section aria-label={`What happened · ${period.label}`} className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <h2 className="text-title3 font-semibold text-ink">What happened</h2>
+          <Segmented options={QUICK_PERIODS.map((p) => ({ label: p.label, href: withParams("/", { period: p.key === "today" ? undefined : p.key }), active: p.key === period.key }))} />
+        </div>
+        <PeriodCards period={period} />
+      </section>
 
       <div className="grid grid-cols-1 gap-5 min-[900px]:grid-cols-[2fr_3fr]">
-        <ChaseFirst />
+        <SchoolCard sessionId={session.id} sessionName={session.name} />
         <ClassesCard sessionId={session.id} />
       </div>
     </div>
@@ -159,110 +169,211 @@ function NeedsAttention({ sessionId, sessionName }: { sessionId: string; session
 }
 
 // ---------------------------------------------------------------------------------------------
-// 2 · This year's fees and 3 · To recover now (one read)
+// 2 · The year's fee position (not tied to the period)
 // ---------------------------------------------------------------------------------------------
 
-function FeesCards({ sessionId }: { sessionId: string }) {
+function FeePosition({ sessionId, sessionName }: { sessionId: string; sessionName: string }) {
   const res = useApi<HomeFees>(apiUrl("/api/home/fees", { session: sessionId }));
   return (
-    <>
-      <HomeCard title="This year's fees" info={`${MONEY.total_fee.label}: ${MONEY.total_fee.hint}.`} query={res} lines={4}>
-        {(f) => {
-          const part = (v: number) => (f.total_fee > 0 ? `${Math.max(0, (100 * v) / f.total_fee)}%` : "0%");
-          return (
-            <>
-              <Link href="/payments?preset=session" className="group block">
-                <span className="figure block text-[40px] leading-none text-good-ink group-hover:underline">{rupeesShort(f.received)}</span>
-                <span className="mt-2 block text-subhead text-ink-2">
-                  {MONEY.received.label} · of {rupeesShort(f.total_fee)} total fee{f.received_pct !== null ? ` · ${f.received_pct}%` : ""}
-                </span>
-              </Link>
-              <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-fill" aria-hidden>
-                <span className="h-full bg-good" style={{ width: part(f.received) }} />
-                <span className="h-full border-l-2 border-surface bg-critical" style={{ width: part(f.due_now) }} />
-                <span className="h-full border-l-2 border-surface bg-warning" style={{ width: part(f.due_later) }} />
-              </div>
-              <dl className="mt-3 grid grid-cols-3 gap-2">
-                <Figure href="/payments?preset=session" dot="bg-good" word="received" value={f.received} />
-                <Figure href="/pending?due=1" dot="bg-critical" word="due_now" value={f.due_now} tone="text-critical-ink" />
-                <Figure href="/installments" dot="bg-warning" word="due_later" value={f.due_later} />
-              </dl>
-              {(f.old_balance > 0 || f.old_balance_received > 0) && (
-                <Link
-                  href="/pending?arrears=1&prev=1"
-                  className="mt-4 flex min-h-11 items-center justify-between gap-2 rounded-xl bg-serious-soft px-3 py-2 text-subhead text-ink hover:underline"
-                >
-                  <span>
-                    <span className="font-medium text-serious-ink">{MONEY.old_balance.label}:</span> {rupeesShort(f.old_balance)} left ·{" "}
-                    {rupeesShort(f.old_balance_received)} received
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
-                </Link>
-              )}
-            </>
-          );
-        }}
-      </HomeCard>
-
-      <HomeCard title="To recover now" info={`${MONEY.to_recover.label} = ${MONEY.due_now.label} + ${MONEY.old_balance.label}.`} query={res} lines={2}>
-        {(f) => (
-          <Link href="/pending?due=1&arrears=1" className="group block">
-            <span className="figure block text-[40px] leading-none text-critical-ink group-hover:underline">{rupeesShort(f.to_recover)}</span>
-            <span className="mt-2 block text-subhead text-ink-2">
-              {f.old_balance > 0 ? (
-                <>
-                  {rupeesShort(f.due_now)} due now this year + {rupeesShort(f.old_balance)} old balance
-                </>
-              ) : (
-                <>{rupeesShort(f.due_now)} due now this year</>
-              )}
-            </span>
-            <span className="mt-3 block text-subhead text-ink">
-              {plural(f.students_to_recover, "student")} · {num(f.nothing_paid)} nothing paid this year
-            </span>
-            <span className="mt-4 inline-flex items-center gap-1 text-footnote font-medium text-accent">
-              See the list <ChevronRight className="size-3.5" aria-hidden />
-            </span>
-          </Link>
-        )}
-      </HomeCard>
-    </>
+    <HomeCard
+      title={`Fees · ${sessionName}`}
+      info={`${MONEY.balance.label} = ${MONEY.due_now.label} + ${MONEY.due_later.label}. ${MONEY.to_recover.label} = ${MONEY.due_now.label} + ${MONEY.old_balance.label}.`}
+      query={res}
+      lines={3}
+    >
+      {(f) => {
+        const part = (v: number) => (f.total_fee > 0 ? `${Math.max(0, (100 * v) / f.total_fee)}%` : "0%");
+        return (
+          <>
+            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+              <Stat href="/installments" word="total_fee" value={f.total_fee} sub="this year" />
+              <Stat href="/payments?preset=session" word="received" value={f.received} sub={f.received_pct !== null ? `${f.received_pct}% of total fee` : "this year"} tone="text-good-ink" />
+              <Stat href="/pending" word="balance" value={f.balance} sub="still to receive this year" />
+              <Stat href="/pending?due=1" word="due_now" value={f.due_now} sub="due till today" tone="text-critical-ink" />
+              <Stat href="/pending?prev=1" word="old_balance" value={f.old_balance} sub={`from earlier years · ${rupeesShort(f.old_balance_received)} received`} tone="text-serious-ink" />
+              <Stat
+                href="/pending?due=1"
+                word="to_recover"
+                value={f.to_recover}
+                sub={`${plural(f.students_to_recover, "student")} · ${num(f.nothing_paid)} paid nothing`}
+                tone="text-critical-ink"
+                strong
+              />
+            </dl>
+            <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-fill" aria-hidden>
+              <span className="h-full bg-good" style={{ width: part(f.received) }} />
+              <span className="h-full border-l-2 border-surface bg-critical" style={{ width: part(f.due_now) }} />
+              <span className="h-full border-l-2 border-surface bg-warning" style={{ width: part(f.due_later) }} />
+            </div>
+            <Legend
+              className="mt-2.5"
+              items={[
+                { label: MONEY.received.label, className: "bg-good", value: rupeesShort(f.received) },
+                { label: MONEY.due_now.label, className: "bg-critical", value: rupeesShort(f.due_now) },
+                { label: MONEY.due_later.label, className: "bg-warning", value: rupeesShort(f.due_later) },
+              ]}
+            />
+          </>
+        );
+      }}
+    </HomeCard>
   );
 }
 
-function Figure({ href, dot, word, value, tone }: { href: string; dot: string; word: "received" | "due_now" | "due_later"; value: number; tone?: string }) {
+function Stat({ href, word, value, sub, tone, strong }: { href: string; word: MoneyWord; value: number; sub: string; tone?: string; strong?: boolean }) {
   return (
-    <Link href={href} className="min-h-11 rounded-xl px-1 py-1 hover:bg-fill-2" title={MONEY[word].hint}>
-      <dt className="flex items-center gap-1.5 text-caption text-ink-2">
-        <span className={cn("size-2 rounded-full", dot)} aria-hidden /> {MONEY[word].label}
-      </dt>
-      <dd className={cn("mt-0.5 text-headline font-semibold tabular", tone ?? "text-ink")}>{rupeesShort(value)}</dd>
+    <Link href={href} className={cn("min-h-11 rounded-2xl px-3 py-2.5 transition-colors hover:bg-fill-2", strong ? "bg-critical-soft hover:bg-critical-soft/70" : "bg-fill-2/60")} title={MONEY[word].hint}>
+      <dt className="text-caption font-medium text-ink-2">{MONEY[word].label}</dt>
+      <dd className={cn("figure mt-1 text-title2", tone ?? "text-ink")}>{rupeesShort(value)}</dd>
+      <dd className="mt-0.5 text-caption text-muted">{sub}</dd>
     </Link>
   );
 }
 
 // ---------------------------------------------------------------------------------------------
-// 4 · Today
+// 3 · What happened in the period: money in and where it came from, calls, activities (one read)
 // ---------------------------------------------------------------------------------------------
 
-function TodayCard() {
-  const res = useApi<HomeToday>("/api/home/today");
+const SOURCES = [
+  { key: "calls", label: "After a call", className: "bg-series-1" },
+  { key: "activities", label: "From an activity", className: "bg-series-3" },
+  { key: "direct", label: "Paid on their own", className: "bg-series-track" },
+] as const;
+
+function PeriodCards({ period }: { period: Period }) {
+  const res = useApi<RecoverySummary>(withParams("/api/recovery", { from: period.from, to: period.to }));
+  const todayRes = useApi<HomeToday>("/api/home/today");
+  const recoveryHref = withParams("/recovery", { period: period.key });
   return (
-    <HomeCard title="Today" query={res} lines={4}>
-      {(t) => (
-        <ul className="divide-y divide-line">
-          <Row
-            href="/payments?preset=today"
-            label="Received today"
-            value={t.receipts_today > 0 ? `${rupees(t.received_today)} · ${plural(t.receipts_today, "receipt")}` : "₹0 · no receipts yet"}
-          />
-          <Row href="/monthly" label="Received this month" value={`${rupeesShort(t.received_month)} · ${plural(t.receipts_month, "receipt")}`} />
-          <Row href="/calls" label="Families to call today" value={num(t.to_call)} />
-          <Row href="/calls" label="Promises due today" value={t.promises_today > 0 ? `${t.promises_today} · ${rupeesShort(t.promised_today)}` : "None"} />
-          <Row href="/calls" label="Broken promises" value={t.broken > 0 ? num(t.broken) : "None"} tone={t.broken > 0 ? "text-critical-ink" : undefined} />
-        </ul>
-      )}
-    </HomeCard>
+    <div className="grid grid-cols-1 gap-5 min-[900px]:grid-cols-[5fr_4fr_4fr]">
+      <HomeCard title={`Money in · ${period.label}`} info="Receipts of the period, not counting cancelled ones, and what brought each in: the accountant ticks a call or an activity at the fee counter." query={res} lines={4}>
+        {(d) => {
+          const m = d.money;
+          const change = m.prev_received > 0 ? ((m.received - m.prev_received) / m.prev_received) * 100 : null;
+          return (
+            <>
+              <Link href={paymentsHref(period)} className="group block">
+                <span className="figure block text-[40px] leading-none text-good-ink group-hover:underline">{rupeesShort(m.received)}</span>
+                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-subhead text-ink-2">
+                  {m.receipts > 0 ? `${plural(m.receipts, "receipt")} · ${plural(m.families, "family", "families")}` : "No receipts yet"}
+                  {change !== null && (
+                    <span className={cn("inline-flex items-center gap-1 text-footnote font-medium", change >= 0 ? "text-good-ink" : "text-critical-ink")}>
+                      {change >= 0 ? <TrendingUp className="size-3.5" aria-hidden /> : <TrendingDown className="size-3.5" aria-hidden />}
+                      {change >= 0 ? "+" : ""}
+                      {pct(change, 0)} vs {period.before}
+                    </span>
+                  )}
+                </span>
+              </Link>
+              <p className="mt-4 text-caption font-medium text-ink-2">Where it came from</p>
+              <div className="mt-2">
+                <StackedBar
+                  height="h-3"
+                  segments={SOURCES.map((x) => ({ value: m.by_source[x.key].amount, className: x.className, label: x.label, display: rupees(m.by_source[x.key].amount) }))}
+                />
+              </div>
+              <ul className="mt-3 space-y-1.5">
+                {SOURCES.map((x) => (
+                  <li key={x.key} className="flex items-center justify-between gap-3 text-subhead">
+                    <span className="flex items-center gap-2 text-ink-2">
+                      <span className={cn("size-2 rounded-full", x.className)} aria-hidden /> {x.label}
+                    </span>
+                    <span className="tabular">
+                      <span className="font-semibold text-ink">{rupeesShort(m.by_source[x.key].amount)}</span>
+                      <span className="ml-1.5 text-caption text-muted">{pct(ratioPct(m.by_source[x.key].amount, m.received), 0)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 border-t border-line pt-3 text-caption text-ink-2">
+                This year {rupeesShort(m.by_kind.current ?? 0)} · {MONEY.old_balance.label} {rupeesShort(m.by_kind.arrears ?? 0)} · {MONEY.advance.label}{" "}
+                {rupeesShort(m.by_kind.advance ?? 0)}
+              </p>
+            </>
+          );
+        }}
+      </HomeCard>
+
+      <HomeCard title={`Calls · ${period.label}`} query={res} lines={4}>
+        {(d) => {
+          const c = d.calls;
+          return (
+            <>
+              <Link href="/calls" className="group flex items-end gap-3">
+                <span className="figure text-[40px] leading-none text-ink group-hover:underline">{num(c.calls)}</span>
+                <span className="pb-1 text-subhead text-ink-2">
+                  {c.calls === 1 ? "call" : "calls"} · {plural(c.families, "family", "families")}
+                </span>
+              </Link>
+              <ul className="mt-4 divide-y divide-line">
+                <Row href="/calls" label="Picked up" value={c.calls > 0 ? `${c.connected} · ${pct(ratioPct(c.connected, c.calls), 0)}` : "—"} />
+                <Row href="/calls" label="Promised to pay" value={c.promises > 0 ? `${c.promises} · ${rupeesShort(c.promised_amount)}` : "None"} />
+                <Row href={recoveryHref} label="Came in after calls" value={c.recovered > 0 ? `${rupeesShort(c.recovered)} · ${plural(c.families_paid, "family", "families")}` : "₹0"} tone={c.recovered > 0 ? "text-good-ink" : undefined} />
+              </ul>
+              <TodayList q={todayRes} />
+            </>
+          );
+        }}
+      </HomeCard>
+
+      <HomeCard title="Activities" query={res} lines={4}>
+        {(d) => {
+          const a = d.activities;
+          const top = a.list.filter((x) => x.recovered > 0).slice(0, 3);
+          return (
+            <>
+              <Link href="/activities" className="group flex items-end gap-3">
+                <span className="figure text-[40px] leading-none text-ink group-hover:underline">{num(a.running)}</span>
+                <span className="pb-1 text-subhead text-ink-2">running · {plural(a.students, "student")} taking part</span>
+              </Link>
+              <ul className="mt-4 divide-y divide-line">
+                <Row
+                  href={recoveryHref}
+                  label={`Received because of them · ${period.label.toLowerCase()}`}
+                  value={rupeesShort(d.money.by_source.activities.amount)}
+                  tone={d.money.by_source.activities.amount > 0 ? "text-good-ink" : undefined}
+                />
+                {a.starting > 0 && <Row href="/activities" label="Starting soon" value={num(a.starting)} />}
+              </ul>
+              {top.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {top.map((x) => (
+                    <li key={x.id}>
+                      <Link href={`/activities/${x.id}`} className="flex min-h-9 items-center justify-between gap-3 text-subhead hover:text-accent">
+                        <span className="flex min-w-0 items-center gap-2 text-ink">
+                          <Sparkles className="size-3.5 shrink-0 text-series-3" aria-hidden />
+                          <span className="truncate">{x.name}</span>
+                        </span>
+                        <span className="shrink-0 font-semibold tabular text-ink">{rupeesShort(x.recovered)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          );
+        }}
+      </HomeCard>
+    </div>
+  );
+}
+
+/** Today's call list in one line (always today, whatever the period). */
+function TodayList({ q }: { q: Query<HomeToday> }) {
+  if (!q.data) return null;
+  const t = q.data;
+  return (
+    <Link href="/calls" className="mt-3 flex min-h-11 items-center justify-between gap-2 rounded-xl bg-fill-2 px-3 py-2 text-footnote text-ink-2 hover:bg-fill">
+      <span className="flex items-start gap-2">
+        <PhoneCall className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden />
+        <span>
+          Today&rsquo;s list: <b className="text-ink">{num(t.to_call)}</b> to call
+          {t.broken > 0 && <span className="font-medium text-critical-ink"> · {plural(t.broken, "broken promise")}</span>}
+          {t.promises_today > 0 && <> · {plural(t.promises_today, "promise")} due today</>}
+        </span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
+    </Link>
   );
 }
 
@@ -278,53 +389,52 @@ function Row({ href, label, value, tone }: { href: string; label: string; value:
 }
 
 // ---------------------------------------------------------------------------------------------
-// 5 · Chase first: the first five families of today's call list
+// 4 · The school: students, families, classes, and students by status
 // ---------------------------------------------------------------------------------------------
 
-function ChaseFirst() {
-  const res = useApi<HomeChase>("/api/home/chase");
+const STATUS_KEYS = ["paid_up", "partial", "not_paying", "arrears_only", "free"] as const;
+
+function SchoolCard({ sessionId, sessionName }: { sessionId: string; sessionName: string }) {
+  const res = useApi<HomeFees>(apiUrl("/api/home/fees", { session: sessionId }));
   return (
-    <HomeCard title="Chase first" info="The top of today's call list, in the same order as the Calls page. The amount is the family's Due now + Old balance." query={res} lines={5}>
-      {(c) =>
-        c.rows.length === 0 ? (
-          <p className="text-subhead text-ink-2">No families on today&rsquo;s call list.</p>
-        ) : (
+    <HomeCard title={`School · ${sessionName}`} info="Students enrolled this year and their fee status (the same tags as on every page)." query={res} lines={3}>
+      {(f) => {
+        const s = f.school;
+        return (
           <>
-            <ul className="divide-y divide-line">
-              {c.rows.map((r) => (
-                <li key={r.parent_id}>
-                  <Link href={`/calls/${r.parent_id}`} className="flex min-h-11 items-center gap-3 py-2.5 hover:bg-fill-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-subhead font-semibold text-ink">{r.name}</span>
-                        {r.reason && <Badge tone={REASON_LABELS[r.reason].tone}>{REASON_LABELS[r.reason].label}</Badge>}
-                      </span>
-                      <span className="block truncate text-footnote text-ink-2">
-                        {r.child}
-                        {r.class_name ? ` · ${r.class_name}` : ""}
-                        {r.more_children > 0 ? ` +${r.more_children}` : ""}
-                      </span>
+            <Link href="/students" className="group flex items-end gap-3">
+              <span className="figure text-[40px] leading-none text-ink group-hover:underline">{num(s.students)}</span>
+              <span className="pb-1 text-subhead text-ink-2">
+                students · {plural(s.families, "family", "families")} · {plural(s.classes, "class", "classes")}
+              </span>
+            </Link>
+            <div className="mt-4">
+              <StackedBar
+                height="h-3"
+                segments={STATUS_KEYS.map((k) => ({ value: s.status[k], className: STATUS_STYLE[k].bar, label: FEE_STATUS[k].label, display: num(s.status[k]) }))}
+              />
+            </div>
+            <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {STATUS_KEYS.filter((k) => s.status[k] > 0 || k !== "free").map((k) => (
+                <li key={k}>
+                  <Link href={k === "free" ? "/students" : withParams("/pending", { status: k })} className="flex min-h-9 items-center justify-between gap-2 text-subhead hover:text-accent" title={FEE_STATUS[k].hint}>
+                    <span className="flex items-center gap-2 text-ink-2">
+                      <span className={cn("size-2 rounded-full", STATUS_STYLE[k].dot)} aria-hidden /> {FEE_STATUS[k].label}
                     </span>
-                    <span className="shrink-0 text-right">
-                      <span className="block text-subhead font-semibold tabular text-critical-ink">{rupeesShort(r.to_recover)}</span>
-                      <span className="block text-caption text-muted">to recover</span>
-                    </span>
+                    <span className="font-semibold tabular text-ink">{num(s.status[k])}</span>
                   </Link>
                 </li>
               ))}
             </ul>
-            <Link href="/calls" className="mt-3 inline-flex min-h-11 items-center gap-1 text-subhead font-medium text-accent">
-              See all {num(c.total)} <ChevronRight className="size-4" aria-hidden />
-            </Link>
           </>
-        )
-      }
+        );
+      }}
     </HomeCard>
   );
 }
 
 // ---------------------------------------------------------------------------------------------
-// 6 · Classes: share of each class's Total fee received
+// 5 · Classes: share of each class's Total fee received
 // ---------------------------------------------------------------------------------------------
 
 const BANDS = [
@@ -337,7 +447,7 @@ const band = (pct: number | null) => BANDS.find((b) => (pct ?? 0) >= b.min) ?? B
 function ClassesCard({ sessionId }: { sessionId: string }) {
   const res = useApi<HomeClass[]>(apiUrl("/api/home/classes", { session: sessionId }));
   return (
-    <HomeCard title="Classes" info="Share of each class's Total fee received this year. Tap a class for its list of fees due." query={res} lines={3}>
+    <HomeCard title="Classes" info="Share of each class's Total fee received this year, and what is due now. Tap a class for its list of fees due." query={res} lines={3}>
       {(rows) =>
         rows.length === 0 ? (
           <p className="text-subhead text-ink-2">No students are enrolled yet.</p>
@@ -351,13 +461,14 @@ function ClassesCard({ sessionId }: { sessionId: string }) {
                     <Link
                       href={`/pending?class=${c.class_id}`}
                       className={cn("flex min-h-[64px] flex-col justify-center rounded-xl px-2 py-2 text-center transition-transform hover:-translate-y-0.5", b.tile)}
-                      title={`${c.class_name}: ${c.received_pct ?? 0}% of ${rupeesShort(c.total_fee)} received`}
+                      title={`${c.class_name}: ${c.received_pct ?? 0}% of ${rupeesShort(c.total_fee)} received · ${rupeesShort(c.due_now)} due now`}
                     >
                       <span className="truncate text-caption text-ink-2">
                         <span className="sm:hidden">{c.class_name.replace(/^Class /, "")}</span>
                         <span className="hidden sm:inline">{c.class_name}</span>
                       </span>
                       <span className={cn("text-headline font-semibold tabular", b.text)}>{c.received_pct ?? 0}%</span>
+                      {c.due_now > 0 && <span className="hidden truncate text-caption tabular text-ink-2 sm:block">{rupeesShort(c.due_now)} due now</span>}
                     </Link>
                   </li>
                 );

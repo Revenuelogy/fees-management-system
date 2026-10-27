@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Clock, IndianRupee, Pencil, Phone, Sparkles, Wallet } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Clock, IndianRupee, Pencil, Phone, PhoneCall, Sparkles, Wallet } from "lucide-react";
 import { apiUrl } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
 import { MODE_LABELS, fmtDate, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
-import { ATTITUDE_LABELS, BEHAVIOUR_LABELS, ECONOMIC_LABELS, RELATION_LABELS, TIMING_LABELS, fmtPhone } from "@/lib/recovery";
+import { ATTITUDE_LABELS, BEHAVIOUR_LABELS, ECONOMIC_LABELS, OUTCOME_LABELS, RELATION_LABELS, RESPONSE_LABELS, TIMING_LABELS, fmtPhone } from "@/lib/recovery";
 import type { Parent360 } from "@/lib/types";
 import { MONEY } from "@/lib/glossary";
 import { useApp } from "@/components/layout/app-shell";
@@ -14,14 +15,16 @@ import { Pending } from "@/components/ui/page-state";
 import { Breadcrumbs } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LinkButton } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
+import { FormSuccess } from "@/components/ui/form";
+import { Drawer } from "@/components/ui/drawer";
 import { FeeStatusBadge } from "@/components/ui/status";
-import { Meter, StackedBar } from "@/components/ui/bars";
+import { Meter } from "@/components/ui/bars";
 import { Avatar } from "@/components/ui/avatar";
 import { IconTile } from "@/components/ui/kpi";
 import { Ring } from "@/components/ui/ring";
 import { Empty } from "@/components/ui/empty";
-import { BehaviourBadge, EconomicBadge, ParticipantBadge, PromiseBadge } from "@/components/recovery";
+import { BehaviourBadge, EconomicBadge, ParticipantBadge, PromiseBadge, PromiseLine } from "@/components/recovery";
 import { CallForm } from "../call-form";
 import { CallHistory } from "../call-history";
 
@@ -36,6 +39,8 @@ const HABIT = {
 export function ParentView({ id }: { id: string }) {
   const { session, writer, viewer } = useApp();
   const res = useApi<Parent360>(apiUrl(`/api/parents/${id}`, { session: session?.id }));
+  const [logOpen, setLogOpen] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
   if (!res.data) return <Pending queries={[res]} />;
   const d = res.data;
   const p = d.parent;
@@ -46,113 +51,118 @@ export function ParentView({ id }: { id: string }) {
   const r = d.reliability;
   const closed = r.made - r.pending;
   const others = d.children.filter((c) => !c.in_session);
+  const lastCall = d.calls[0];
+  const latest = d.promises[0];
 
   return (
     <div className="space-y-5">
       <Breadcrumbs items={[{ label: "Parents", href: "/parents" }]} />
 
-      <section className="flex flex-col gap-5 rounded-[28px] bg-surface p-6 shadow-card sm:flex-row sm:items-center sm:p-7">
-        <Avatar name={p.name} size="xl" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-title1 font-bold text-ink">{p.name}</h1>
-            <FeeStatusBadge status={t?.family_status} />
-            <BehaviourBadge value={p.payment_behaviour} />
-            <EconomicBadge value={p.economic_status} />
-            {p.attitude === "difficult" && <Badge tone="critical">Handle with care</Badge>}
+      <section className="rounded-[28px] bg-surface p-5 shadow-card sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <Avatar name={p.name} size="xl" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-title1 font-bold text-ink">{p.name}</h1>
+              <FeeStatusBadge status={t?.family_status} />
+              <BehaviourBadge value={p.payment_behaviour} />
+              <EconomicBadge value={p.economic_status} />
+              {p.attitude && p.attitude !== "neutral" && (
+                <Badge tone={p.attitude === "difficult" ? "critical" : p.attitude === "demanding" ? "serious" : "good"}>{ATTITUDE_LABELS[p.attitude]}</Badge>
+              )}
+            </div>
+            <p className="mt-1 text-subhead text-ink-2">
+              {[
+                RELATION_LABELS[p.relation],
+                `${d.children.length} ${d.children.length === 1 ? "child" : "children"}`,
+                p.occupation,
+                p.best_time_to_call ? `Best time: ${p.best_time_to_call}` : null,
+              ]
+                .filter(Boolean)
+                .join("  ·  ")}
+            </p>
+            <div className="mt-3 space-y-1 text-footnote">
+              {lastCall ? (
+                <p className="text-ink-2">
+                  <span className="font-medium text-ink">Last call {fmtDate(lastCall.call_date)}:</span> {OUTCOME_LABELS[lastCall.outcome]}
+                  {lastCall.response ? ` · ${RESPONSE_LABELS[lastCall.response]}` : ""}
+                  {lastCall.summary ? ` · “${lastCall.summary}”` : ""}
+                  {lastCall.author ? ` (${lastCall.author})` : ""}
+                </p>
+              ) : (
+                <p className="text-muted">Never called.</p>
+              )}
+              {latest && (
+                <p>
+                  <PromiseLine date={latest.promised_date} amount={latest.promised_amount} status={latest.status} timing={latest.timing} paid={latest.paid} />
+                </p>
+              )}
+            </div>
           </div>
-          <p className="mt-1 text-subhead text-ink-2">
-            {[
-              RELATION_LABELS[p.relation],
-              `${d.children.length} ${d.children.length === 1 ? "child" : "children"}`,
-              p.occupation,
-              p.best_time_to_call ? `Call: ${p.best_time_to_call}` : null,
-            ]
-              .filter(Boolean)
-              .join("  ·  ")}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <a href={`tel:${p.phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-fill px-4 text-subhead font-medium text-ink transition-colors hover:bg-[rgba(118,118,128,0.18)]">
-            <Phone className="size-4" /> {fmtPhone(p.phone)}
-          </a>
-          {p.alt_phone && (
-            <a href={`tel:${p.alt_phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-fill-2 px-3.5 text-footnote font-medium text-ink-2 hover:bg-fill">
-              {fmtPhone(p.alt_phone)}
+          <div className="flex flex-wrap items-center gap-2 sm:max-w-[320px] sm:justify-end">
+            <Button variant="primary" onClick={() => setLogOpen(true)}>
+              <PhoneCall className="size-4" /> Log a call
+            </Button>
+            <a href={`tel:${p.phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-fill px-4 text-subhead font-medium text-ink transition-colors hover:bg-[rgba(118,118,128,0.18)]">
+              <Phone className="size-4" /> {fmtPhone(p.phone)}
             </a>
-          )}
-          <LinkButton href={`/calls/${id}`} variant={t && t.total_overdue > 0 ? "primary" : undefined}>
-            <Phone className="size-4" /> Call this family
-          </LinkButton>
-          {writer && (
-            <LinkButton href={`/parents/${id}/edit`}>
-              <Pencil className="size-4" /> Edit profile
+            {p.alt_phone && (
+              <a href={`tel:${p.alt_phone}`} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-fill-2 px-3.5 text-footnote font-medium text-ink-2 hover:bg-fill">
+                {fmtPhone(p.alt_phone)}
+              </a>
+            )}
+            <LinkButton href={`/calls/${id}`} variant="plain" className="px-1">
+              Call page
             </LinkButton>
-          )}
+            {writer && (
+              <LinkButton href={`/parents/${id}/edit`}>
+                <Pencil className="size-4" /> Edit
+              </LinkButton>
+            )}
+          </div>
         </div>
+        {saved && (
+          <div className="mt-3">
+            <FormSuccess message={saved} />
+          </div>
+        )}
       </section>
 
       {t && (
-        <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={Wallet} color="blue" size="sm" /> {MONEY.total_fee.label}
-            </p>
-            <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(supposed)}</p>
-            <p className="mt-2.5 text-footnote text-ink-2">
-              {t.prev_opening > 0 ? <>incl. {rupeesShort(t.prev_opening)} old balance</> : d.session?.name}
-              {t.concession > 0 && <> · {rupeesShort(t.concession)} concession</>}
-            </p>
-          </div>
-          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={CheckCircle2} color="green" size="sm" /> {MONEY.received.label}
-            </p>
-            <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(paid)}</p>
-            <Meter value={ratioPct(paid, supposed)} className="mt-3.5" color="bg-good" track="bg-good-soft" />
-            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of the total fee</p>
-          </div>
-          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={Clock} color="indigo" size="sm" /> Last payment
-            </p>
+        <section className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] bg-line shadow-card lg:grid-cols-4" aria-label="The family's fees">
+          <Fig icon={Wallet} color="blue" label={MONEY.total_fee.label} value={rupeesShort(supposed)}>
+            {t.prev_opening > 0 ? <>incl. {rupeesShort(t.prev_opening)} old balance</> : d.session?.name}
+            {t.concession > 0 && <> · {rupeesShort(t.concession)} concession</>}
+          </Fig>
+          <Fig icon={CheckCircle2} color="green" label={MONEY.received.label} value={rupeesShort(paid)}>
+            <Meter value={ratioPct(paid, supposed)} className="mb-1 mt-0.5" color="bg-good" track="bg-good-soft" />
+            {pct(ratioPct(paid, supposed), 0)} of the total fee
+          </Fig>
+          <Fig
+            icon={AlertTriangle}
+            color={t.total_overdue > 0 ? "red" : "green"}
+            label={MONEY.balance.label}
+            value={rupeesShort(t.total_pending)}
+            tone={t.total_pending > 0 ? "text-critical-ink" : "text-good-ink"}
+          >
+            {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} to recover</> : "Nothing due now"}
+            {t.prev_pending > 0 && <> · incl. {rupeesShort(t.prev_pending)} old balance</>}
+          </Fig>
+          <Fig icon={Clock} color="indigo" label="Last payment" value={lp ? rupeesShort(lp.amount) : "Never paid"} tone={lp ? undefined : "text-critical-ink"}>
             {lp ? (
               <>
-                <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(lp.amount)}</p>
-                <div className="mt-3.5">
-                  <StackedBar
-                    height="h-1.5"
-                    segments={[
-                      { value: lp.current, className: "bg-series-1", label: "This year", display: rupees(lp.current) },
-                      { value: lp.arrears, className: "bg-series-2", label: MONEY.old_balance.label, display: rupees(lp.arrears) },
-                      { value: lp.advance, className: "bg-series-3", label: MONEY.advance.label, display: rupees(lp.advance) },
-                    ]}
-                  />
-                </div>
-                <p className="mt-2.5 text-footnote text-ink-2">
-                  {fmtDate(lp.paid_on)} · {lp.student_name}
-                  {t.days_since_payment !== null && t.days_since_payment > 30 && <> · {t.days_since_payment} days ago</>}
-                </p>
+                {fmtDate(lp.paid_on)} · {lp.student_name}
+                {t.days_since_payment !== null && t.days_since_payment > 30 && <> · {t.days_since_payment} days ago</>}
               </>
             ) : (
-              <p className="mt-3 text-headline font-semibold text-critical-ink">Never paid</p>
+              "No receipt on record"
             )}
-          </div>
-          <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
-            <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={AlertTriangle} color={t.total_overdue > 0 ? "red" : "green"} size="sm" /> {MONEY.balance.label}
-            </p>
-            <p className={cn("figure mt-3 text-[28px] leading-none", t.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(t.total_pending)}</p>
-            <p className="mt-2.5 text-footnote text-ink-2">
-              {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} to recover</> : "Nothing due now"}
-              {t.prev_pending > 0 && <> · incl. {rupeesShort(t.prev_pending)} old balance</>}
-            </p>
-          </div>
-        </div>
+          </Fig>
+        </section>
       )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="space-y-5 xl:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
           <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, with each child's old balance` : undefined}>
             {d.children.length === 0 ? (
               <Empty title="No children linked">
@@ -254,9 +264,34 @@ export function ParentView({ id }: { id: string }) {
         </div>
 
         <div className="space-y-5">
-          <Card title="Log a call" description={`Logged by ${viewer.full_name || viewer.email}. A call about anything: fees, studies, a PTM or a parent's question.`}>
-            <CallForm parentId={id} today={d.today} graceDays={d.grace_days} />
+          <Card title="About the family" actions={writer ? <Link href={`/parents/${id}/edit`} className="text-footnote font-medium text-accent">Edit</Link> : undefined}>
+            <dl className="space-y-3 text-subhead">
+              {[
+                ["Economic condition", p.economic_status ? ECONOMIC_LABELS[p.economic_status] : null],
+                ["Deals with the school", p.attitude ? ATTITUDE_LABELS[p.attitude] : null],
+                ["Main concern about the child", p.concerns],
+                ["What matters most to them", p.priorities],
+                ["How they behave / what they talk about", p.behaviour_notes],
+                ["Best time to call", p.best_time_to_call],
+                ["Remarks", p.remarks],
+                ["Email", p.email],
+                ["Address", p.address],
+              ]
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k as string}>
+                    <dt className="text-caption font-medium text-muted">{k}</dt>
+                    <dd className="mt-0.5 whitespace-pre-wrap text-ink">{v}</dd>
+                  </div>
+                ))}
+              {!p.economic_status && !p.concerns && !p.behaviour_notes && !p.priorities && (
+                <p className="text-footnote text-muted">
+                  Nothing recorded yet. Note their economic condition, concerns and how they behave, so whoever calls next has the context.
+                </p>
+              )}
+            </dl>
           </Card>
+
 
           <Card title="Keeps promises?" description="Promises from calls and student notes. Kept = paid (the promised amount, if one was given) by the date plus the grace days.">
             {r.made === 0 ? (
@@ -350,33 +385,6 @@ export function ParentView({ id }: { id: string }) {
             </div>
           </Card>
 
-          <Card title="About the family" actions={writer ? <Link href={`/parents/${id}/edit`} className="text-footnote font-medium text-accent">Edit</Link> : undefined}>
-            <dl className="space-y-3 text-subhead">
-              {[
-                ["Economic condition", p.economic_status ? ECONOMIC_LABELS[p.economic_status] : null],
-                ["Deals with the school", p.attitude ? ATTITUDE_LABELS[p.attitude] : null],
-                ["Main concern about the child", p.concerns],
-                ["What matters most to them", p.priorities],
-                ["How they behave / what they talk about", p.behaviour_notes],
-                ["Best time to call", p.best_time_to_call],
-                ["Remarks", p.remarks],
-                ["Email", p.email],
-                ["Address", p.address],
-              ]
-                .filter(([, v]) => v)
-                .map(([k, v]) => (
-                  <div key={k as string}>
-                    <dt className="text-caption font-medium text-muted">{k}</dt>
-                    <dd className="mt-0.5 whitespace-pre-wrap text-ink">{v}</dd>
-                  </div>
-                ))}
-              {!p.economic_status && !p.concerns && !p.behaviour_notes && !p.priorities && (
-                <p className="text-footnote text-muted">
-                  Nothing recorded yet. Note their economic condition, concerns and how they behave, so whoever calls next has the context.
-                </p>
-              )}
-            </dl>
-          </Card>
 
           {d.sessions.length > 0 && (
             <Card title="By session" description="What is left to pay for each year. What is left from earlier years is the old balance.">
@@ -420,6 +428,50 @@ export function ParentView({ id }: { id: string }) {
           )}
         </div>
       </div>
+
+      <Drawer
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+        title={`Log a call · ${p.name}`}
+        description={`Logged by ${viewer.full_name || viewer.email}. About anything: fees, studies, a PTM or a parent's question.`}
+      >
+        <CallForm
+          parentId={id}
+          today={d.today}
+          graceDays={d.grace_days}
+          onSaved={(message) => {
+            setLogOpen(false);
+            setSaved(message ?? "Call saved.");
+          }}
+        />
+      </Drawer>
+    </div>
+  );
+}
+
+/** One figure of the family's fees in the strip under the header. */
+function Fig({
+  icon,
+  color,
+  label,
+  value,
+  tone,
+  children,
+}: {
+  icon: React.ElementType;
+  color: "blue" | "green" | "red" | "indigo";
+  label: string;
+  value: string;
+  tone?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-surface p-4 sm:p-5">
+      <p className="flex items-center gap-2 text-footnote font-medium text-ink-2">
+        <IconTile icon={icon} color={color} size="sm" /> {label}
+      </p>
+      <p className={cn("figure mt-2 text-title1 leading-none", tone ?? "text-ink")}>{value}</p>
+      <div className="mt-2 text-caption text-ink-2">{children}</div>
     </div>
   );
 }

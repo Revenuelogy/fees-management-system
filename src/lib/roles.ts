@@ -30,3 +30,12 @@ export function canWrite(role: AppRole | null | undefined) {
 export function isAdmin(role: AppRole | null | undefined) {
   return role === "admin";
 }
+
+/** How a role is named on screen. */
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: "Admin",
+  accountant: "Accountant",
+  principal: "Principal",
+  caller: "Caller",
+  teacher: "Class teacher",
+};

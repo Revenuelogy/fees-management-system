@@ -112,6 +112,20 @@ export const TakeCallsBody = z.object({
 /** Give back one family (or, without parent_id, every family of mine not called yet). */
 export const ReleaseCallsBody = z.object({ parent_id: id("Unknown family.").nullish() });
 
+/** Give a family to a caller for a day (today when no date), with an optional note for them. */
+export const AssignCallBody = z.object({
+  parent_id: id("Choose a family."),
+  caller_id: id("Choose who will call."),
+  date: optionalDate(),
+  note: optionalText(300),
+});
+
+/** Take a family off the list it was given to for a day (today when no date). */
+export const UnassignCallBody = z.object({ parent_id: id("Choose a family."), date: optionalDate() });
+
+/** The day whose lists to show (today when none). */
+export const DayQuery = z.object({ date: optionalDate() });
+
 /** What brought a receipt in: a call, an activity (participation), or nothing (both null). */
 export const PaymentSourceBody = z
   .object({

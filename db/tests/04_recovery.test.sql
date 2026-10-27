@@ -161,6 +161,8 @@ select public.log_parent_call((select id from fx where k = 'pE'), 'connected', '
 insert into fx select 'cE', id from public.parent_calls where parent_id = (select id from fx where k = 'pE') and purpose = 'fees';
 select is(pg_temp.st('pE'), 'called/7', 'called today: next call in 7 days');
 update public.parent_calls set call_date = public.fees_today() - 2 where id = (select id from fx where k = 'cE');
+update public.call_assignments set call_date = public.fees_today() - 2   -- the call and its list belong to that day
+ where parent_id = (select id from fx where k = 'pE') and call_date = public.fees_today();
 select is(pg_temp.st('pE'), 'waiting/5', 'two days later it is still waiting');
 update public.parent_calls set call_date = public.fees_today() - 8 where id = (select id from fx where k = 'cE');
 select is((select state from pg_temp.cl('pE')), 'due', 'eight days later it is back on the list');
@@ -242,12 +244,12 @@ select is((select a ->> 'paid_since' from jsonb_array_elements(public.student_re
 select is((select a ->> 'verdict' from jsonb_array_elements(public.activities_overview() -> 'activities') a where a ->> 'id' = (select id::text from fx where k = 'a1')),
   'good', 'one of the two students who owe was won over by the activity: working well');
 
--- the recovery dashboard ----------------------------------------------------------------
+-- money received and what brought it in --------------------------------------------------
 select is((select (m -> 'by_source' -> 'calls' ->> 'amount')::bigint + (m -> 'by_source' -> 'activities' ->> 'amount')::bigint
                   + (m -> 'by_source' -> 'direct' ->> 'amount')::bigint - (m ->> 'received')::bigint
-             from (select public.recovery_dashboard(public.fees_today() - 29, public.fees_today()) -> 'money' as m) x), 0::bigint,
+             from (select public.recovery_summary(public.fees_today() - 29, public.fees_today()) -> 'money' as m) x), 0::bigint,
   'money from calls, activities and families on their own adds up to the money received');
-select throws_ok($$ select public.recovery_dashboard(public.fees_today(), public.fees_today() - 1) $$, 'P0001', 'Choose a valid period',
+select throws_ok($$ select public.call_analytics(public.fees_today(), public.fees_today() - 1) $$, 'P0001', 'Choose a valid period',
   'a period that ends before it starts is refused');
 
 -- merging two profiles of one family -------------------------------------------------------
