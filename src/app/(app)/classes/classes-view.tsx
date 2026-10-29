@@ -21,7 +21,7 @@ const STATUS: { key: keyof ClassSummaryRow["status"]; cls: string; label: string
 
 export function ClassesView() {
   const { session } = useApp();
-  // this year's figures only; each class's old balance is shown as its own figure
+  // this year's figures only; each class's previous years' dues are shown as their own figure
   const summary = useApi<ClassSummaryRow[]>(session ? apiUrl("/api/analytics/classes", { session: session.id }) : null);
   if (!session) return <NoSession />;
   if (!summary.data) return <Pending queries={[summary]} />;
@@ -35,8 +35,8 @@ export function ClassesView() {
     <div className="space-y-5">
       <PageHeader
         title="Classes"
-        description={`${session.name} · ${rupeesShort(tot.pending)} balance across ${rows.filter((r) => r.class_id).length} classes`}
-        info={`Ring = share of the class's total fee received this year. Bar = students by status. ${MONEY.balance.label}: ${MONEY.balance.hint}. ${MONEY.old_balance.label} is shown on its own.`}
+        description={`${session.name} · ${rupeesShort(tot.pending)} remaining this year across ${rows.filter((r) => r.class_id).length} classes`}
+        info={`Ring = share of the class's total fees received this year. Bar = students by status. ${MONEY.balance.label}: ${MONEY.balance.hint}. ${MONEY.old_balance.label} is shown on its own.`}
       >
         <Legend items={STATUS.slice(0, 4).map((s) => ({ label: s.label, className: s.cls }))} />
       </PageHeader>
@@ -50,12 +50,16 @@ export function ClassesView() {
               href={href}
               className="animate-rise group rounded-[var(--radius-card)] bg-surface p-5 shadow-card transition-transform duration-200 hover:-translate-y-0.5"
               style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
-              title={`${r.class_name}: ${rupees(r.received)} received of ${rupees(r.expected)} total fee, ${rupees(r.pending)} balance`}
+              title={`${r.class_name}: ${rupees(r.received)} received of ${rupees(r.expected)} total fees this year, ${rupees(r.pending)} remaining`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-headline font-semibold text-ink group-hover:text-accent">{r.class_name}</p>
                   <p className="text-footnote text-ink-2">{r.students} students</p>
+                  <p className="mt-1 text-footnote text-ink-2">
+                    <span className="font-semibold tabular text-good-ink">{rupeesShort(r.received)}</span> received of{" "}
+                    <span className="font-semibold tabular text-ink">{rupeesShort(r.expected)}</span>
+                  </p>
                 </div>
                 <Ring value={r.collection_pct} size={58} stroke={7}>
                   <span className="text-caption font-semibold tabular">{Math.round(r.collection_pct ?? 0)}%</span>
@@ -69,7 +73,7 @@ export function ClassesView() {
                 <div className="text-right">
                   <p className="text-caption text-muted">{MONEY.due_now.label}</p>
                   <p className={`text-headline font-semibold tabular ${r.overdue > 0 ? "text-critical-ink" : "text-good-ink"}`}>{rupeesShort(r.overdue)}</p>
-                  {r.prev_pending > 0 && <p className="text-caption tabular text-serious-ink">+ {rupeesShort(r.prev_pending)} old balance</p>}
+                  {r.prev_pending > 0 && <p className="text-caption tabular text-serious-ink">+ {rupeesShort(r.prev_pending)} previous years</p>}
                 </div>
               </div>
               <div className="mt-4">
@@ -78,7 +82,7 @@ export function ClassesView() {
                   segments={STATUS.map((s) => ({ value: r.status[s.key] ?? 0, className: s.cls, label: s.label, display: String(r.status[s.key] ?? 0) }))}
                 />
                 <p className="mt-2 text-caption text-muted">
-                  {r.status.paid_up} paid up · {r.status.not_paying + r.status.partial} with fees due · {pct(r.share_of_pending, 0)} of school balance
+                  {r.status.paid_up} paid up · {r.status.not_paying + r.status.partial} with fees due · {pct(r.share_of_pending, 0)} of the school&apos;s remaining fees
                 </p>
               </div>
             </Link>
@@ -86,7 +90,7 @@ export function ClassesView() {
         })}
       </div>
       <p className="text-center text-caption text-muted">
-        School: {rupeesShort(tot.received)} received of {rupeesShort(tot.expected)} total fee ({pct(ratioPct(tot.received, tot.expected), 0)}) · students who
+        School: {rupeesShort(tot.received)} received of {rupeesShort(tot.expected)} total fees ({pct(ratioPct(tot.received, tot.expected), 0)}) · students who
         left or are not enrolled this year are on{" "}
         <Link href="/pending?unassigned=1" className="text-accent">
           Fees due

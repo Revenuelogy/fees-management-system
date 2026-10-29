@@ -32,7 +32,7 @@ function useChildren(ids: string[]) {
   );
 }
 
-/** "Due now" / "Due later" / "Paid" for an installment (old years' unpaid ones are "Old balance"). */
+/** "Due till today" / "Due later" / "Paid" for an installment (previous years' unpaid ones are "Previous years' dues"). */
 function installmentState(i: Student360Installment, current: boolean): { label: string; tone: "good" | "critical" | "warning" | "serious" | "neutral" } {
   if (i.status === "waived") return { label: "Waived", tone: "neutral" };
   if (i.status === "paid") return { label: "Paid", tone: "good" };
@@ -111,10 +111,11 @@ export function FamilyProfile({ f, parentId }: { f: Parent360; parentId: string 
                   <p className="text-caption text-muted">
                     {k.class_name ? `${k.class_name} · ${k.section}` : "Not enrolled"} · {k.admission_no}
                   </p>
-                  <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <Amount label={MONEY.balance.label} value={k.pending} />
-                    <Amount label={MONEY.due_now.label} value={k.overdue} tone={k.overdue > 0 ? "text-critical-ink" : undefined} />
-                    <Amount label={MONEY.old_balance.label} value={k.prev_pending} tone={k.prev_pending > 0 ? "text-serious-ink" : undefined} />
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                    <Amount label={MONEY.total_fee.short} value={k.expected} />
+                    <Amount label={MONEY.balance.short} value={k.pending} />
+                    <Amount label={MONEY.due_now.short} value={k.overdue} tone={k.overdue > 0 ? "text-critical-ink" : undefined} />
+                    <Amount label={MONEY.old_balance.short} value={k.prev_pending} tone={k.prev_pending > 0 ? "text-serious-ink" : undefined} />
                   </dl>
                   <p className="mt-2 text-footnote text-ink-2">
                     Last payment:{" "}

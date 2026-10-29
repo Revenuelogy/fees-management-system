@@ -137,7 +137,7 @@ function AssignedRow({ r, date }: { r: CallAssignments["rows"][number]; date: st
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="text-right">
             <span className={cn("block text-footnote font-semibold tabular", r.to_recover > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(r.to_recover)}</span>
-            <span className="block text-caption text-muted">to recover</span>
+            <span className="block text-caption text-muted">total due</span>
           </span>
           {!r.called && (
             <button

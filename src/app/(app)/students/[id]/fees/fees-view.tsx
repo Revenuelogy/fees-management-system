@@ -134,13 +134,13 @@ export function FeesView({ id, sp }: { id: string; sp: SearchParams }) {
       <KpiGrid cols={5}>
         <Kpi label={`Charged in ${session.name}`} value={rupeesShort(totals.gross)} sub={`${lines.length} fee lines · before concession`} />
         <Kpi label="Concession" value={rupeesShort(totals.concession)} sub={totals.gross > 0 ? `${Math.round((100 * totals.concession) / totals.gross)}% of charged` : "—"} />
-        <Kpi label="Total fee" value={rupeesShort(totals.net)} sub="After concession" />
+        <Kpi label="Total fees this year" value={rupeesShort(totals.net)} sub="After concession" />
         <Kpi label="Received" value={rupeesShort(totals.paid)} tone={totals.net > 0 && totals.paid >= totals.net ? "good" : "default"} sub="Allocated to these lines" />
         <Kpi
-          label="Balance"
+          label="Remaining this year"
           value={rupeesShort(totals.remaining)}
           tone={totals.overdue > 0 ? "critical" : "default"}
-          sub={totals.overdue > 0 ? `${rupees(totals.overdue)} due now` : "Nothing due now"}
+          sub={totals.overdue > 0 ? `${rupees(totals.overdue)} due till today` : "Nothing due till today"}
         />
       </KpiGrid>
 

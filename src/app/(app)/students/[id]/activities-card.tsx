@@ -243,7 +243,7 @@ function NewActivity({
         <Field label="Ends" htmlFor="act_end" hint="Optional.">
           <Input id="act_end" name="end_date" type="date" />
         </Field>
-        <Field label="Fees to recover (₹)" htmlFor="act_target" hint={overdue > 0 ? `To recover now: ${rupees(overdue)}.` : "Optional."}>
+        <Field label="Target to bring in (₹)" htmlFor="act_target" hint={overdue > 0 ? `Total due incl. previous years: ${rupees(overdue)}.` : "Optional."}>
           <Input id="act_target" name="target_amount" inputMode="decimal" />
         </Field>
       </div>

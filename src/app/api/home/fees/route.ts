@@ -5,5 +5,5 @@ import { id } from "@/server/validate";
 
 const Query = z.object({ session: id("Choose a session.") });
 
-/** Home: this year's fees (Total fee, Received, Due now, Due later, Old balance) and what is left to recover. */
+/** Home: this year's fees, previous years' dues, the total due, and the school (students, families, classes, by status). */
 export const GET = api("staff", ({ req, viewer }) => fees(viewer, readQuery(req, Query).session));

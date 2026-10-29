@@ -203,7 +203,9 @@ export function MonthlyView({ sp }: { sp: SearchParams }) {
                   <span className="h-2 flex-1 overflow-hidden rounded-full bg-fill-2">
                     <span className="block h-full rounded-full bg-series-1" style={{ width: `${Math.min(100, c.collection_pct ?? 0)}%` }} />
                   </span>
-                  <span className="w-10 text-right text-footnote tabular text-ink-2">{pct(c.collection_pct, 0)}</span>
+                  <span className="w-28 shrink-0 text-right text-footnote tabular text-ink-2" title={`${rupeesShort(c.collected)} received of ${rupeesShort(c.expected)} due`}>
+                    <b className="font-semibold text-ink">{pct(c.collection_pct, 0)}</b> of {rupeesShort(c.expected)}
+                  </span>
                 </span>
                 <span className="text-right">
                   <span className="block text-subhead font-semibold tabular text-ink">{rupeesShort(c.received)}</span>

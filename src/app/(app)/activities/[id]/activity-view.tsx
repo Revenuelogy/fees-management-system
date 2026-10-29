@@ -79,7 +79,7 @@ function Detail({ d, tab }: { d: ActivityDetail; tab?: string }) {
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={Users} color="indigo" label="Students" value={num(s.participants)} sub={<>{num(s.owing_now)} with fees due · {rupeesShort(s.overdue_now)} to recover</>} />
+        <Kpi icon={Users} color="indigo" label="Students" value={num(s.participants)} sub={<>{num(s.owing_now)} with fees due · {rupeesShort(s.overdue_now)} total due</>} />
         <Kpi
           icon={Sparkles}
           color="green"
@@ -185,7 +185,7 @@ function AddStudents({ activityId }: { activityId: string }) {
           </Field>
           <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
             <input type="checkbox" name="only_with_dues" defaultChecked className="size-4 accent-[var(--accent)]" />
-            Only students with fees due now or old balance
+            Only students with fees due till today or previous years&apos; dues
           </label>
           <div className="sm:col-span-2">
             <Button type="submit" disabled={pending}>
@@ -267,7 +267,7 @@ function Participant({ r, activityId, writer, since }: { r: ActivityParticipant;
           <p className={cn("text-headline font-semibold tabular", r.total_overdue > 0 ? "text-critical-ink" : "text-good-ink")}>
             {r.total_overdue > 0 ? rupeesShort(r.total_overdue) : "Clear"}
           </p>
-          <p className="text-caption text-muted">{r.total_overdue > 0 ? "to recover" : "nothing due now"}</p>
+          <p className="text-caption text-muted">{r.total_overdue > 0 ? "total due" : "nothing due till today"}</p>
         </div>
       </div>
 

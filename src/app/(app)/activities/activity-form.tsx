@@ -35,7 +35,7 @@ export function ActivityForm({ activity, today }: { activity?: RecoveryActivity;
               placeholder="e.g. Extra spoken-English practice three days a week; parents asked to clear the fees due so the school can run it"
             />
           </Field>
-          <Field label="Fees to recover (₹)" htmlFor="target_amount" hint="Optional. Shown as progress.">
+          <Field label="Target to bring in (₹)" htmlFor="target_amount" hint="Optional. Shown as progress.">
             <Input id="target_amount" name="target_amount" inputMode="decimal" defaultValue={toRupeeInput(a?.target_amount)} />
           </Field>
           {a && (

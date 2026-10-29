@@ -152,7 +152,7 @@ export function CallsOverview({ d, period }: { d: CallAnalytics; period: Period 
         <div className="space-y-5">
           <Card
             title="Does calling make a difference?"
-            description="Families we spoke to about fees in the period (paid on or after the call) against the other families with fees due (something to recover now, or who paid fees due now in the period)."
+            description="Families we spoke to about fees in the period (paid on or after the call) against the other families with fees due (something due till today, or who paid fees that were due in the period)."
           >
             {d.impact.spoke === 0 && d.impact.others === 0 ? (
               <p className="text-footnote text-muted">No families with fees due in this period.</p>

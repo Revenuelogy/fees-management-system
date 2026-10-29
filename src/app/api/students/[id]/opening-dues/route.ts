@@ -4,7 +4,7 @@ import { addOpeningDue } from "@/server/services/students";
 import { id, optionalText, paise } from "@/server/validate";
 
 const Body = z.object({
-  session_id: id("Choose the year the old balance is from."),
+  session_id: id("Choose the year these dues are from."),
   amount: paise("Enter an amount greater than zero (₹)."),
   fee_head: optionalText(100).transform((v) => v ?? "Previous Dues"),
   note: optionalText(500),

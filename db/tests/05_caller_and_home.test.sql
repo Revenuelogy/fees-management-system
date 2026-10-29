@@ -7,7 +7,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'fees_api_test') then create role fees_api_test nologin; end if;
 end $$;
 select public.grant_app_access('fees_api_test');
-select plan(37);
+select plan(40);
 
 insert into public.app_users (id, email, password_hash)
 values ('66666666-6666-6666-6666-666666666601', 'pgtap-caller5@school.test', 'x'),
@@ -75,7 +75,7 @@ update public.parents set name = 'Changed' where id = (select id from fx where k
 select is((select name from public.parents where id = (select id from fx where k = 'p')), 'Mohan Five', 'a caller cannot edit a parent');
 delete from public.student_notes where student_id = (select id from fx where k = 'st');
 select is((select count(*)::int from public.student_notes where student_id = (select id from fx where k = 'st')), 1, 'a caller cannot delete notes');
-select throws_ok($$ select public.home_fees(public.running_session()) $$, '42501', null, 'a caller cannot see the Home fee figures');
+select throws_ok($$ select public.home_fees((select id from public.academic_sessions where is_current)) $$, '42501', null, 'a caller cannot see the Home fee figures');
 select throws_ok($$ select public.home_today() $$, '42501', null, 'a caller cannot see today''s school figures');
 select throws_ok($$ select public.recovery_summary(public.fees_today() - 6, public.fees_today()) $$, '42501', null,
   'a caller cannot see the money received');
@@ -83,7 +83,8 @@ select throws_ok($$ select public.call_analytics(public.fees_today() - 6, public
   'a caller cannot see the call analytics');
 select throws_ok($$ select public.assign_call((select id from fx where k = 'p2'), '66666666-6666-6666-6666-666666666601') $$,
   '42501', null, 'a caller cannot give families to callers');
-select throws_ok($$ select public.home_classes(public.running_session()) $$, '42501', null, 'a caller cannot see the class figures');
+select throws_ok($$ select public.home_classes((select id from public.academic_sessions where is_current)) $$, '42501', null, 'a caller cannot see the class figures');
+select throws_ok($$ select public.fee_position((select id from public.academic_sessions where is_current)) $$, '42501', null, 'a caller cannot see the fee totals');
 reset role;
 
 -- Home, as the principal ---------------------------------------------------------------------------------
@@ -95,6 +96,17 @@ select ok((select (f ->> 'to_recover')::bigint = (f ->> 'due_now')::bigint + (f 
              from public.academic_sessions s, lateral (select public.home_fees(s.id) f) x
             order by s.start_date desc limit 1),
   'Home: To recover now = Due now + Old balance, Balance = Due now + Due later, Received + Balance = Total fee');
+select is((select count(*)::int
+             from (select public.fee_position((select id from public.academic_sessions where is_current)) f
+                   union all select public.fee_position((select id from public.academic_sessions where is_current), c.id) from public.classes c) x
+            where (f ->> 'total_fee_all')::bigint - (f ->> 'received_all')::bigint <> (f ->> 'balance_all')::bigint
+               or (f ->> 'to_recover')::bigint <> (f ->> 'due_now')::bigint + (f ->> 'old_balance')::bigint
+               or (f ->> 'balance')::bigint <> (f ->> 'due_now')::bigint + (f ->> 'due_later')::bigint
+               or (f ->> 'total_fee_all')::bigint <> (f ->> 'total_fee')::bigint + (f ->> 'old_opening')::bigint), 0,
+  'fee position, for the school and every class: total incl. previous years - received = remaining, and the parts add up');
+select is((select coalesce(sum((public.fee_position((select id from public.academic_sessions where is_current), c.id) ->> 'total_fee')::bigint), 0)::bigint from public.classes c),
+          (select coalesce(sum(b.expected), 0)::bigint from public.student_balances((select id from public.academic_sessions where is_current)) b where b.class_id is not null),
+  'the classes'' total fees add up to the total fees of the students enrolled');
 select is((select (m -> 'by_source' -> 'calls' ->> 'amount')::bigint + (m -> 'by_source' -> 'activities' ->> 'amount')::bigint
                   + (m -> 'by_source' -> 'direct' ->> 'amount')::bigint - (m ->> 'received')::bigint
              from (select public.recovery_summary(public.fees_today() - 29, public.fees_today()) -> 'money' as m) x), 0::bigint,

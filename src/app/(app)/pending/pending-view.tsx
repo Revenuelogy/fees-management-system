@@ -30,7 +30,7 @@ export function PendingView({ sp }: { sp: SearchParams }) {
 
   const all = balances.data;
 
-  // this year (Balance, or Due now) and Old balance stay separate figures; a student is listed when either is owed
+  // this year (remaining, or due till today) and previous years' dues stay separate figures; a student is listed when either is owed
   const owed = (r: StudentBalance) => (due ? r.overdue : r.pending) + r.prev_pending;
   const rows = all
     .filter((r) => owed(r) > 0)
@@ -50,8 +50,8 @@ export function PendingView({ sp }: { sp: SearchParams }) {
   const className = classId ? classes.find((c) => c.id === classId)?.name : undefined;
   const meta = [
     `Session ${session.name}`,
-    due ? "Due now (installments past their due date) and old balance" : "Balance (all of this year's fees not yet received) and old balance",
-    ...(prev ? ["Only students with an old balance"] : []),
+    due ? "Due till today (installments past their due date) and previous years' dues" : "Remaining this year (all of this year's fees not yet received) and previous years' dues",
+    ...(prev ? ["Only students with previous years' dues"] : []),
     ...(unassigned ? ["Only students not enrolled this year / left"] : []),
     ...(className ? [`Class: ${className}`] : []),
     ...(status ? [`Status: ${FEE_STATUS[status]?.label}`] : []),
@@ -61,9 +61,11 @@ export function PendingView({ sp }: { sp: SearchParams }) {
   const columns = [
     { key: "full_name", label: "Student", type: "person" as const, href: "/students/{student_id}", sub: "who" },
     { key: "phone", label: "Phone", hideOnMobile: true },
+    { key: "expected", label: MONEY.total_fee.label, type: "money" as const, total: true, hideOnMobile: true },
     { key: "pending", label: MONEY.balance.label, type: "money" as const, total: true },
     { key: "overdue", label: MONEY.due_now.label, type: "money" as const, total: true, alertPositive: true },
     { key: "prev_pending", label: MONEY.old_balance.label, type: "money" as const, total: true, dimZero: true },
+    { key: "total_overdue", label: MONEY.to_recover.label, type: "money" as const, total: true, alertPositive: true, hideOnMobile: true },
     { key: "days_since_payment", label: MONEY.days_since_payment.label, type: "number" as const, hideOnMobile: true },
     { key: "fee_status", label: "Status", type: "status" as const },
     ...(writer ? [{ key: "collect", label: "", type: "action" as const, href: "/collect/{student_id}", sortable: false }] : []),
@@ -80,14 +82,14 @@ export function PendingView({ sp }: { sp: SearchParams }) {
       >
         <Segmented
           options={[
-            { label: "Balance", href: url({ due: undefined }), active: !due, title: "All of this year's fees not yet received, including installments due later" },
-            { label: "Due now", href: url({ due: true }), active: due, title: "Only installments whose due date has passed" },
+            { label: "Remaining this year", href: url({ due: undefined }), active: !due, title: "All of this year's fees not yet received, including installments due later" },
+            { label: "Due till today", href: url({ due: true }), active: due, title: "Only installments whose due date has passed" },
           ]}
         />
         <Segmented
           options={[
             { label: "Everyone", href: url({ prev: undefined, unassigned: undefined }), active: !prev && !unassigned },
-            { label: "Has old balance", href: url({ prev: true, unassigned: undefined }), active: prev },
+            { label: "Has previous years' dues", href: url({ prev: true, unassigned: undefined }), active: prev },
             { label: "Left school", href: url({ unassigned: true, prev: undefined }), active: unassigned },
           ]}
         />
@@ -102,11 +104,12 @@ export function PendingView({ sp }: { sp: SearchParams }) {
         <b>Fees due · {session.name}</b> — {meta.join(" · ")}
       </div>
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {[
           { label: MONEY.balance.label, value: rupeesShort(sum((r) => r.pending)), tone: "text-ink" },
           { label: MONEY.due_now.label, value: rupeesShort(sum((r) => r.overdue)), tone: "text-critical-ink" },
           { label: MONEY.old_balance.label, value: rupeesShort(sum((r) => r.prev_pending)), tone: "text-serious-ink" },
+          { label: MONEY.to_recover.label, value: rupeesShort(sum((r) => r.total_overdue)), tone: "text-critical-ink" },
           { label: "Students", value: String(rows.length), tone: "text-ink" },
         ].map((x) => (
           <div key={x.label} className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">

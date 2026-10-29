@@ -84,7 +84,7 @@ function InstallmentStatus({ lines, dueDate }: { lines: PlanLine[]; dueDate: str
   if (overdue)
     return (
       <Badge tone="critical" title={`Due ${fmtDate(dueDate)}`}>
-        <AlertTriangle className="size-3.5" aria-hidden /> {t.paid > 0 ? "Part paid · due now" : "Due now"}
+        <AlertTriangle className="size-3.5" aria-hidden /> {t.paid > 0 ? "Part paid · due till today" : "Due till today"}
       </Badge>
     );
   return (
@@ -122,7 +122,7 @@ export function FeePlan({
               <th scope="col" className="px-3 py-2 text-right font-medium">Concession</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Net</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Received</th>
-              <th scope="col" className="px-3 py-2 text-right font-medium">Balance</th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">Remaining</th>
               <th scope="col" className="px-3 py-2 text-right font-medium"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>

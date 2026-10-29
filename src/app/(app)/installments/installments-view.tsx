@@ -48,7 +48,7 @@ export function InstallmentsView() {
     <div className="space-y-5">
       <PageHeader
         title="Installments"
-        description={`${session.name} · ${rupeesShort(tot.received)} received of ${rupeesShort(tot.expected)} total fee`}
+        description={`${session.name} · ${rupeesShort(tot.received)} received of ${rupeesShort(tot.expected)} total fees`}
         info={`Received = money that went to each installment, whenever it was paid. ${MONEY.due_now.label} = an installment past its due date that is not paid; ${MONEY.due_later.label.toLowerCase()} = its due date has not come yet. Open an installment to see which classes and students it is due from.`}
       />
 
@@ -79,13 +79,17 @@ export function InstallmentsView() {
                   <Ring value={r.collection_pct} size={112} stroke={12} color={r.status === "upcoming" ? "var(--tile-gray)" : "var(--series-1)"}>
                     <span className="figure text-title2">{Math.round(r.collection_pct ?? 0)}%</span>
                   </Ring>
-                  <dl className="grid flex-1 gap-2.5 text-footnote">
+                  <dl className="grid flex-1 gap-2 text-footnote">
                     <div>
-                      <dt className="text-ink-2">{MONEY.received.label}</dt>
-                      <dd className="text-title3 font-semibold tabular text-ink">{rupeesShort(r.received)}</dd>
+                      <dt className="text-ink-2">Total</dt>
+                      <dd className="text-title3 font-semibold tabular text-ink">{rupeesShort(r.expected)}</dd>
                     </div>
                     <div>
-                      <dt className="text-ink-2">{r.status === "upcoming" ? MONEY.due_later.label : MONEY.due_now.label}</dt>
+                      <dt className="text-ink-2">{MONEY.received.short}</dt>
+                      <dd className="text-title3 font-semibold tabular text-good-ink">{rupeesShort(r.received)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-ink-2">{r.gap <= 0 ? "Left" : r.status === "upcoming" ? MONEY.due_later.label : MONEY.due_now.label}</dt>
                       <dd className={`text-title3 font-semibold tabular ${r.gap > 0 && r.status !== "upcoming" ? "text-critical-ink" : "text-ink"}`}>{rupeesShort(r.gap)}</dd>
                     </div>
                   </dl>
@@ -111,7 +115,7 @@ export function InstallmentsView() {
               </Link>
             ))}
           </div>
-          <Card title="Whole year" description="Money received by each due date, received late, and the balance not yet received (due now and due later). A growing grey part means unpaid fees are being carried forward.">
+          <Card title="Whole year" description="Money received by each due date, received late, and what remains (due till today and due later). A growing grey part means unpaid fees are being carried forward.">
             <StackedBar
               height="h-4"
               total={tot.expected}

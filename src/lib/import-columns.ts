@@ -80,10 +80,10 @@ export const IMPORT_SPECS: Record<ImportKind, ImportSpec> = {
   },
   dues: {
     kind: "dues",
-    label: "Old balance",
-    title: "Import old balance",
+    label: "Previous years' dues",
+    title: "Import previous years' dues",
     intro:
-      "Unpaid amounts of earlier years, from before you started using this app. Each row adds to the student's fees in that session (on its first installment), so importing the same file twice doubles the old balance.",
+      "Unpaid amounts of earlier years, from before you started using this app. Each row adds to the student's fees in that session (on its first installment), so importing the same file twice doubles them.",
     columns: [
       { key: "admission_no", required: true, hint: "Student must already exist" },
       { key: "session", required: true, hint: "Session name, e.g. 2025-26" },

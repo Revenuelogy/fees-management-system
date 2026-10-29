@@ -66,13 +66,13 @@ export function SchoolProfileForm({ settings }: { settings: SchoolSettings }) {
 const RULES = [
   {
     value: "oldest_first",
-    label: "Oldest fees first — old balance before this year's fees (recommended)",
+    label: "Oldest fees first — previous years before this year's fees (recommended)",
     hint: "A payment first clears unpaid fees from earlier sessions, then this session's installments in due-date order.",
   },
   {
     value: "current_first",
-    label: "This year first, then old balance",
-    hint: "A payment first clears the running session's installments; old balance is cleared only after that.",
+    label: "This year first, then previous years",
+    hint: "A payment first clears the running session's installments; previous years are cleared only after that.",
   },
 ] as const;
 
@@ -140,10 +140,10 @@ export function CallRulesForm({ settings }: { settings: SchoolSettings }) {
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Call families with at least this much to recover (₹)" htmlFor="min_overdue" hint="To recover now = due now + old balance.">
+          <Field label="Call families with at least this much total due (₹)" htmlFor="min_overdue" hint="Total due = due till today + previous years' dues.">
             <Input id="min_overdue" name="min_overdue" inputMode="decimal" required defaultValue={toRupeeInput(settings.call_min_overdue)} />
           </Field>
-          <Field label="Large amount to recover from (₹)" htmlFor="high_due" hint="Families with this much to recover are called first.">
+          <Field label="Large total due from (₹)" htmlFor="high_due" hint="Families with this much total due are called first.">
             <Input id="high_due" name="high_due" inputMode="decimal" required defaultValue={toRupeeInput(settings.call_high_due)} />
           </Field>
           <Field label="Skip families who paid in the last (days)" htmlFor="skip_paid_days" hint="A family that paid recently is not called.">

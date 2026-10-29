@@ -163,7 +163,7 @@ export function ImportPanel({
       kind === "students"
         ? `Import ${plural(parsed.rows.length, "student row")}${target ? ` and enrol them in ${target}` : " (no enrolment)"}?`
         : kind === "dues"
-          ? `Add old balance from ${plural(parsed.rows.length, "row")}? Importing the same file twice adds it twice.`
+          ? `Add previous years' dues from ${plural(parsed.rows.length, "row")}? Importing the same file twice adds it twice.`
           : `Import ${plural(parsed.rows.length, "payment")}?`;
     if (!window.confirm(question)) return;
 
@@ -416,7 +416,7 @@ function ResultView({
           { label: "Enrolled", value: result.enrolled },
         ]
       : kind === "dues"
-        ? [{ label: "Old balance rows added", value: result.inserted }]
+        ? [{ label: "Previous years' dues rows added", value: result.inserted }]
         : [
             { label: "Payments imported", value: result.inserted },
             { label: "Duplicates skipped", value: result.duplicates },

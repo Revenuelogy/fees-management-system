@@ -48,7 +48,7 @@ export const BEHAVIOUR_LABELS: Record<Behaviour, { label: string; hint: string; 
   regular: { label: "Pays on time", hint: "Pays regularly, around the due dates", tone: "good" },
   installment_wise: { label: "Pays installment-wise", hint: "Pays each installment as it falls due", tone: "good" },
   year_end: { label: "Pays at year end", hint: "Clears most of the fees in January–March", tone: "warning" },
-  carries_forward: { label: "Leaves an old balance", hint: "Leaves part of the fees for the next year (old balance)", tone: "serious" },
+  carries_forward: { label: "Leaves fees for next year", hint: "Leaves part of the fees unpaid into the next year", tone: "serious" },
   willing_struggling: { label: "Wants to pay, struggling", hint: "Willing, but money is tight", tone: "warning" },
   capable_not_paying: { label: "Can pay, doesn't", hint: "Has the means but delays or avoids paying", tone: "critical" },
   irregular: { label: "Irregular", hint: "Pays now and then, usually after reminders", tone: "serious" },
@@ -116,11 +116,11 @@ export const REASON_LABELS: Record<CallReason, { label: string; hint: string; to
   broken_promise: { label: "Broke a promise", hint: "Promised a date and paid nothing by it (and the grace days)", tone: "critical" },
   partial_promise: { label: "Paid less than promised", hint: "Paid only part of the promised amount by the date", tone: "serious" },
   call_back: { label: "Asked to call today", hint: "The date they asked to be called on has come", tone: "accent" },
-  high_dues: { label: "Large amount to recover", hint: "To recover now is more than the large-amount figure in the call list rules", tone: "serious" },
+  high_dues: { label: "Large amount due", hint: "Total due incl. previous years is more than the large-amount figure in the call list rules", tone: "serious" },
   never_paid: { label: "Never paid", hint: "No payment on record", tone: "critical" },
   silent: { label: "No payment for 2 months", hint: "Nothing paid for 60 days or more", tone: "warning" },
-  old_dues: { label: "Old balance", hint: "Has old balance left from earlier years", tone: "serious" },
-  overdue: { label: "Fees due now", hint: "Has fees whose due date has passed", tone: "neutral" },
+  old_dues: { label: "Previous years' dues", hint: "Has fees of previous years still unpaid", tone: "serious" },
+  overdue: { label: "Fees due till today", hint: "Has fees whose due date has passed", tone: "neutral" },
   not_reached: { label: "Not reached last time", hint: "The last call did not get through", tone: "neutral" },
 };
 
@@ -131,7 +131,7 @@ export const CALL_STATES: Record<CallState, { label: string; hint: string }> = {
   promised: { label: "Promised to pay", hint: "Waiting for the date they promised (plus the grace days)" },
   paid_recently: { label: "Paid recently", hint: "Paid something recently, so not called" },
   waiting: { label: "Called recently", hint: "Called a few days ago; back on the list on the date shown" },
-  cleared: { label: "Nothing to recover now", hint: "To recover now is below the amount the call list starts at" },
+  cleared: { label: "Nothing much due", hint: "Total due is below the amount the call list starts at" },
 };
 
 export const VERDICT_LABELS: Record<ActivityVerdict, { label: string; hint: string; tone: Tone }> = {

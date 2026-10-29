@@ -148,7 +148,7 @@ function Dashboard({ d, period }: { d: RecoverySummary; period: Period }) {
               {(m.by_kind.arrears ?? 0) > 0 && (
                 <>
                   {" "}
-                  Includes <span className="font-medium text-serious-ink">{rupeesShort(m.by_kind.arrears ?? 0)}</span> old balance received.
+                  Includes <span className="font-medium text-serious-ink">{rupeesShort(m.by_kind.arrears ?? 0)}</span> received for previous years.
                 </>
               )}
             </p>

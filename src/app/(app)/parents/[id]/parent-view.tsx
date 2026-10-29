@@ -130,23 +130,29 @@ export function ParentView({ id }: { id: string }) {
 
       {t && (
         <section className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] bg-line shadow-card lg:grid-cols-4" aria-label="The family's fees">
-          <Fig icon={Wallet} color="blue" label={MONEY.total_fee.label} value={rupeesShort(supposed)}>
-            {t.prev_opening > 0 ? <>incl. {rupeesShort(t.prev_opening)} old balance</> : d.session?.name}
+          <Fig icon={Wallet} color="blue" label={t.prev_opening > 0 ? MONEY.total_fee_all.label : MONEY.total_fee.label} value={rupeesShort(supposed)}>
+            {t.prev_opening > 0 ? (
+              <>
+                {rupeesShort(t.expected)} this year + {rupeesShort(t.prev_opening)} from previous years
+              </>
+            ) : (
+              d.session?.name
+            )}
             {t.concession > 0 && <> · {rupeesShort(t.concession)} concession</>}
           </Fig>
-          <Fig icon={CheckCircle2} color="green" label={MONEY.received.label} value={rupeesShort(paid)}>
+          <Fig icon={CheckCircle2} color="green" label={t.prev_opening > 0 ? MONEY.received_all.label : MONEY.received.label} value={rupeesShort(paid)}>
             <Meter value={ratioPct(paid, supposed)} className="mb-1 mt-0.5" color="bg-good" track="bg-good-soft" />
-            {pct(ratioPct(paid, supposed), 0)} of the total fee
+            {pct(ratioPct(paid, supposed), 0)} of the total
           </Fig>
           <Fig
             icon={AlertTriangle}
             color={t.total_overdue > 0 ? "red" : "green"}
-            label={MONEY.balance.label}
+            label={t.prev_pending > 0 ? MONEY.balance_all.label : MONEY.balance.label}
             value={rupeesShort(t.total_pending)}
             tone={t.total_pending > 0 ? "text-critical-ink" : "text-good-ink"}
           >
-            {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} to recover</> : "Nothing due now"}
-            {t.prev_pending > 0 && <> · incl. {rupeesShort(t.prev_pending)} old balance</>}
+            {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} due till today (incl. previous years)</> : "Nothing due till today"}
+            {t.prev_pending > 0 && <> · {rupeesShort(t.prev_pending)} of it from previous years</>}
           </Fig>
           <Fig icon={Clock} color="indigo" label="Last payment" value={lp ? rupeesShort(lp.amount) : "Never paid"} tone={lp ? undefined : "text-critical-ink"}>
             {lp ? (
@@ -163,7 +169,7 @@ export function ParentView({ id }: { id: string }) {
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, with each child's old balance` : undefined}>
+          <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, with each child's previous years' dues` : undefined}>
             {d.children.length === 0 ? (
               <Empty title="No children linked">
                 {writer ? (
@@ -194,15 +200,17 @@ export function ParentView({ id }: { id: string }) {
                         </div>
                         <FeeStatusBadge status={c.fee_status} />
                       </div>
-                      <div className="mt-3 flex items-baseline justify-between gap-2">
-                        <span className={cn("text-headline font-semibold tabular", c.total_overdue > 0 ? "text-critical-ink" : "text-ink")}>
-                          {c.total_pending > 0 ? rupeesShort(c.total_pending) : "Clear"}
-                        </span>
-                        <span className="text-caption text-muted">
-                          {c.total_overdue > 0 ? `${rupeesShort(c.total_overdue)} to recover` : c.total_pending > 0 ? "due later" : "paid up"}
-                        </span>
-                      </div>
-                      <Meter value={c.paid_pct} className="mt-2" color={c.total_overdue > 0 ? "bg-series-1" : "bg-good"} track="bg-surface" />
+                      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+                        <ChildFig label={MONEY.total_fee.short} value={c.expected} />
+                        <ChildFig label={MONEY.received.short} value={c.received} tone="text-good-ink" />
+                        <ChildFig label={MONEY.due_now.short} value={c.overdue} tone={c.overdue > 0 ? "text-critical-ink" : undefined} />
+                        <ChildFig label={MONEY.old_balance.short} value={c.prev_pending} tone={c.prev_pending > 0 ? "text-serious-ink" : undefined} />
+                      </dl>
+                      <Meter value={c.paid_pct} className="mt-2.5" color={c.total_overdue > 0 ? "bg-series-1" : "bg-good"} track="bg-surface" />
+                      <p className="mt-1.5 text-caption text-muted">
+                        {rupeesShort(c.pending)} remaining this year
+                        {c.total_overdue > 0 && <> · {rupeesShort(c.total_overdue)} total due incl. previous years</>}
+                      </p>
                       {writer && c.total_pending > 0 && (
                         <div className="mt-3">
                           <LinkButton href={`/collect/${c.student_id}`} size="sm" variant="primary">
@@ -249,7 +257,7 @@ export function ParentView({ id }: { id: string }) {
                       <span className="text-ink-2">· {pay.full_name}</span>
                       <span className="block text-caption text-muted">
                         {MODE_LABELS[pay.mode]}
-                        {pay.arrears > 0 && <> · {rupees(pay.arrears)} cleared old balance</>}
+                        {pay.arrears > 0 && <> · {rupees(pay.arrears)} went to previous years&apos; dues</>}
                         {pay.advance > 0 && <> · {rupees(pay.advance)} paid in advance</>}
                         {pay.cancelled && <span className="font-semibold text-critical-ink"> · cancelled</span>}
                         {pay.is_reversal && <span className="font-semibold text-ink-2"> · cancellation</span>}
@@ -352,7 +360,7 @@ export function ParentView({ id }: { id: string }) {
               <div>
                 <p className="text-caption font-medium text-muted">Records show</p>
                 <p className="mt-0.5 text-subhead text-ink">{HABIT[d.behaviour.profile]}</p>
-                {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Has old balance carried into {d.session?.name ?? "this year"}</p>}
+                {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Has dues from previous years carried into {d.session?.name ?? "this year"}</p>}
                 {d.behaviour.suggested && d.behaviour.suggested !== p.payment_behaviour && (
                   <p className="mt-1.5 inline-flex items-center gap-1.5 text-footnote text-accent">
                     <Sparkles className="size-3.5" aria-hidden /> Looks like “{BEHAVIOUR_LABELS[d.behaviour.suggested].label}”
@@ -387,7 +395,7 @@ export function ParentView({ id }: { id: string }) {
 
 
           {d.sessions.length > 0 && (
-            <Card title="By session" description="What is left to pay for each year. What is left from earlier years is the old balance.">
+            <Card title="By session" description="What is left to pay for each year. What is left from previous years is shown as previous years' dues.">
               <ul className="space-y-3">
                 {d.sessions.map((s) => (
                   <li key={s.session_id}>
@@ -472,6 +480,15 @@ function Fig({
       </p>
       <p className={cn("figure mt-2 text-title1 leading-none", tone ?? "text-ink")}>{value}</p>
       <div className="mt-2 text-caption text-ink-2">{children}</div>
+    </div>
+  );
+}
+
+function ChildFig({ label, value, tone }: { label: string; value: number; tone?: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="truncate text-caption text-muted">{label}</dt>
+      <dd className={cn("text-subhead font-semibold tabular", tone ?? "text-ink")}>{rupeesShort(value)}</dd>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { installmentName, oldBalanceLabel } from "@/lib/glossary";
 
 const KIND: Record<AllocationLine["kind"], { label: string; dot: string; chip: string }> = {
   current: { label: "This year", dot: "bg-series-1", chip: "bg-accent-soft text-accent" },
-  arrears: { label: "Old balance", dot: "bg-series-2", chip: "bg-serious-soft text-serious-ink" },
+  arrears: { label: "Previous years", dot: "bg-series-2", chip: "bg-serious-soft text-serious-ink" },
   advance: { label: "Paid in advance", dot: "bg-series-3", chip: "bg-[rgba(48,176,199,0.14)] text-[#1b7f91] dark:text-[#5fd0e2]" },
 };
 
@@ -17,7 +17,7 @@ export function allocText(a: AllocationLine): string {
   return `${a.session} · ${installmentName(a.installment)}${head} ${rupees(a.amount)}`;
 }
 
-/** "What it paid for": one compact chip per installment of this year, per earlier year (old balance), or paid in advance. */
+/** "What it paid for": one compact chip per installment of this year, per previous year, or paid in advance. */
 export function AllocLines({ lines, compact = false }: { lines: AllocationLine[]; compact?: boolean }) {
   if (!lines || lines.length === 0) return <span className="text-muted">—</span>;
   const groups = new Map<string, { kind: AllocationLine["kind"]; title: string; amount: number; heads: string[]; inferred: boolean }>();
@@ -49,6 +49,6 @@ export function AllocLines({ lines, compact = false }: { lines: AllocationLine[]
 
 export const KIND_LEGEND = [
   { label: "This year", className: "bg-series-1" },
-  { label: "Old balance", className: "bg-series-2" },
+  { label: "Previous years", className: "bg-series-2" },
   { label: "Paid in advance", className: "bg-series-3" },
 ];

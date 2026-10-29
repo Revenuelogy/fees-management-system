@@ -58,7 +58,7 @@ export function PromisesView() {
                     <span className="block text-subhead font-semibold tabular text-ink">{p.promised_amount ? rupees(p.promised_amount) : "Payment"}</span>
                     <span className="block text-caption text-muted">by {fmtDate(p.promised_date)}</span>
                     <span className={cn("block text-caption tabular", p.total_overdue > 0 ? "text-critical-ink" : "text-muted")}>
-                      {rupeesShort(p.total_overdue)} to recover
+                      {rupeesShort(p.total_overdue)} total due
                     </span>
                   </span>
                   <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />

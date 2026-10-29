@@ -3,15 +3,15 @@ import { cn } from "@/lib/cn";
 
 /** Student status tags (the same on every page). The rules are fee_status in SQL; `hint` is the one-line meaning. */
 export const FEE_STATUS: Record<FeeStatus, { label: string; hint: string }> = {
-  paid_up: { label: "Paid up", hint: "Nothing due now and no old balance" },
-  partial: { label: "Part paid", hint: "Some of this year's fees received, some due now" },
+  paid_up: { label: "Paid up", hint: "Nothing due till today and nothing left from previous years" },
+  partial: { label: "Part paid", hint: "Some of this year's fees received, some due till today" },
   not_paying: { label: "Nothing paid this year", hint: "Nothing received against this year's fees" },
-  arrears_only: { label: "Old balance only", hint: "This year is clear; old balance from earlier years is left" },
+  arrears_only: { label: "Previous years' dues only", hint: "This year is fully paid; fees of previous years are still unpaid" },
   free: { label: "Free", hint: "Student has no fee" },
   no_plan: { label: "No fees assigned", hint: "Enrolled, but no fees assigned yet" },
 };
 
-/** Status tag colours: green paid up, blue part paid, red nothing paid, amber old balance, grey free. */
+/** Status tag colours: green paid up, blue part paid, red nothing paid, amber previous years' dues only, grey free. */
 export const STATUS_STYLE: Record<FeeStatus, { dot: string; pill: string; bar: string }> = {
   paid_up: { dot: "bg-good", pill: "bg-good-soft text-good-ink", bar: "bg-good" },
   partial: { dot: "bg-series-1", pill: "bg-accent-soft text-accent", bar: "bg-series-1" },

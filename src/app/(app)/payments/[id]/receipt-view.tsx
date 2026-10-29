@@ -191,7 +191,7 @@ export function ReceiptView({ id, sp }: { id: string; sp: SearchParams }) {
               {!p.is_reversal && (
                 <>
                   <div>
-                    <div className="text-muted">Left to pay before (incl. old balance)</div>
+                    <div className="text-muted">Left to pay before (incl. previous years)</div>
                     <div className="font-medium tabular">{rupees(p.outstanding_before)}</div>
                   </div>
                   <div>
@@ -203,7 +203,7 @@ export function ReceiptView({ id, sp }: { id: string; sp: SearchParams }) {
             </div>
             {p.remarks && !p.is_reversal && <p className="mt-2 text-footnote text-ink-2">Remarks: {p.remarks}</p>}
             {nowOutstanding !== balanceAfter && !p.is_reversal && (
-              <p className="mt-2 text-caption text-muted">Left to pay as on {fmtDate(d.today)} (incl. old balance): {rupees(nowOutstanding)}</p>
+              <p className="mt-2 text-caption text-muted">Left to pay as on {fmtDate(d.today)} (incl. previous years): {rupees(nowOutstanding)}</p>
             )}
 
             <footer className="mt-8 flex items-end justify-between gap-4 text-caption text-muted">

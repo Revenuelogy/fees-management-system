@@ -43,7 +43,7 @@ const SHOW = {
   all: { label: "All families", test: () => true },
   multi: { label: "2+ children", test: (p: ParentBalance) => p.children >= 2 },
   behind: { label: "With fees due", test: (p: ParentBalance) => p.total_overdue > 0 },
-  old: { label: "Old balance", test: (p: ParentBalance) => p.prev_pending > 0 },
+  old: { label: "Previous years' dues", test: (p: ParentBalance) => p.prev_pending > 0 },
   empty: { label: "No children", test: (p: ParentBalance) => p.children === 0 },
 } as const;
 type Show = keyof typeof SHOW;
@@ -68,7 +68,7 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
   const statusCounts = STATUS_ORDER.map((s) => ({ s, n: families.filter((p) => p.family_status === s).length }));
   const statusTotal = statusCounts.reduce((a, x) => a + x.n, 0);
 
-  // what there is to recover from families (due now + old balance), grouped by what the staff know about them
+  // the total due from families (due till today + previous years' dues), grouped by what the staff know about them
   const group = <K extends string>(keys: readonly K[], of: (p: ParentBalance) => K | null, label: (k: K) => string, key: string) => {
     const out = keys.map((k) => ({ k: k as string, label: label(k), list: behind.filter((p) => of(p) === k) }));
     out.push({ k: "", label: "Not recorded yet", list: behind.filter((p) => of(p) === null) });
@@ -109,10 +109,11 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
   const columns: Column[] = [
     { key: "name", label: "Parent", type: "person", href: "/parents/{parent_id}", sub: "kids" },
     { key: "phone_display", label: "Phone", hideOnMobile: true, className: "whitespace-nowrap", sub: "habit_label" },
+    { key: "expected", label: MONEY.total_fee.label, type: "money", total: true, hideOnMobile: true },
     { key: "pending", label: MONEY.balance.label, type: "money", total: true, hideOnMobile: true },
     { key: "overdue", label: MONEY.due_now.label, type: "money", total: true, hideOnMobile: true },
     { key: "prev_pending", label: MONEY.old_balance.label, type: "money", total: true, dimZero: true, hideOnMobile: true },
-    { key: "total_overdue", label: "To recover", type: "money", total: true, alertPositive: true },
+    { key: "total_overdue", label: MONEY.to_recover.label, type: "money", total: true, alertPositive: true },
     { key: "days_since_payment", label: MONEY.days_since_payment.label, type: "number", hideOnMobile: true },
     { key: "family_status", label: "Status", type: "status" },
     { key: "contact", label: "Last contact", hideOnMobile: true, className: "min-w-[180px]", sub: "promise" },
@@ -123,7 +124,7 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
       <PageHeader
         title="Parents"
         description={`${num(families.length)} families · ${num(multi.length)} with two or more children · ${session.name}`}
-        info={`Each family is one parent profile, found by phone number: brothers and sisters with the same number share it. Amounts are the children's fees added up. ${moneyHint("balance")} ${moneyHint("due_now")} ${moneyHint("old_balance")} To recover = due now + old balance.`}
+        info={`Each family is one parent profile, found by phone number: brothers and sisters with the same number share it. Amounts are the children's fees added up. ${moneyHint("balance")} ${moneyHint("due_now")} ${moneyHint("old_balance")} ${moneyHint("to_recover")}`}
         actions={
           writer && (
             <LinkButton href="/parents/new" variant="primary">
@@ -147,7 +148,7 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
           label="With fees due"
           value={rupeesShort(sum(behind, (p) => p.total_overdue))}
           tone="critical"
-          sub={<>to recover · {num(behind.length)} families · {pct(ratioPct(behind.length, families.length), 0)} of all</>}
+          sub={<>total due incl. previous years · {num(behind.length)} families · {pct(ratioPct(behind.length, families.length), 0)} of all</>}
           href={withParams("/parents", { show: "behind" })}
         />
         <Kpi
@@ -155,7 +156,7 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
           color="orange"
           label={MONEY.old_balance.label}
           value={rupeesShort(sum(old, (p) => p.prev_pending))}
-          sub={<>{num(old.length)} families with old balance from earlier years</>}
+          sub={<>{num(old.length)} families with dues from previous years</>}
           href={withParams("/parents", { show: "old" })}
         />
         <Kpi
@@ -169,10 +170,10 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <Card title="To recover by payment habit" description="Families with fees due (due now + old balance), grouped by how the staff say they pay. Click a row to list them.">
+        <Card title="Total due by payment habit" description="Families with fees due (due till today + previous years' dues), grouped by how the staff say they pay. Click a row to list them.">
           {byHabit.length === 0 ? <Empty title="No family has fees due" /> : <BarList rows={byHabit} color="bg-series-1" compact />}
         </Card>
-        <Card title="To recover by economic condition" description="Families with fees due (due now + old balance), grouped by the staff's view of their means.">
+        <Card title="Total due by economic condition" description="Families with fees due (due till today + previous years' dues), grouped by the staff's view of their means.">
           {byMeans.length === 0 ? <Empty title="No family has fees due" /> : <BarList rows={byMeans} color="bg-series-1" compact />}
         </Card>
         <Card title="Family fee status" description="All children of the family taken together, recalculated live.">
@@ -222,7 +223,7 @@ export function ParentsView({ sp }: { sp: SearchParams }) {
           defaultSort={{ key: "total_overdue", dir: "desc" }}
           pageSize={50}
           exportName={`parents-${session.name}`}
-          exportMeta={[`Session ${session.name}`, `${SHOW[show].label}`, "Balance and Due now are this year's fees; To recover = Due now + Old balance"]}
+          exportMeta={[`Session ${session.name}`, `${SHOW[show].label}`, "Remaining and due till today are this year's fees; Total due = due till today + previous years' dues"]}
           empty="No families match."
         />
       </Card>

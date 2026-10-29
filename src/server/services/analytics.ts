@@ -8,6 +8,7 @@ import type {
   ClassSummaryRow,
   CollectionTarget,
   Dashboard,
+  FeePosition,
   InstallmentDetail,
   InstallmentRow,
   MonthClassDetail,
@@ -64,6 +65,16 @@ export function balances(viewer: Viewer, sessionId: string, filter: { classId?: 
 export function classSummary(viewer: Viewer, sessionId: string, arrears: boolean) {
   return read(viewer, "class-summary", [sessionId, arrears], (db) =>
     db.rpc<ClassSummaryRow[] | null>("class_summary", { p_session: sessionId, p_include_arrears: arrears }).then((r) => r ?? []),
+  );
+}
+
+/** Every total of the year (this year, previous years, both) for the school, a class or one section of it. */
+export function feePosition(viewer: Viewer, sessionId: string, classId: string | null, section: string | null) {
+  return orNotFound(
+    read(viewer, "fee-position", [sessionId, classId, section], (db) =>
+      db.rpc<FeePosition>("fee_position", { p_session: sessionId, p_class: classId ?? undefined, p_section: section ?? undefined }),
+    ),
+    /^Unknown/,
   );
 }
 

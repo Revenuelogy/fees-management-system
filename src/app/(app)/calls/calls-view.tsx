@@ -234,9 +234,9 @@ function Rules({ d }: { d: CallBoard }) {
   const r = d.rules;
   return (
     <>
-      The list is made fresh every day: families with {rupees(r.min_overdue)} or more to recover (due now + old balance), except those who paid in the last {r.skip_paid_days} days,
+      The list is made fresh every day: families with {rupees(r.min_overdue)} or more total due (due till today + previous years&apos; dues), except those who paid in the last {r.skip_paid_days} days,
       those waiting for a promised date (plus {r.grace_days} grace {r.grace_days === 1 ? "day" : "days"}) and those called recently ({r.gap_days} days after a
-      call that got through, the next day if nobody picked up). Broken promises and call-backs come first, then the largest and oldest amounts to recover.
+      call that got through, the next day if nobody picked up). Broken promises and call-backs come first, then the largest and oldest amounts due.
     </>
   );
 }
@@ -426,7 +426,7 @@ function EveryoneList({ rows, meId, callers }: { rows: CallListRow[]; meId: stri
   );
 }
 
-/** One family on the list: why they are on it, what there is to recover, the last contact, and the way to call. */
+/** One family on the list: why they are on it, what is due, the last contact, and the way to call. */
 function FamilyRow({ r, take, takenBy, callers }: { r: CallListRow; take?: boolean; takenBy?: string | null; callers?: Caller[] }) {
   const action = useAction();
   const main = r.reasons[0];
@@ -474,7 +474,7 @@ function FamilyRow({ r, take, takenBy, callers }: { r: CallListRow; take?: boole
             <PromiseLine date={r.promise_date} amount={r.promise_amount} status={r.promise_status} />
           </p>
         ) : r.state === "cleared" ? (
-          <p className="mt-1 text-footnote text-good-ink">Nothing to recover now.</p>
+          <p className="mt-1 text-footnote text-good-ink">Nothing due till today.</p>
         ) : (
           <p className="mt-1 text-footnote text-muted">
             {r.last_paid_on
@@ -500,8 +500,8 @@ function FamilyRow({ r, take, takenBy, callers }: { r: CallListRow; take?: boole
       </div>
       <div className="flex shrink-0 items-center gap-2 max-sm:w-full max-sm:justify-between max-sm:pl-11">
         <span className="text-right">
-          <span className="block text-subhead font-semibold tabular text-critical-ink" title="To recover now: due now + old balance">{rupeesShort(r.total_overdue)}</span>
-          <span className="block text-caption text-muted">to recover</span>
+          <span className="block text-subhead font-semibold tabular text-critical-ink" title="Total due incl. previous years: due till today + previous years' dues">{rupeesShort(r.total_overdue)}</span>
+          <span className="block text-caption text-muted">total due</span>
         </span>
         {callers && callers.length > 0 ? (
           <Select

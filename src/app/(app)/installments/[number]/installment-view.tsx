@@ -49,7 +49,7 @@ export function InstallmentView({ number, sp }: { number: string; sp: SearchPara
   const topHalf = d.students.filter((x) => x.in_top_half);
   const topHalfGap = topHalf.reduce((a, x) => a + x.gap, 0);
   const timingTotal = d.timing.reduce((a, t) => a + t.amount, 0);
-  // what is left of this installment is Due now once its date has passed, Due later before that
+  // what is left of this installment is due till today once its date has passed, due later before that
   const left = isDue ? MONEY.due_now.label : MONEY.due_later.label;
   const rows = d.students.map((x) => ({ ...x, who: `${x.class_name}${x.section ? " · " + x.section : ""}` }));
 
@@ -126,7 +126,7 @@ export function InstallmentView({ number, sp }: { number: string; sp: SearchPara
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5">
-          <Card title={`${left} by class`} description={`Unpaid amount of this installment per class, with each class's share of it.`}>
+          <Card title={`${left} by class`} description={`What is left of this installment per class, out of the class's total for it.`}>
             <BarList
               compact
               color="bg-critical"
@@ -137,7 +137,7 @@ export function InstallmentView({ number, sp }: { number: string; sp: SearchPara
                   label: c.class_name,
                   value: c.gap,
                   display: rupeesShort(c.gap),
-                  sub: pct(c.share_of_gap, 0),
+                  sub: `of ${rupeesShort(c.expected)}`,
                   href: c.class_id ? `/classes/${c.class_id}` : undefined,
                 }))}
             />

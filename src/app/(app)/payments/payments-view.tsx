@@ -59,7 +59,7 @@ export function PaymentsView({ sp }: { sp: SearchParams }) {
       to = today;
   }
 
-  // class (in the session each payment belongs to) and the this year / old balance / paid in advance split come from the API
+  // class (in the session each payment belongs to) and the this year / previous years / paid in advance split come from the API
   const res = useApi<PaymentRegisterRow[]>(apiUrl("/api/payments", { from, to }));
   if (!res.data) return <Pending queries={[res]} />;
   const rows = res.data;
@@ -136,7 +136,7 @@ export function PaymentsView({ sp }: { sp: SearchParams }) {
                 height="h-3"
                 segments={[
                   { value: split.current, className: "bg-series-1", label: "This year", display: rupees(split.current) },
-                  { value: split.arrears, className: "bg-series-2", label: "Old balance", display: rupees(split.arrears) },
+                  { value: split.arrears, className: "bg-series-2", label: "Previous years", display: rupees(split.arrears) },
                   { value: split.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(split.advance) },
                 ]}
               />
@@ -188,7 +188,7 @@ export function PaymentsView({ sp }: { sp: SearchParams }) {
             { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
             { key: "amount", label: "Amount", type: "money", total: true },
             { key: "current", label: "This year", type: "money", total: true, dimZero: true, hideOnMobile: true },
-            { key: "arrears", label: "Old balance", type: "money", total: true, dimZero: true, hideOnMobile: true },
+            { key: "arrears", label: "Previous years", type: "money", total: true, dimZero: true, hideOnMobile: true },
             { key: "advance", label: "Paid in advance", type: "money", total: true, dimZero: true, hideOnMobile: true },
             { key: "paid_on", label: "Date", type: "date", hideOnMobile: true },
             { key: "receipt_no", label: "Receipt", href: "/payments/{payment_id}", sub: "receipt_sub" },

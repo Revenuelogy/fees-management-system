@@ -154,7 +154,7 @@ export function MonthClassView({ month, classId, sp }: { month: string; classId:
 
       <Card
         title="Students"
-        description="% cleared = share of what the student had left to pay on the 1st (this year's balance and old balance) that this month's payments cleared. Left now = this year's balance + old balance today."
+        description="% cleared = share of what the student had left to pay on the 1st (this year and previous years) that this month's payments cleared. Left now = remaining this year + previous years' dues today."
         actions={
           <Segmented
             size="sm"
@@ -172,7 +172,7 @@ export function MonthClassView({ month, classId, sp }: { month: string; classId:
           totals
           pageSize={100}
           exportName={`${d.class.name}-${month}`}
-          exportMeta={[`${d.class.name} · ${d.label}`, `Session ${d.session.name}`, `Showing: ${show}`, "Left now = balance + old balance"]}
+          exportMeta={[`${d.class.name} · ${d.label}`, `Session ${d.session.name}`, `Showing: ${show}`, "Left now = remaining this year + previous years' dues"]}
           columns={[
             { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
             { key: "paid", label: MONEY.received.label, type: "money", total: true, dimZero: true },

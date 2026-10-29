@@ -30,8 +30,8 @@ import { ActivitiesCard } from "./activities-card";
 const INST_STATUS = {
   paid: { label: "Paid", tone: "good", color: "var(--good)" },
   partial: { label: "Part paid", tone: "warning", color: "var(--series-1)" },
-  partial_overdue: { label: "Due now", tone: "critical", color: "var(--critical)" },
-  overdue: { label: "Due now", tone: "critical", color: "var(--critical)" },
+  partial_overdue: { label: "Due till today", tone: "critical", color: "var(--critical)" },
+  overdue: { label: "Due till today", tone: "critical", color: "var(--critical)" },
   upcoming: { label: "Due later", tone: "neutral", color: "var(--series-1)" },
   waived: { label: "Waived", tone: "neutral", color: "var(--tile-gray)" },
 } as const;
@@ -113,21 +113,30 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
         <div className="grid grid-cols-1 gap-4 min-[560px]:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={Wallet} color="blue" size="sm" /> {MONEY.total_fee.label}
+              <IconTile icon={Wallet} color="blue" size="sm" /> {b.prev_opening > 0 ? MONEY.total_fee_all.label : MONEY.total_fee.label}
             </p>
             <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(supposed)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
-              {b.prev_opening > 0 ? <>incl. {rupeesShort(b.prev_opening)} old balance</> : b.session_name}
+              {b.prev_opening > 0 ? (
+                <>
+                  {rupeesShort(b.expected)} this year + {rupeesShort(b.prev_opening)} from previous years
+                </>
+              ) : (
+                b.session_name
+              )}
               {b.concession > 0 && <> · {rupeesShort(b.concession)} concession</>}
             </p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={CheckCircle2} color="green" size="sm" /> {MONEY.received.label}
+              <IconTile icon={CheckCircle2} color="green" size="sm" /> {b.prev_opening > 0 ? MONEY.received_all.label : MONEY.received.label}
             </p>
             <p className="figure mt-3 text-[28px] leading-none">{rupeesShort(paid)}</p>
             <Meter value={ratioPct(paid, supposed)} className="mt-3.5" color="bg-good" track="bg-good-soft" />
-            <p className="mt-2.5 text-footnote text-ink-2">{pct(ratioPct(paid, supposed), 0)} of the total fee</p>
+            <p className="mt-2.5 text-footnote text-ink-2">
+              {pct(ratioPct(paid, supposed), 0)} of the total
+              {b.prev_recovered > 0 && <> · {rupeesShort(b.prev_recovered)} for previous years</>}
+            </p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
@@ -141,7 +150,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                     height="h-1.5"
                     segments={[
                       { value: lp.current, className: "bg-series-1", label: "This year", display: rupees(lp.current) },
-                      { value: lp.arrears, className: "bg-series-2", label: "Old balance", display: rupees(lp.arrears) },
+                      { value: lp.arrears, className: "bg-series-2", label: "Previous years", display: rupees(lp.arrears) },
                       { value: lp.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(lp.advance) },
                     ]}
                   />
@@ -149,9 +158,9 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                 <p className="mt-2.5 text-footnote text-ink-2">
                   {fmtDate(lp.paid_on)} ·{" "}
                   {lp.arrears > 0 && lp.current === 0
-                    ? "cleared old balance"
+                    ? "went to previous years' dues"
                     : lp.arrears > 0
-                      ? "this year + old balance"
+                      ? "this year + previous years"
                       : lp.advance > 0 && lp.current === 0
                         ? "paid in advance"
                         : "went to this year"}
@@ -163,12 +172,13 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
           </div>
           <div className={cn("rounded-[var(--radius-card)] p-5 shadow-card", b.total_pending > 0 ? "bg-surface" : "bg-surface")}>
             <p className="flex items-center gap-2.5 text-subhead font-medium text-ink-2">
-              <IconTile icon={AlertTriangle} color={b.total_overdue > 0 ? "red" : "green"} size="sm" /> {MONEY.balance.label}
+              <IconTile icon={AlertTriangle} color={b.total_overdue > 0 ? "red" : "green"} size="sm" />{" "}
+              {b.prev_pending > 0 ? MONEY.balance_all.label : MONEY.balance.label}
             </p>
             <p className={cn("figure mt-3 text-[28px] leading-none", b.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(b.total_pending)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
-              {b.overdue > 0 ? <>{rupeesShort(b.overdue)} due now</> : "Nothing due now"}
-              {b.prev_pending > 0 && <> · incl. {rupeesShort(b.prev_pending)} old balance</>}
+              {b.overdue > 0 ? <>{rupeesShort(b.overdue)} due till today</> : "Nothing due till today"}
+              {b.prev_pending > 0 && <> · incl. {rupeesShort(b.prev_pending)} previous years&apos; dues</>}
               {b.advance_balance > 0 && <> · {rupeesShort(b.advance_balance)} paid in advance</>}
             </p>
           </div>
@@ -236,7 +246,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
 
           <ActivitiesCard studentId={id} studentName={st.full_name} overdue={b?.total_overdue ?? 0} />
 
-          <Card title="Payments" description="Every receipt and exactly what it paid for. % = share of the outstanding balance that the payment cleared.">
+          <Card title="Payments" description="Every receipt and exactly what it paid for. % = share of what was left to pay (this year and previous years) that the payment cleared.">
             {d.payments.length === 0 ? (
               <Empty title="No payments yet" />
             ) : (
@@ -267,7 +277,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                         )}
                         {" · "}
                         {MODE_LABELS[p.mode]}
-                        {p.pct_of_outstanding !== null && <> · cleared {pct(p.pct_of_outstanding, 0)} of balance</>}
+                        {p.pct_of_outstanding !== null && <> · cleared {pct(p.pct_of_outstanding, 0)} of what was left</>}
                         {p.cancelled && <span className="font-semibold text-critical-ink"> · cancelled</span>}
                         {p.is_reversal && <span className="font-semibold text-ink-2"> · cancellation</span>}
                       </p>

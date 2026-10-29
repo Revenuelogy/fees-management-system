@@ -1547,6 +1547,41 @@ export interface OpenPromises {
 // Home (GET /api/home/*): money words from the glossary (src/lib/glossary.ts)
 // ---------------------------------------------------------------------------------------------
 
+/** fee_position(): every total of the year for the school, a class or a section. */
+export interface FeePosition {
+  /** this year's fees after concessions */
+  total_fee: number;
+  received: number;
+  /** still to receive this year (due_now + due_later) */
+  balance: number;
+  due_now: number;
+  due_later: number;
+  /** fees whose due date has passed, paid or not */
+  due_so_far: number;
+  received_pct: number | null;
+  /** share of due_so_far received */
+  due_received_pct: number | null;
+  /** left unpaid from previous years when the year started, paid since, still unpaid */
+  old_opening: number;
+  old_received: number;
+  old_balance: number;
+  /** total_fee + old_opening */
+  total_fee_all: number;
+  /** received + old_received */
+  received_all: number;
+  /** balance + old_balance */
+  balance_all: number;
+  /** due_now + old_balance */
+  to_recover: number;
+  students: number;
+  /** with something due till today or from previous years */
+  students_due: number;
+  /** of them, nothing received this year */
+  nothing_paid: number;
+  /** enrolled students by status */
+  status: { paid_up: number; partial: number; not_paying: number; arrears_only: number; free: number };
+}
+
 export interface HomeFees {
   session: { id: string; name: string; is_current: boolean; start_date: string; end_date: string };
   total_fee: number;

@@ -5,7 +5,8 @@ import { useApi } from "@/lib/api/hooks";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
 import { fmtDate, pct, ratioPct, rupeesShort, todayIST } from "@/lib/format";
-import type { Dashboard, HomeFees, MonthSummary, StudentBalance } from "@/lib/types";
+import type { Dashboard, FeePosition, MonthSummary, StudentBalance } from "@/lib/types";
+import { FeePositionFigures } from "@/components/fee-position";
 import { MONEY } from "@/lib/glossary";
 import { PrintButton } from "@/components/ui/print-button";
 import { NoSession } from "@/components/no-session";
@@ -19,8 +20,8 @@ export function SummaryView() {
   const today = todayIST();
   const month = !session || (today >= session.start_date && today <= session.end_date) ? today.slice(0, 7) : session.end_date.slice(0, 7);
 
-  // the money figures are Home's (the same numbers on both); the old balance is its own line, never added into them
-  const feesRes = useApi<HomeFees>(session ? apiUrl("/api/home/fees", { session: session.id }) : null);
+  // the money figures are Home's (the same numbers on both); previous years' dues are their own line
+  const feesRes = useApi<FeePosition>(session ? apiUrl("/api/analytics/position", { session: session.id }) : null);
   const dashRes = useApi<Dashboard>(session ? apiUrl("/api/analytics/dashboard", { session: session.id }) : null);
   const defRes = useApi<StudentBalance[]>(session ? apiUrl("/api/analytics/defaulters", { session: session.id, limit: 10 }) : null);
   const monthRes = useApi<MonthSummary>(session ? apiUrl(`/api/analytics/months/${month}`, { carry: true }) : null);
@@ -33,6 +34,7 @@ export function SummaryView() {
   const m = monthRes.data ?? null;
 
   const { total_fee: total, received, balance, due_now: dueNow, due_later: dueLater, old_balance: old, to_recover: toRecover } = f;
+  const totalAll = f.total_fee_all;
   const classes = [...d.classes].sort((a, b) => b.pending - a.pending);
   const months = d.trend.filter((t) => !t.is_future);
   const maxMonth = Math.max(1, ...months.map((t) => Math.max(t.expected, t.current + t.arrears)));
@@ -42,11 +44,12 @@ export function SummaryView() {
     `*${settings?.school_name ?? "School"} — fee summary ${d.session.name}* (as of ${fmtDate(today)})`,
     `${MONEY.total_fee.label}: ${rupeesShort(total)} | ${MONEY.received.label}: ${rupeesShort(received)} (${pct(share)})`,
     `${MONEY.balance.label}: ${rupeesShort(balance)} = ${MONEY.due_now.label} ${rupeesShort(dueNow)} + ${MONEY.due_later.label} ${rupeesShort(dueLater)}`,
-    `${MONEY.old_balance.label}: ${rupeesShort(old)} left | ${MONEY.old_balance_received.label}: ${rupeesShort(f.old_balance_received)}`,
-    `${MONEY.to_recover.label}: ${rupeesShort(toRecover)} (${MONEY.due_now.label} + ${MONEY.old_balance.label})`,
-    m ? `${m.label}: ${rupeesShort(m.summary.received)} received, ${rupeesShort(m.summary.still_to_come)} due now` : "",
-    `Largest balance by class: ${classes.slice(0, 3).map((c) => `${c.class_name} ${rupeesShort(c.pending)}`).join(", ")}`,
-    `Top by due now: ${top.slice(0, 5).map((s) => `${s.full_name} (${s.class_name ?? "-"}) ${rupeesShort(s.overdue)}`).join("; ")}`,
+    `${MONEY.old_balance.label}: ${rupeesShort(old)} | ${MONEY.old_balance_received.label}: ${rupeesShort(f.old_received)}`,
+    `${MONEY.total_fee_all.label}: ${rupeesShort(totalAll)} | ${MONEY.balance_all.label}: ${rupeesShort(f.balance_all)}`,
+    `${MONEY.to_recover.label}: ${rupeesShort(toRecover)} (${MONEY.due_now.label.toLowerCase()} + ${MONEY.old_balance.label.toLowerCase()})`,
+    m ? `${m.label}: ${rupeesShort(m.summary.received)} received, ${rupeesShort(m.summary.still_to_come)} due till today` : "",
+    `Largest remaining by class: ${classes.slice(0, 3).map((c) => `${c.class_name} ${rupeesShort(c.pending)}`).join(", ")}`,
+    `Top by due till today: ${top.slice(0, 5).map((s) => `${s.full_name} (${s.class_name ?? "-"}) ${rupeesShort(s.overdue)}`).join("; ")}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -66,34 +69,16 @@ export function SummaryView() {
           </div>
           <div className="sm:text-right">
             <p className="text-subhead font-medium text-ink">{fmtDate(today)}</p>
-            <p className="text-caption text-muted">This year&apos;s fees, with old balance on its own line</p>
+            <p className="text-caption text-muted">This year&apos;s fees, with previous years&apos; dues on their own line</p>
           </div>
         </header>
 
-        <section className="mt-7 grid grid-cols-1 items-center gap-7 sm:grid-cols-[auto_1fr]">
-          <Ring value={share} size={148} stroke={15} label={`${pct(share, 0)} of total fee received`} className="justify-self-center">
-            <span className="figure text-[30px] leading-none text-ink">{Math.round(share)}%</span>
+        <section className="mt-7 grid grid-cols-1 items-start gap-7 sm:grid-cols-[auto_1fr]">
+          <Ring value={share} size={136} stroke={14} label={`${pct(share, 0)} of total fees this year received`} className="justify-self-center sm:mt-6">
+            <span className="figure text-[28px] leading-none text-ink">{Math.round(share)}%</span>
             <span className="mt-1 text-caption text-ink-2">received</span>
           </Ring>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:grid-cols-4">
-            <Figure label={MONEY.received.label} hint={MONEY.received.hint} value={rupeesShort(received)} sub={`of ${rupeesShort(total)} total fee`} dot="bg-series-1" />
-            <Figure label={MONEY.balance.label} hint={MONEY.balance.hint} value={rupeesShort(balance)} sub={`${rupeesShort(dueLater)} due later`} dot="bg-series-track" />
-            <Figure label={MONEY.due_now.label} hint={MONEY.due_now.hint} value={rupeesShort(dueNow)} sub="due date has passed" dot="bg-critical" />
-            <Figure label={MONEY.old_balance.label} hint={MONEY.old_balance.hint} value={rupeesShort(old)} sub={`${rupeesShort(f.old_balance_received)} received`} dot="bg-series-2" />
-          </div>
-        </section>
-
-        <section className="mt-6 flex flex-wrap items-baseline justify-between gap-2 rounded-2xl bg-critical-soft px-5 py-4 print:border print:border-line print:bg-transparent">
-          <p className="flex items-center gap-1.5 text-subhead font-semibold text-critical-ink">
-            {MONEY.to_recover.label}
-            <InfoTip>{MONEY.to_recover.hint}.</InfoTip>
-          </p>
-          <p className="text-subhead text-ink-2">
-            <span className="figure text-title2 text-critical-ink">{rupeesShort(toRecover)}</span>
-            <span className="ml-2 tabular">
-              {rupeesShort(dueNow)} this year + {rupeesShort(old)} old balance
-            </span>
-          </p>
+          <FeePositionFigures f={f} />
         </section>
 
         {m && (
@@ -112,7 +97,7 @@ export function SummaryView() {
           <section>
             <h2 className="mb-3 flex items-center gap-1.5 text-headline font-semibold text-ink">
               Balance by class
-              <InfoTip>Amount = this year&apos;s balance. Bar = share of the class&apos;s total fee received.</InfoTip>
+              <InfoTip>Amount = what remains of this year&apos;s fees. Bar = share of the class&apos;s total fees received.</InfoTip>
             </h2>
             <ul className="space-y-2.5">
               {classes.map((c) => (
@@ -121,7 +106,9 @@ export function SummaryView() {
                     <span className="truncate text-ink">{c.class_name}</span>
                     <span className="shrink-0 tabular">
                       <span className="font-semibold text-ink">{rupeesShort(c.pending)}</span>
-                      <span className="ml-2 inline-block w-20 text-right text-caption text-muted">{pct(c.collection_pct, 0)} received</span>
+                      <span className="ml-2 inline-block w-36 text-right text-caption text-muted">
+                        {pct(c.collection_pct, 0)} of {rupeesShort(c.expected)} received
+                      </span>
                     </span>
                   </div>
                   <Meter value={c.collection_pct} className="mt-1.5" />
@@ -130,7 +117,7 @@ export function SummaryView() {
             </ul>
           </section>
           <section>
-            <h2 className="mb-3 text-headline font-semibold text-ink">Top 10 by due now</h2>
+            <h2 className="mb-3 text-headline font-semibold text-ink">Top 10 by due till today</h2>
             <ol className="divide-y divide-line">
               {top.map((s, i) => (
                 <li key={s.student_id} className="flex items-center gap-3 py-2">
@@ -143,11 +130,11 @@ export function SummaryView() {
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-subhead font-semibold tabular text-critical-ink">{rupeesShort(s.overdue)}</span>
-                    {s.prev_pending > 0 && <span className="block text-caption tabular text-serious-ink">+ {rupeesShort(s.prev_pending)} old balance</span>}
+                    {s.prev_pending > 0 && <span className="block text-caption tabular text-serious-ink">+ {rupeesShort(s.prev_pending)} previous years</span>}
                   </span>
                 </li>
               ))}
-              {top.length === 0 && <li className="py-2 text-subhead text-muted">Nothing is due now.</li>}
+              {top.length === 0 && <li className="py-2 text-subhead text-muted">Nothing is due till today.</li>}
             </ol>
           </section>
         </div>
@@ -180,19 +167,6 @@ export function SummaryView() {
           </ul>
         </section>
       </article>
-    </div>
-  );
-}
-
-function Figure({ label, hint, value, sub, dot }: { label: string; hint: string; value: string; sub: string; dot: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="flex items-center gap-1.5 text-footnote text-ink-2" title={hint}>
-        <span className={`size-2 shrink-0 rounded-full ${dot}`} aria-hidden />
-        {label}
-      </p>
-      <p className="figure mt-1 text-title2 text-ink">{value}</p>
-      <p className="mt-0.5 truncate text-caption text-muted">{sub}</p>
     </div>
   );
 }

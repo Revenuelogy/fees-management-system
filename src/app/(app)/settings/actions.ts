@@ -58,8 +58,8 @@ export async function updateCallRules(_prev: ActionState, formData: FormData): P
   const gap = whole("gap_days");
   const grace = whole("grace_days");
   const batch = whole("batch");
-  if (minOverdue === null || minOverdue <= 0) return { error: "Enter the smallest amount to recover that the call list starts at." };
-  if (highDue === null || highDue <= 0) return { error: "Enter the amount that counts as a large amount to recover." };
+  if (minOverdue === null || minOverdue <= 0) return { error: "Enter the smallest total due that the call list starts at." };
+  if (highDue === null || highDue <= 0) return { error: "Enter the amount that counts as a large total due." };
   if (!Number.isInteger(skip) || skip < 0 || skip > 180) return { error: "Days after a payment must be between 0 and 180." };
   if (!Number.isInteger(gap) || gap < 1 || gap > 60) return { error: "Days between calls must be between 1 and 60." };
   if (!Number.isInteger(grace) || grace < 0 || grace > 30) return { error: "Grace days must be between 0 and 30." };

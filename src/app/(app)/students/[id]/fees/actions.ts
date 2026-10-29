@@ -107,7 +107,7 @@ export async function addOpeningDue(_prev: ActionState, formData: FormData): Pro
   const sessionId = text(formData, "session_id");
   const amount = parseRupees(text(formData, "amount"));
   if (!isUuid(studentId)) return { error: "Unknown student." };
-  if (!isUuid(sessionId)) return { error: "Choose the year the old balance is from." };
+  if (!isUuid(sessionId)) return { error: "Choose the year these dues are from." };
   if (amount === null || amount <= 0) return { error: "Enter an amount greater than zero (₹)." };
   return submit(
     () =>
