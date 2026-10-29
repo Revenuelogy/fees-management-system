@@ -148,7 +148,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
                 { key: "negative", label: "Declined", type: "number", total: true, hideOnMobile: true },
                 { key: "payers", label: "Paid something", type: "number", total: true, hideOnMobile: true },
                 { key: "credited", label: "Because of it", type: "money", total: true },
-                { key: "overdue_now", label: "Total due incl. previous years", type: "money", total: true, alertPositive: true },
+                { key: "overdue_now", label: "Total due incl. past years", type: "money", total: true, alertPositive: true },
               ] satisfies Column[]
             }
             exportName="activities-by-class"
@@ -176,7 +176,7 @@ function Overview({ d, view, writer }: { d: ActivitiesOverview; view: (typeof VI
                 { key: "response_label", label: "Response" },
                 { key: "paid_since", label: "Paid since start", type: "money", total: true, hideOnMobile: true },
                 { key: "credited", label: "Because of it", type: "money", total: true },
-                { key: "total_overdue", label: "Total due incl. previous years", type: "money", total: true, alertPositive: true },
+                { key: "total_overdue", label: "Total due incl. past years", type: "money", total: true, alertPositive: true },
               ] satisfies Column[]
             }
             searchKeys={["full_name", "admission_no", "activity_name", "class_label", "note"]}

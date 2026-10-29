@@ -30,6 +30,6 @@ export function friendlyError(error: { message?: string; code?: string; details?
   const head = /^Unknown fee head "(.*)"$/.exec(msg);
   if (head) return `Unknown fee type "${head[1]}".`;
   const twice = /^This student already has a "(.*)" charge on that installment\./.exec(msg);
-  if (twice) return `This student already has a "${twice[1]}" fee on that installment. Use a separate fee type for previous years' dues.`;
+  if (twice) return `This student already has a "${twice[1]}" fee on that installment. Use a separate fee type for past year due.`;
   return msg || "Something went wrong.";
 }

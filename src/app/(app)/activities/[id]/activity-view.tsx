@@ -185,7 +185,7 @@ function AddStudents({ activityId }: { activityId: string }) {
           </Field>
           <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
             <input type="checkbox" name="only_with_dues" defaultChecked className="size-4 accent-[var(--accent)]" />
-            Only students with fees due till today or previous years&apos; dues
+            Only students with fees due till today or past year due
           </label>
           <div className="sm:col-span-2">
             <Button type="submit" disabled={pending}>

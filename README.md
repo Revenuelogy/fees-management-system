@@ -9,33 +9,33 @@ Cloud SQL, Neon, Supabase…). Staff sign in with a role: admin, accountant, pri
 reserved for later).
 
 Every page uses the same plain money words (see *How the numbers work*): **Total fees this year**, **Received this
-year**, **Remaining this year**, **Due till today**, **Due later**, **Previous years' dues**, **Total fees incl. previous
-years**, **Remaining incl. previous years** and **Total due incl. previous years** (= due till today + previous years' dues).
+year**, **Remaining this year**, **Due till today**, **Due later**, **Past year due**, **Total fees incl. previous
+years**, **Remaining incl. past years** and **Total due incl. past years** (= due till today + past year due).
 
 ## What you can do
 
 | Area | Screen | What it shows |
 | --- | --- | --- |
-| Analysis | **Home** (`/`) | The whole school on one screen, numbers first, for the owner or principal opening the app each day. **Fees** for the year in two rows: this year (total fees, received, remaining, due till today, with one bar split into received / due till today / due later) and including previous years (previous years' dues, total fees incl. previous years, remaining incl. previous years, total due incl. previous years). **What happened** today, yesterday, in the last 7 or 30 days: the money that came in (against the period before) and where it came from (after a call, from an activity, paid on their own; this year / previous years / paid in advance), the calls made (picked up, promises to pay, money after calls, and today's list: families to call, broken promises, promises due today), the activities running (students taking part, money because of them, the best ones). **School**: students, families, classes and students by status. **Classes**: each class's share of its total fees received, received of total, and what is due till today (red under 30%, amber to 49%, green from 50%). Every figure opens the page behind it; each card loads on its own. |
-| | **Months** (`/monthly`) | Any month: the fees due this month (or everything due so far), received this month and due till today, each class's % of what was due this month and of how much, students who paid / owe fees and paid nothing this month, what the money paid for (this year / previous years / paid in advance), daily and running-total charts, class contribution, payment modes. Past months use the same layout; closed months are frozen snapshots. |
+| Analysis | **Home** (`/`) | The whole school on one screen, numbers first, for the owner or principal opening the app each day. **Fees** for the year in two rows: this year (total fees, received, remaining, due till today, with one bar split into received / due till today / due later) and including past years (past year due, total fees incl. past years, remaining incl. past years, total due incl. past years). **What happened** today, yesterday, in the last 7 or 30 days: the money that came in (against the period before) and where it came from (after a call, from an activity, paid on their own; this year / past years / paid in advance), the calls made (picked up, promises to pay, money after calls, and today's list: families to call, broken promises, promises due today), the activities running (students taking part, money because of them, the best ones). **School**: students, families, classes and students by status. **Classes**: each class's share of its total fees received, received of total, and what is due till today (red under 30%, amber to 49%, green from 50%). Every figure opens the page behind it; each card loads on its own. |
+| | **Months** (`/monthly`) | Any month: the fees due this month (or everything due so far), received this month and due till today, each class's % of what was due this month and of how much, students who paid / owe fees and paid nothing this month, what the money paid for (this year / past years / paid in advance), daily and running-total charts, class contribution, payment modes. Past months use the same layout; closed months are frozen snapshots. |
 | | **Month › class** (`/monthly/2026-09/<class>`) | Every student of the class in that month: received this month, *what it paid for* (session, installment, fee type), % of what they had left that it cleared, what is left now, status. Paid / not-paid filter. Totals match the month page. |
 | | **Installments** (`/installments`) | Each installment's total, received and what is left (due till today once its date has passed, due later before that), received on time / late / remaining, collection targets ("90% of fees due by 31 Dec") with the students who would make up the shortfall. |
 | | **Installment detail** (`/installments/2`) | What is left by class (out of each class's total), by student group (paid full / >½ / <½ / nothing), the smallest set of students holding half of it ("call these first"), when payments came compared with the due date, late catch-up. |
-| | **Classes** / **Class view** | Each class's received of total fees, remaining this year, due till today and previous years' dues; one class (or section): every total of the year (this year, previous years, both together), students by status, each installment's total / received / what is left, month strip (click into month › class), paid-% bands, and a student table with each student's totals. |
-| | **Student 360** (`/students/<id>`) | In plain words: total fees (incl. previous years when there are some), received, last payment and where it went ("It went to last year's dues"), remaining. Installment ladder, payment history with what each receipt paid for, fees by session, payment habit, notes and promised dates. |
+| | **Classes** / **Class view** | Each class's received of total fees, remaining this year, due till today and past year due; one class (or section): every total of the year (this year, past years, both together), students by status, each installment's total / received / what is left, month strip (click into month › class), paid-% bands, and the students: every student's totals (filter by status, by *has past year due*, by section), or pick an installment and/or a fee type to see, student by student, what they must pay for it, what was received and what remains (with the class's totals for it). |
+| | **Student 360** (`/students/<id>`) | In plain words: total fees (incl. past years when there are some), received, last payment and where it went ("It went to last year's dues"), remaining. Installment ladder, payment history with what each receipt paid for, fees by session, payment habit, notes and promised dates. |
 | Fees | **Collect fee** (`/collect`, also in the phone top bar) | Type-ahead search (name, admission no, father, phone; Ctrl+K anywhere). Shows the fees due, oldest first; automatic allocation preview or choose exactly what the payment covers (*Pay what is due till today* / *Pay everything remaining*); cash / UPI / cheque / bank / card with references; saves and opens the receipt. |
 | | **Receipt** (`/payments/<id>`) | Printable receipt (single or parent + office copy), amount in words, what each rupee paid for, what was left to pay before/after. Cancel with a reason (creates a reversing entry, original stays on record). |
-| | **Payments & receipts** | Register by date range split into this year / previous years / paid in advance, mode totals, search by receipt or cheque/UTR, CSV export. |
-| | **Fees due** (`/pending`) | Everyone with fees due: total fees this year, remaining this year or due till today, previous years' dues as their own column, total due incl. previous years, days since last payment; has-previous-years'-dues and left-school views; filter by class, section, status; CSV and print. |
-| | **Owner report** (`/reports/summary`) | One page: every total of the year (this year, previous years, both together), this month, remaining by class (with each class's total), top 10 by due till today, month by month. Print / save as PDF, share on WhatsApp or email. |
-| Recovery | **Parents** (`/parents`) | Every family as one parent profile (found by phone number, so brothers and sisters share it) with the children's fees added up: total fees this year, remaining, due till today, previous years' dues, total due incl. previous years, days since last payment, family status, last call and open promise. Total due grouped by payment habit and by economic condition. |
-| | **Parent 360** (`/parents/<id>`) | The family in one place, the important part on the first screen: who they are (status, payment habit, means, best time, the last call and the latest promise), total fees / received / remaining (incl. previous years when there are some) / last payment, each child with their totals, and what the staff know about the family (concerns, what matters to them, how they behave). Below: the call history with how each promise turned out, every receipt, how reliably they keep promises, payment habit (recorded next to what the records show), fees by year and activities. **Log a call** opens the call form in a panel from the right. |
+| | **Payments & receipts** | Register by date range split into this year / past years / paid in advance, mode totals, search by receipt or cheque/UTR, CSV export. |
+| | **Fees due** (`/pending`) | Everyone with fees due: total fees this year, remaining this year or due till today, past year due as their own column, total due incl. past years, days since last payment; has-past-year-due and left-school views; filter by class, section, status; CSV and print. |
+| | **Owner report** (`/reports/summary`) | One page: every total of the year (this year, past years, both together), this month, remaining by class (with each class's total), top 10 by due till today, month by month. Print / save as PDF, share on WhatsApp or email. |
+| Recovery | **Parents** (`/parents`) | Every family as one parent profile (found by phone number, so brothers and sisters share it) with the children's fees added up: total fees this year, remaining, due till today, past year due, total due incl. past years, days since last payment, family status, last call and open promise. Total due grouped by payment habit and by economic condition. |
+| | **Parent 360** (`/parents/<id>`) | The family in one place, the important part on the first screen: who they are (status, payment habit, means, best time, the last call and the latest promise), total fees / received / remaining (incl. past years when there are some) / last payment, each child with their totals, and what the staff know about the family (concerns, what matters to them, how they behave). Below: the call history with how each promise turned out, every receipt, how reliably they keep promises, payment habit (recorded next to what the records show), fees by year and activities. **Log a call** opens the call form in a panel from the right. |
 | | **Recovery dashboard** (`/recovery`) | For today, yesterday, 7 or 30 days (the default), the school year or any dates: the money received and what brought it in (a call, an activity, or the family on its own), compared with the period before; money per day by source; the recovery work going on (calls made, money after calls, activities running, money from activities); which activity brought the most. The call analytics are on Calls. |
 | | **Calls** (`/calls`), for admin, accountant and principal | **Overview** for today, yesterday, 7 or 30 days: calls made (against the period before), picked up, promised to pay, promises kept, money that came in after calls; calls per day; how the calls went and what families said; **does calling make a difference** (share of families we spoke to who paid against the other families with fees due); promises and how they turned out; who called the most; what the calls were about. **Callers**: every caller's effort (calls, families, days calling, calls a day) next to the result (picked up, promises kept, money after their calls, money per call). **Today's list**: the list below, with *Give to…* on each family. **Assign families**: give any family, on the day's list or not, to a caller for today or a later day with a note; see each caller's families for any day and take families off. |
-| | **Calls** (`/calls`), for callers | The daily call list, made fresh every day and ordered by priority, each family with its main reason (broke a promise, asked to call today, large amount due, never paid, no payment for 2 months, previous years' dues…) and the total due. Each caller takes a batch (*Give me 10 families*) or picks families, gets the families the office gives them (first on the list, marked *Given by …* with the note), and sees **my list** (to call / done), **everyone to call** (with who took whom) and **called today** (every call, about anything). My calls today / yesterday / 7 / 30 days: calls, picked up, not reached, promises, money that came in after them. Also promises falling due, who is off the list and why, and what each caller did today. **Family call page** (`/calls/<parent>`): one-tap dial, why the family is on the list, and everything about the family read-only (family, each child's total fees / remaining / due till today / previous years' dues, installments, receipts, promises, activities with the family's response, call history, notes) next to the call form with *Save & next family*. |
+| | **Calls** (`/calls`), for callers | The daily call list, made fresh every day and ordered by priority, each family with its main reason (broke a promise, asked to call today, large amount due, never paid, no payment for 2 months, past year due…) and the total due. Each caller takes a batch (*Give me 10 families*) or picks families, gets the families the office gives them (first on the list, marked *Given by …* with the note), and sees **my list** (to call / done), **everyone to call** (with who took whom) and **called today** (every call, about anything). My calls today / yesterday / 7 / 30 days: calls, picked up, not reached, promises, money that came in after them. Also promises falling due, who is off the list and why, and what each caller did today. **Family call page** (`/calls/<parent>`): one-tap dial, why the family is on the list, and everything about the family read-only (family, each child's total fees / remaining / due till today / past year due, installments, receipts, promises, activities with the family's response, call history, notes) next to the call form with *Save & next family*. |
 | | **Find a family** (`/find`), **Promises** (`/promises`) | Search families by a parent's or child's name, admission number or phone; every open promise, soonest date first. Made for callers, open to all staff. |
 | | **Activities** (`/activities`) | Every student activity (extra English practice, a club, a trip for students whose fees are paid…) with a verdict (working well / some effect / not working), the fees received because of it, "N of M families paid", responses, and when it runs ("Starts in 15 days", "Ended 26 Oct"); also by class and by student. **Activity** (`/activities/<id>`): add a class or students, record each family's response and count receipts for it. On a student's profile, **Recovery activities** starts an activity for that student alone or adds them to a running one. |
-| Setup | Sessions & installments, classes & fee types, fee structure grid and assigning fees to students, promote students to the next session, CSV imports (students, previous years' dues, historical payments). |
+| Setup | Sessions & installments, classes & fee types, fee structure grid and assigning fees to students, promote students to the next session, CSV imports (students, past year due, historical payments). |
 | Admin | School settings, allocation rule and promise grace days, staff & roles, reconciliation checks, re-run allocation, close/reopen months, audit log. |
 
 Every table can be sorted, searched and exported to CSV (Excel) with the filters written into the file.
@@ -59,19 +59,19 @@ is when read on its own:
 | Remaining this year | This year's fees not received yet: due till today + due later. |
 | Due till today | This year's installments whose due date has passed and are not paid. |
 | Due later | This year's installments whose due date has not come yet. |
-| Previous years' dues | Fees of previous years still unpaid. *Received for previous years* = paid during this year. |
-| Total fees incl. previous years | This year's fees + what was left unpaid from previous years when this year started. |
-| Remaining incl. previous years | Remaining this year + previous years' dues. |
-| Total due incl. previous years | Due till today + previous years' dues. |
+| Past year due | Fees of past years still unpaid. *Received for past years* = paid during this year. |
+| Total fees incl. past years | This year's fees + what was left unpaid from past years when this year started. |
+| Remaining incl. past years | Remaining this year + past year due. |
+| Total due incl. past years | Due till today + past year due. |
 | Paid in advance | Money not yet matched to any fee (used automatically as new fees are assigned). |
 
-Previous years' dues are always their own figure or column, never added silently into a this-year figure, and every
+Past year due are always their own figure or column, never added silently into a this-year figure, and every
 part or % on screen is shown with the total it belongs to. The school's, a class's or a section's totals all come
 from `fee_position()`.
 
 **Status tags** (live, per student, the same on every page; hover or tap one for its meaning): *Paid up*
-(green: nothing due till today and nothing left from previous years), *Part paid* (blue), *Nothing paid this
-year* (red), *Previous years' dues only* (amber: this year fully paid, previous years still unpaid), *Free* (grey).
+(green: nothing due till today and nothing left from past years), *Part paid* (blue), *Nothing paid this
+year* (red), *Only past year due* (amber: this year fully paid, past years still unpaid), *Free* (grey).
 
 ### Payment allocation rule
 
@@ -79,8 +79,8 @@ Applied to each payment in date order, and re-run automatically whenever charges
 
 1. Lines chosen at the counter ("choose what it pays for") or saved from the automatic preview.
 2. Hints on imported receipts (session / fee type / installment named by the old ERP).
-3. Default rule (Settings): **oldest fees first** – previous years' dues, then the earliest installment,
-   then fee types in priority order; or **this year first**, then previous years.
+3. Default rule (Settings): **oldest fees first** – past year due, then the earliest installment,
+   then fee types in priority order; or **this year first**, then past years.
 4. Anything above all fees is held as **paid in advance**.
 
 Payments are append-only. Cancelling a receipt adds a reversing entry dated today, so a closed month never
@@ -94,7 +94,7 @@ changes; the correction shows in the month it was made. Imported receipts withou
   changes; a new number creates a profile named after the father (or mother). Two profiles of one family can be
   merged (the other number becomes the alternate phone, so later admissions with it join too), and a student
   admitted under another number can be moved into the family by hand. Family amounts are the children's
-  `student_balances` added up (remaining, due till today and previous years' dues; *total due* = due till today + previous years' dues).
+  `student_balances` added up (remaining, due till today and past year due; *total due* = due till today + past year due).
 * **Promises.** A call (or a student note) can carry a date and an amount the family promised to pay by. It is
   **kept** when the family (any child) pays the amount (or anything, when no amount was given) between the call and
   the date plus the *grace days* in Settings (default 1: promised for the 18th, paid on the 19th is kept),
@@ -102,13 +102,13 @@ changes; the correction shows in the month it was made. Imported receipts withou
 * **Calls.** Every call says what it was about: fees, the student's studies or report, a parent-teacher meeting,
   a parent's question, or something else. What the family said about fees and a promise are recorded on fee calls.
 * **Daily call list.** Worked out afresh every day from the rules in Settings: every family with at least the
-  minimum total due (default ₹500, due till today + previous years' dues), except families who paid in the last *N* days (default 30: a
+  minimum total due (default ₹500, due till today + past year due), except families who paid in the last *N* days (default 30: a
   family that paid ₹15,000 two weeks ago is not called even if it still owes ₹35,000), families waiting for a promise
   (until the promised date plus the grace days) and families called recently (after a fee call that got through,
   *days between calls*, default 7; after one that did not, the next day; or the date they asked to be called on).
   A broken promise puts the family back the day after its deadline, whatever it paid before. Priority: broken
   promises and call-backs first, then the larger amounts due, the longer time since the last payment and
-  previous years' dues; families who can pay
+  past year due; families who can pay
   (economic condition, payment habit) move up and families that cannot be reached move down. Callers take families
   from it (a fee call made today also puts the family on the caller's list); untaken families stay for anyone.
 * **Giving families to callers.** Admin, accountant and principal can give any family, on the day's list or not, to
@@ -129,7 +129,7 @@ changes; the correction shows in the month it was made. Imported receipts withou
 ### Consistency checks
 
 `Admin › Reconciliation` runs these live for any session: sum of class balances = school balance; sum of
-monthly received = session received; installments received + received for previous years + paid in advance = total
+monthly received = session received; installments received + received for past years + paid in advance = total
 received; every payment fully allocated; no fee line over-collected; enrolled students without fees assigned.
 
 ## How it is built
@@ -163,7 +163,7 @@ Browser (React screens)  ──fetch JSON──▶  REST API  src/app/api/**/rou
 | --- | --- |
 | Sign in | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `GET /api/bootstrap` (viewer, sessions, classes, settings) |
 | Home | `GET /api/analytics/position?session[&class&section]` (every total of the year), `GET /api/home/fees?session`, `GET /api/home/today`, `GET /api/home/classes?session`, `GET /api/recovery?from&to` (one per card) |
-| Analytics | `GET /api/analytics/dashboard`, `defaulters`, `balances`, `classes`, `classes/[id]`, `months/[month]` (+ `/payments`, `/non-payers`, `/classes/[classId]`), `installments`, `installments/[number]`, `reconciliation` |
+| Analytics | `GET /api/analytics/dashboard`, `defaulters`, `balances`, `classes`, `classes/[id]` (+ `/lines?installment&fee_head`: one installment or fee type per student), `months/[month]` (+ `/payments`, `/non-payers`, `/classes/[classId]`), `installments`, `installments/[number]`, `reconciliation` |
 | Students | `GET/POST /api/students`, `GET /api/students/search`, `GET/PUT/DELETE /api/students/[id]`, `…/360`, `…/dues`, `…/fees`, `…/withdraw`, `…/reactivate`, `…/notes`, `…/charges`, `…/charges/generate`, `…/concessions`, `…/opening-dues` |
 | Money | `GET/POST /api/payments` (a payment can be counted for a call or an activity), `GET /api/payments/[id]`, `POST /api/payments/[id]/cancel`, `PUT /api/payments/[id]/source`, `GET/POST /api/targets`, `GET/DELETE /api/targets/[id]` |
 | Recovery | `GET /api/recovery?from&to` (money and what brought it in, calls made, activities), `GET /api/calls` (today's list), `POST /api/calls/take`, `POST /api/calls/release`, `GET /api/calls/analytics?from&to`, `GET /api/calls/assignments?date`, `POST /api/calls/assign`, `POST /api/calls/unassign`, `GET/POST /api/parents`, `POST /api/parents/link`, `GET/PUT/DELETE /api/parents/[id]` (+ `/children`, `/merge`, `/calls`, `/calls/[callId]`), `GET/POST /api/activities`, `GET/PUT/DELETE /api/activities/[id]` (+ `/participants`, `/participants/[participantId]`), `GET /api/students/[id]/recovery`, `GET /api/families/search?q`, `GET /api/promises`, `PUT /api/settings/call-rules` |

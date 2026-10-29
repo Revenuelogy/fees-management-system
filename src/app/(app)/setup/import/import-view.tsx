@@ -21,8 +21,8 @@ export function ImportView({ sp }: { sp: SearchParams }) {
     <>
       <PageHeader
         title="Import data"
-        description="Students first, then previous years' dues and past payments."
-        info="Bring in students, the dues left from previous years and past payments from CSV spreadsheets."
+        description="Students first, then past year due and past payments."
+        info="Bring in students, the dues left from past years and past payments from CSV spreadsheets."
       >
         <Segmented
           label="Import"

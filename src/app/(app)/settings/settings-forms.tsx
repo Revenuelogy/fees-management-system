@@ -66,13 +66,13 @@ export function SchoolProfileForm({ settings }: { settings: SchoolSettings }) {
 const RULES = [
   {
     value: "oldest_first",
-    label: "Oldest fees first — previous years before this year's fees (recommended)",
+    label: "Oldest fees first — past years before this year's fees (recommended)",
     hint: "A payment first clears unpaid fees from earlier sessions, then this session's installments in due-date order.",
   },
   {
     value: "current_first",
-    label: "This year first, then previous years",
-    hint: "A payment first clears the running session's installments; previous years are cleared only after that.",
+    label: "This year first, then past years",
+    hint: "A payment first clears the running session's installments; past years are cleared only after that.",
   },
 ] as const;
 
@@ -140,7 +140,7 @@ export function CallRulesForm({ settings }: { settings: SchoolSettings }) {
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Call families with at least this much total due (₹)" htmlFor="min_overdue" hint="Total due = due till today + previous years' dues.">
+          <Field label="Call families with at least this much total due (₹)" htmlFor="min_overdue" hint="Total due = due till today + past year due.">
             <Input id="min_overdue" name="min_overdue" inputMode="decimal" required defaultValue={toRupeeInput(settings.call_min_overdue)} />
           </Field>
           <Field label="Large total due from (₹)" htmlFor="high_due" hint="Families with this much total due are called first.">

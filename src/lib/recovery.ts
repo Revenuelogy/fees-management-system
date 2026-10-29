@@ -116,10 +116,10 @@ export const REASON_LABELS: Record<CallReason, { label: string; hint: string; to
   broken_promise: { label: "Broke a promise", hint: "Promised a date and paid nothing by it (and the grace days)", tone: "critical" },
   partial_promise: { label: "Paid less than promised", hint: "Paid only part of the promised amount by the date", tone: "serious" },
   call_back: { label: "Asked to call today", hint: "The date they asked to be called on has come", tone: "accent" },
-  high_dues: { label: "Large amount due", hint: "Total due incl. previous years is more than the large-amount figure in the call list rules", tone: "serious" },
+  high_dues: { label: "Large amount due", hint: "Total due incl. past years is more than the large-amount figure in the call list rules", tone: "serious" },
   never_paid: { label: "Never paid", hint: "No payment on record", tone: "critical" },
   silent: { label: "No payment for 2 months", hint: "Nothing paid for 60 days or more", tone: "warning" },
-  old_dues: { label: "Previous years' dues", hint: "Has fees of previous years still unpaid", tone: "serious" },
+  old_dues: { label: "Past year due", hint: "Has fees of past years still unpaid", tone: "serious" },
   overdue: { label: "Fees due till today", hint: "Has fees whose due date has passed", tone: "neutral" },
   not_reached: { label: "Not reached last time", hint: "The last call did not get through", tone: "neutral" },
 };

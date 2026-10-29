@@ -92,7 +92,7 @@ function ViewToggle<T extends string>({ value, options, onChange }: { value: T; 
 
 /**
  * Month-by-month money received across a session.
- * Monthly: installments due (neutral column) beside received (stacked by what it paid for: this year, previous years,
+ * Monthly: installments due (neutral column) beside received (stacked by what it paid for: this year, past years,
  * paid in advance; a part with nothing in it is left out of the legend).
  * Cumulative: running totals of installments due vs received.
  */
@@ -128,7 +128,7 @@ export function CollectionTrendChart({
   const monthly: SeriesKey[] = [
     { key: "expected", label: "Installments due", color: "var(--series-track)", shape: "rect" },
     { key: "current", label: "This year", color: "var(--series-1)", shape: "rect" },
-    ...(hasOld ? [{ key: "arrears", label: "Previous years", color: "var(--series-2)", shape: "rect" } as SeriesKey] : []),
+    ...(hasOld ? [{ key: "arrears", label: "Past years", color: "var(--series-2)", shape: "rect" } as SeriesKey] : []),
     ...(hasAdvance ? [{ key: "advance", label: "Paid in advance", color: "var(--series-3)", shape: "rect" } as SeriesKey] : []),
   ];
   const cumulative: SeriesKey[] = [
@@ -281,7 +281,7 @@ export function CumulativeChart({
 
 /**
  * Money received per day (week, month), stacked by what brought it in: a call, an activity, or the family paid on
- * its own (neutral). Blue / teal / track from the validated palette; orange stays reserved for previous years' dues.
+ * its own (neutral). Blue / teal / track from the validated palette; orange stays reserved for past year due.
  */
 export function RecoverySourceChart({
   data,

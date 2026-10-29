@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { param, type SearchParams } from "@/lib/context";
-import { MONEY, installmentName, moneyHint } from "@/lib/glossary";
+import { installmentName, moneyHint } from "@/lib/glossary";
 import { cn } from "@/lib/cn";
 import { plural } from "@/lib/text";
 import { apiUrl } from "@/lib/api/client";
@@ -15,12 +15,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Segmented, withParams } from "@/components/ui/segmented";
 import { Card } from "@/components/ui/card";
 import { Legend, StackedBar } from "@/components/ui/bars";
-import { DataTable } from "@/components/ui/data-table";
 import { Ring } from "@/components/ui/ring";
 import { FEE_STATUS, STATUS_STYLE } from "@/components/ui/status";
 import { CollectionTrendChart } from "@/components/charts/charts";
 import { NoSession } from "@/components/no-session";
 import { FeePositionFigures } from "@/components/fee-position";
+import { StudentsCard } from "./students-card";
 
 const STATUS_KEYS = ["paid_up", "partial", "arrears_only", "not_paying", "free"] as const satisfies readonly FeeStatus[];
 
@@ -38,11 +38,9 @@ export function ClassView({ id, sp }: { id: string; sp: SearchParams }) {
   const k = d.kpis;
   const f = posRes.data;
   const list = (extra: Record<string, string | boolean | undefined>) => withParams("/pending", { class: id, ...extra });
-  const students = studentsRes.data.map((s) => ({
-    ...s,
-    who: `Roll ${s.roll_no ?? "—"} · ${s.section}${s.father_name ? " · " + s.father_name : ""}`,
-  }));
-  const url = (extra: Record<string, string | boolean | undefined>) => withParams(`/classes/${id}`, { section, ...extra });
+  // the section, installment and fee type picked stay when another is changed
+  const url = (extra: Record<string, string | boolean | undefined>) =>
+    withParams(`/classes/${id}`, { section, inst: param(sp.inst), type: param(sp.type), ...extra });
   const today = todayIST();
   const bandsTotal = k.bands.full + k.bands.over_half + k.bands.under_half + k.bands.nothing;
 
@@ -106,14 +104,18 @@ export function ClassView({ id, sp }: { id: string; sp: SearchParams }) {
       <Card
         title="Installments"
         subtitle={section ? "Whole class" : undefined}
-        description="Each installment of this year: its total, what was received, and what is left (due till today once its due date has passed, due later before that)."
+        description="Each installment of this year: its total, what was received, and what is left (due till today once its due date has passed, due later before that). Open one to see it student by student."
       >
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {d.installments.map((i) => {
             const due = i.due_date <= today;
             return (
               <li key={i.id}>
-                <Link href={`/installments/${i.number}`} className="group block h-full rounded-2xl bg-fill-2 p-4 transition-colors hover:bg-fill">
+                <Link
+                  href={`${url({ inst: i.id })}#students`}
+                  title="See every student of the class for this installment"
+                  className="group block h-full rounded-2xl bg-fill-2 p-4 transition-colors hover:bg-fill"
+                >
                   <span className="flex items-center gap-3">
                     <Ring value={i.collection_pct} size={52} stroke={6}>
                       <span className="text-caption font-semibold tabular">{Math.round(i.collection_pct ?? 0)}%</span>
@@ -172,35 +174,16 @@ export function ClassView({ id, sp }: { id: string; sp: SearchParams }) {
         </Card>
       </div>
 
-      <Card title="Students">
-        <DataTable
-          rows={students as unknown as Record<string, unknown>[]}
-          searchKeys={["full_name", "admission_no", "father_name", "phone", "roll_no"]}
-          filters={[
-            { key: "fee_status", label: "Status", options: STATUS_KEYS.map((s) => ({ value: s, label: FEE_STATUS[s].label })) },
-            ...(d.sections.length > 1 ? [{ key: "section", label: "Section", options: d.sections.map((s) => ({ value: s.section, label: s.section })) }] : []),
-          ]}
-          totals
-          pageSize={50}
-          exportName={`${d.class.name}-${d.session.name}`}
-          exportMeta={[
-            `${d.class.name}${section ? ` · section ${section}` : ""} · Session ${d.session.name}`,
-            `${MONEY.total_fee.label}, ${MONEY.received.label.toLowerCase()}, remaining and due till today are this year's fees; ${MONEY.old_balance.label.toLowerCase()} are separate; ${MONEY.to_recover.label.toLowerCase()} = due till today + previous years' dues`,
-            `As of ${fmtDate(today)}`,
-          ]}
-          columns={[
-            { key: "full_name", label: "Student", type: "person", href: "/students/{student_id}", sub: "who" },
-            { key: "expected", label: MONEY.total_fee.label, type: "money", total: true, hideOnMobile: true },
-            { key: "received", label: MONEY.received.label, type: "money", total: true, hideOnMobile: true },
-            { key: "pending", label: MONEY.balance.label, type: "money", total: true },
-            { key: "overdue", label: MONEY.due_now.label, type: "money", total: true, alertPositive: true },
-            { key: "prev_pending", label: MONEY.old_balance.label, type: "money", total: true, dimZero: true, hideOnMobile: true },
-            { key: "total_overdue", label: MONEY.to_recover.label, type: "money", total: true, alertPositive: true, hideOnMobile: true },
-            { key: "last_paid_on", label: "Last paid", type: "date", hideOnMobile: true },
-            { key: "fee_status", label: "Status", type: "status" },
-          ]}
+      <div id="students" className="scroll-mt-20">
+        <StudentsCard
+          d={d}
+          balances={studentsRes.data}
+          sessionId={session.id}
+          section={section}
+          installmentId={param(sp.inst)}
+          feeHeadId={param(sp.type)}
         />
-      </Card>
+      </div>
     </div>
   );
 }

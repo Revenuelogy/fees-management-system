@@ -30,7 +30,7 @@ export function PendingView({ sp }: { sp: SearchParams }) {
 
   const all = balances.data;
 
-  // this year (remaining, or due till today) and previous years' dues stay separate figures; a student is listed when either is owed
+  // this year (remaining, or due till today) and past year due stay separate figures; a student is listed when either is owed
   const owed = (r: StudentBalance) => (due ? r.overdue : r.pending) + r.prev_pending;
   const rows = all
     .filter((r) => owed(r) > 0)
@@ -50,8 +50,8 @@ export function PendingView({ sp }: { sp: SearchParams }) {
   const className = classId ? classes.find((c) => c.id === classId)?.name : undefined;
   const meta = [
     `Session ${session.name}`,
-    due ? "Due till today (installments past their due date) and previous years' dues" : "Remaining this year (all of this year's fees not yet received) and previous years' dues",
-    ...(prev ? ["Only students with previous years' dues"] : []),
+    due ? "Due till today (installments past their due date) and past year due" : "Remaining this year (all of this year's fees not yet received) and past year due",
+    ...(prev ? ["Only students with past year due"] : []),
     ...(unassigned ? ["Only students not enrolled this year / left"] : []),
     ...(className ? [`Class: ${className}`] : []),
     ...(status ? [`Status: ${FEE_STATUS[status]?.label}`] : []),
@@ -89,7 +89,7 @@ export function PendingView({ sp }: { sp: SearchParams }) {
         <Segmented
           options={[
             { label: "Everyone", href: url({ prev: undefined, unassigned: undefined }), active: !prev && !unassigned },
-            { label: "Has previous years' dues", href: url({ prev: true, unassigned: undefined }), active: prev },
+            { label: "Has past year due", href: url({ prev: true, unassigned: undefined }), active: prev },
             { label: "Left school", href: url({ unassigned: true, prev: undefined }), active: unassigned },
           ]}
         />

@@ -119,7 +119,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
             <p className="mt-2.5 text-footnote text-ink-2">
               {b.prev_opening > 0 ? (
                 <>
-                  {rupeesShort(b.expected)} this year + {rupeesShort(b.prev_opening)} from previous years
+                  {rupeesShort(b.expected)} this year + {rupeesShort(b.prev_opening)} from past years
                 </>
               ) : (
                 b.session_name
@@ -135,7 +135,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
             <Meter value={ratioPct(paid, supposed)} className="mt-3.5" color="bg-good" track="bg-good-soft" />
             <p className="mt-2.5 text-footnote text-ink-2">
               {pct(ratioPct(paid, supposed), 0)} of the total
-              {b.prev_recovered > 0 && <> · {rupeesShort(b.prev_recovered)} for previous years</>}
+              {b.prev_recovered > 0 && <> · {rupeesShort(b.prev_recovered)} for past years</>}
             </p>
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-5 shadow-card">
@@ -150,7 +150,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                     height="h-1.5"
                     segments={[
                       { value: lp.current, className: "bg-series-1", label: "This year", display: rupees(lp.current) },
-                      { value: lp.arrears, className: "bg-series-2", label: "Previous years", display: rupees(lp.arrears) },
+                      { value: lp.arrears, className: "bg-series-2", label: "Past years", display: rupees(lp.arrears) },
                       { value: lp.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(lp.advance) },
                     ]}
                   />
@@ -158,9 +158,9 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
                 <p className="mt-2.5 text-footnote text-ink-2">
                   {fmtDate(lp.paid_on)} ·{" "}
                   {lp.arrears > 0 && lp.current === 0
-                    ? "went to previous years' dues"
+                    ? "went to past year due"
                     : lp.arrears > 0
-                      ? "this year + previous years"
+                      ? "this year + past years"
                       : lp.advance > 0 && lp.current === 0
                         ? "paid in advance"
                         : "went to this year"}
@@ -178,7 +178,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
             <p className={cn("figure mt-3 text-[28px] leading-none", b.total_pending > 0 ? "text-critical-ink" : "text-good-ink")}>{rupeesShort(b.total_pending)}</p>
             <p className="mt-2.5 text-footnote text-ink-2">
               {b.overdue > 0 ? <>{rupeesShort(b.overdue)} due till today</> : "Nothing due till today"}
-              {b.prev_pending > 0 && <> · incl. {rupeesShort(b.prev_pending)} previous years&apos; dues</>}
+              {b.prev_pending > 0 && <> · incl. {rupeesShort(b.prev_pending)} past year due</>}
               {b.advance_balance > 0 && <> · {rupeesShort(b.advance_balance)} paid in advance</>}
             </p>
           </div>
@@ -246,7 +246,7 @@ export function StudentView({ id, sp }: { id: string; sp: SearchParams }) {
 
           <ActivitiesCard studentId={id} studentName={st.full_name} overdue={b?.total_overdue ?? 0} />
 
-          <Card title="Payments" description="Every receipt and exactly what it paid for. % = share of what was left to pay (this year and previous years) that the payment cleared.">
+          <Card title="Payments" description="Every receipt and exactly what it paid for. % = share of what was left to pay (this year and past years) that the payment cleared.">
             {d.payments.length === 0 ? (
               <Empty title="No payments yet" />
             ) : (

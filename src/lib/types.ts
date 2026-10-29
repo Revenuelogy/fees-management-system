@@ -1561,7 +1561,7 @@ export interface FeePosition {
   received_pct: number | null;
   /** share of due_so_far received */
   due_received_pct: number | null;
-  /** left unpaid from previous years when the year started, paid since, still unpaid */
+  /** left unpaid from past years when the year started, paid since, still unpaid */
   old_opening: number;
   old_received: number;
   old_balance: number;
@@ -1574,12 +1574,55 @@ export interface FeePosition {
   /** due_now + old_balance */
   to_recover: number;
   students: number;
-  /** with something due till today or from previous years */
+  /** with something due till today or from past years */
   students_due: number;
   /** of them, nothing received this year */
   nothing_paid: number;
   /** enrolled students by status */
   status: { paid_up: number; partial: number; not_paying: number; arrears_only: number; free: number };
+}
+
+/** class_fee_lines(): one installment and/or fee type (or all fees) for every student of a class. */
+export interface ClassFeeLines {
+  today: string;
+  installment: { id: string; number: number; name: string; due_date: string } | null;
+  fee_head: { id: string; name: string } | null;
+  /** the installments and fee types this class has fees for */
+  options: {
+    installments: { id: string; number: number; name: string; due_date: string }[];
+    fee_heads: { id: string; name: string }[];
+  };
+  summary: {
+    students: number;
+    to_pay: number;
+    concession: number;
+    received: number;
+    remaining: number;
+    due_now: number;
+    due_later: number;
+    paid: number;
+    partial: number;
+    not_paid: number;
+    nothing: number;
+    received_pct: number | null;
+  };
+  rows: {
+    student_id: string;
+    full_name: string;
+    admission_no: string;
+    father_name: string | null;
+    phone: string | null;
+    section: string;
+    roll_no: string | null;
+    /** after concessions */
+    to_pay: number;
+    concession: number;
+    received: number;
+    remaining: number;
+    due_now: number;
+    due_later: number;
+    status: "paid" | "partial" | "not_paid" | "nothing";
+  }[];
 }
 
 export interface HomeFees {

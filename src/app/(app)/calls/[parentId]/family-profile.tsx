@@ -32,7 +32,7 @@ function useChildren(ids: string[]) {
   );
 }
 
-/** "Due till today" / "Due later" / "Paid" for an installment (previous years' unpaid ones are "Previous years' dues"). */
+/** "Due till today" / "Due later" / "Paid" for an installment (past years' unpaid ones are "Past year due"). */
 function installmentState(i: Student360Installment, current: boolean): { label: string; tone: "good" | "critical" | "warning" | "serious" | "neutral" } {
   if (i.status === "waived") return { label: "Waived", tone: "neutral" };
   if (i.status === "paid") return { label: "Paid", tone: "good" };

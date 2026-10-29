@@ -245,7 +245,7 @@ export function CollectForm({
                       {kind === "arrears" ? oldBalanceLabel(g.session, g.inst) : `${g.session} · ${installmentName(g.inst)}`}
                     </span>
                     {kind === "arrears" ? (
-                      <Badge tone="serious">Previous year</Badge>
+                      <Badge tone="serious">Past year</Badge>
                     ) : g.overdue ? (
                       <Badge tone="critical">Due till today</Badge>
                     ) : (
@@ -403,7 +403,7 @@ export function CollectForm({
               <StackedBar
                 segments={[
                   { value: split.current, className: "bg-series-1", label: "This year", display: rupees(split.current) },
-                  { value: split.arrears, className: "bg-series-2", label: "Previous years", display: rupees(split.arrears) },
+                  { value: split.arrears, className: "bg-series-2", label: "Past years", display: rupees(split.arrears) },
                   { value: split.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(split.advance) },
                 ]}
               />

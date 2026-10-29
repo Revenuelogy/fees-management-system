@@ -25,7 +25,7 @@ type Query<T> = { data?: T; error?: Error; mutate: () => unknown };
 const WEEKDAY = new Intl.DateTimeFormat("en-IN", { weekday: "long", timeZone: "UTC" });
 
 /**
- * Home: the whole school on one screen, numbers first. The year's fees (this year, previous years and both together),
+ * Home: the whole school on one screen, numbers first. The year's fees (this year, past years and both together),
  * then what happened today, yesterday or in the last 7 / 30 days (money in and where it
  * came from, calls, activities), then the school and its classes. Every number opens the page that explains it; each
  * card loads (and fails) on its own.
@@ -170,7 +170,7 @@ function NeedsAttention({ sessionId, sessionName }: { sessionId: string; session
 }
 
 // ---------------------------------------------------------------------------------------------
-// 2 · The year's fees: this year, previous years, both together (not tied to the period)
+// 2 · The year's fees: this year, past years, both together (not tied to the period)
 // ---------------------------------------------------------------------------------------------
 
 function FeePositionCard({ sessionId, sessionName }: { sessionId: string; sessionName: string }) {

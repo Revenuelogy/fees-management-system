@@ -20,7 +20,7 @@ export function SummaryView() {
   const today = todayIST();
   const month = !session || (today >= session.start_date && today <= session.end_date) ? today.slice(0, 7) : session.end_date.slice(0, 7);
 
-  // the money figures are Home's (the same numbers on both); previous years' dues are their own line
+  // the money figures are Home's (the same numbers on both); past year due is its own line
   const feesRes = useApi<FeePosition>(session ? apiUrl("/api/analytics/position", { session: session.id }) : null);
   const dashRes = useApi<Dashboard>(session ? apiUrl("/api/analytics/dashboard", { session: session.id }) : null);
   const defRes = useApi<StudentBalance[]>(session ? apiUrl("/api/analytics/defaulters", { session: session.id, limit: 10 }) : null);
@@ -69,7 +69,7 @@ export function SummaryView() {
           </div>
           <div className="sm:text-right">
             <p className="text-subhead font-medium text-ink">{fmtDate(today)}</p>
-            <p className="text-caption text-muted">This year&apos;s fees, with previous years&apos; dues on their own line</p>
+            <p className="text-caption text-muted">This year&apos;s fees, with past year due on their own line</p>
           </div>
         </header>
 
@@ -130,7 +130,7 @@ export function SummaryView() {
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-subhead font-semibold tabular text-critical-ink">{rupeesShort(s.overdue)}</span>
-                    {s.prev_pending > 0 && <span className="block text-caption tabular text-serious-ink">+ {rupeesShort(s.prev_pending)} previous years</span>}
+                    {s.prev_pending > 0 && <span className="block text-caption tabular text-serious-ink">+ {rupeesShort(s.prev_pending)} past years</span>}
                   </span>
                 </li>
               ))}

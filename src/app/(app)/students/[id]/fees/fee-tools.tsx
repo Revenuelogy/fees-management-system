@@ -142,7 +142,7 @@ export function RegenerateTool({
               Also reset existing lines to the structure
               <span className="block text-caption text-muted">
                 Structure lines get the class amount again and lines no longer in the structure are removed. Lines edited or added by hand
-                (Manual) and previous years&apos; dues are never touched. Concessions are kept (capped at the new amount).
+                (Manual) and past year due is never touched. Concessions are kept (capped at the new amount).
               </span>
             </span>
           </label>
@@ -179,10 +179,10 @@ export function OpeningDueTool({
     <Card
       title={
         <span className="inline-flex items-center gap-2">
-          <History className="size-4 text-muted" aria-hidden /> Add previous years&apos; dues
+          <History className="size-4 text-muted" aria-hidden /> Add past year due
         </span>
       }
-      description="Fees of previous years still unpaid from before this app. It is added to the first installment of the chosen session with a top-priority fee type, so payments clear it first."
+      description="Fees of past years still unpaid from before this app. It is added to the first installment of the chosen session with a top-priority fee type, so payments clear it first."
     >
       <form onSubmit={onSubmit} className="space-y-3">
         <input type="hidden" name="student_id" value={studentId} />
@@ -219,7 +219,7 @@ export function OpeningDueTool({
           </p>
         )}
         <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? "Adding…" : "Add previous years' dues"}
+          {pending ? "Adding…" : "Add past year due"}
         </Button>
       </form>
     </Card>

@@ -234,7 +234,7 @@ function Rules({ d }: { d: CallBoard }) {
   const r = d.rules;
   return (
     <>
-      The list is made fresh every day: families with {rupees(r.min_overdue)} or more total due (due till today + previous years&apos; dues), except those who paid in the last {r.skip_paid_days} days,
+      The list is made fresh every day: families with {rupees(r.min_overdue)} or more total due (due till today + past year due), except those who paid in the last {r.skip_paid_days} days,
       those waiting for a promised date (plus {r.grace_days} grace {r.grace_days === 1 ? "day" : "days"}) and those called recently ({r.gap_days} days after a
       call that got through, the next day if nobody picked up). Broken promises and call-backs come first, then the largest and oldest amounts due.
     </>
@@ -500,7 +500,7 @@ function FamilyRow({ r, take, takenBy, callers }: { r: CallListRow; take?: boole
       </div>
       <div className="flex shrink-0 items-center gap-2 max-sm:w-full max-sm:justify-between max-sm:pl-11">
         <span className="text-right">
-          <span className="block text-subhead font-semibold tabular text-critical-ink" title="Total due incl. previous years: due till today + previous years' dues">{rupeesShort(r.total_overdue)}</span>
+          <span className="block text-subhead font-semibold tabular text-critical-ink" title="Total due incl. past years: due till today + past year due">{rupeesShort(r.total_overdue)}</span>
           <span className="block text-caption text-muted">total due</span>
         </span>
         {callers && callers.length > 0 ? (

@@ -25,11 +25,11 @@ export function paymentNote(p: Split, ctx: { sessionName?: string | null; receiv
   return parts.join(" ");
 }
 
-/** The short form for a receipt list: "₹18,800 went to previous years' dues · ₹2,000 this year". */
+/** The short form for a receipt list: "₹18,800 went to past year due · ₹2,000 this year". */
 export function paymentSplit(p: Split): string | null {
   if (p.amount <= 0 || (p.arrears <= 0 && p.advance <= 0)) return null;
   return [
-    p.arrears > 0 ? `${rupees(p.arrears)} went to previous years' dues` : null,
+    p.arrears > 0 ? `${rupees(p.arrears)} went to past year due` : null,
     p.current > 0 ? `${rupees(p.current)} this year` : null,
     p.advance > 0 ? `${rupees(p.advance)} paid in advance` : null,
   ]

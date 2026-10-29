@@ -9,7 +9,7 @@ const Query = z.object({
   section: optionalText(10),
 });
 
-/** Every total of the year (this year, previous years, both together) for the school, a class or a section. */
+/** Every total of the year (this year, past years, both together) for the school, a class or a section. */
 export const GET = api("staff", ({ req, viewer }) => {
   const q = readQuery(req, Query);
   return feePosition(viewer, q.session, q.class ?? null, q.section);

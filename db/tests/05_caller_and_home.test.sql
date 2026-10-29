@@ -7,7 +7,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'fees_api_test') then create role fees_api_test nologin; end if;
 end $$;
 select public.grant_app_access('fees_api_test');
-select plan(40);
+select plan(43);
 
 insert into public.app_users (id, email, password_hash)
 values ('66666666-6666-6666-6666-666666666601', 'pgtap-caller5@school.test', 'x'),
@@ -85,6 +85,8 @@ select throws_ok($$ select public.assign_call((select id from fx where k = 'p2')
   '42501', null, 'a caller cannot give families to callers');
 select throws_ok($$ select public.home_classes((select id from public.academic_sessions where is_current)) $$, '42501', null, 'a caller cannot see the class figures');
 select throws_ok($$ select public.fee_position((select id from public.academic_sessions where is_current)) $$, '42501', null, 'a caller cannot see the fee totals');
+select throws_ok($$ select public.class_fee_lines((select id from public.academic_sessions where is_current), (select id from public.classes limit 1)) $$,
+  '42501', null, 'a caller cannot see a class''s fees by installment');
 reset role;
 
 -- Home, as the principal ---------------------------------------------------------------------------------
@@ -107,6 +109,20 @@ select is((select count(*)::int
 select is((select coalesce(sum((public.fee_position((select id from public.academic_sessions where is_current), c.id) ->> 'total_fee')::bigint), 0)::bigint from public.classes c),
           (select coalesce(sum(b.expected), 0)::bigint from public.student_balances((select id from public.academic_sessions where is_current)) b where b.class_id is not null),
   'the classes'' total fees add up to the total fees of the students enrolled');
+select is((select count(*)::int
+             from public.classes c
+            cross join lateral jsonb_array_elements(public.class_detail((select id from public.academic_sessions where is_current), c.id) -> 'installments') i
+            cross join lateral (select public.class_fee_lines((select id from public.academic_sessions where is_current), c.id, (i ->> 'id')::uuid) -> 'summary' as s) x
+            where (x.s ->> 'to_pay')::bigint <> (i ->> 'expected')::bigint
+               or (x.s ->> 'received')::bigint + (x.s ->> 'remaining')::bigint <> (x.s ->> 'to_pay')::bigint), 0,
+  'one installment for a class: the students'' fees add up to the installment total, and received + remaining = to pay');
+select is((select count(*)::int
+             from public.classes c
+            cross join lateral (select public.class_fee_lines((select id from public.academic_sessions where is_current), c.id) as f) x
+            where (x.f -> 'summary' ->> 'to_pay')::bigint
+                  <> coalesce((public.fee_position((select id from public.academic_sessions where is_current), c.id) ->> 'total_fee')::bigint, 0)
+              and jsonb_array_length(x.f -> 'rows') > 0), 0,
+  'with nothing chosen, a class''s fees by student add up to its total fees this year');
 select is((select (m -> 'by_source' -> 'calls' ->> 'amount')::bigint + (m -> 'by_source' -> 'activities' ->> 'amount')::bigint
                   + (m -> 'by_source' -> 'direct' ->> 'amount')::bigint - (m ->> 'received')::bigint
              from (select public.recovery_summary(public.fees_today() - 29, public.fees_today()) -> 'money' as m) x), 0::bigint,

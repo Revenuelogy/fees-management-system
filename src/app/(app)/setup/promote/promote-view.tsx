@@ -111,7 +111,7 @@ export function PromoteView({ sp }: { sp: SearchParams }) {
               "Only active students move.",
               "Sections are kept; roll numbers start empty.",
               `Safe to re-run: ${plural(alreadyTotal, "student")} already in ${to.name} stay as they are.`,
-              `Unpaid ${from.name} fees follow each student as previous years' dues.`,
+              `Unpaid ${from.name} fees follow each student as past year due.`,
               "“Passed out” students leave the active list.",
             ].map((t) => (
               <li key={t} className="flex gap-2.5">

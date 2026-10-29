@@ -28,9 +28,9 @@ const KIND: Record<Kind, { label: string; tone: "good" | "critical" | "warning" 
 
 // the check titles in the glossary's words (the SQL labels are the fallback for a check added later)
 const LABELS: Record<string, string> = {
-  class_vs_school_pending: "Sum of what remains per class = what remains for the school (incl. previous years)",
+  class_vs_school_pending: "Sum of what remains per class = what remains for the school (incl. past years)",
   months_vs_session_received: "Sum of monthly received = session received",
-  installments_plus_advance: "Installments received + received for previous years + paid in advance = total received",
+  installments_plus_advance: "Installments received + received for past years + paid in advance = total received",
   payments_fully_allocated: "Payments not fully split into what they paid for",
   charges_over_allocated: "Fee lines with more money than their amount",
   enrolled_without_plan: "Enrolled active students with no fees assigned for the session",
@@ -41,7 +41,7 @@ const LABELS: Record<string, string> = {
 const HINTS: Record<string, string> = {
   class_vs_school_pending: "Every student's remaining fees roll up into exactly one class row. A difference means money or fees that are not being counted.",
   months_vs_session_received: "Receipts dated in the session, added up month by month, must equal the session total.",
-  installments_plus_advance: "Every rupee received in the session is split into this year's fees, previous years' dues or paid in advance.",
+  installments_plus_advance: "Every rupee received in the session is split into this year's fees, past year due or paid in advance.",
   payments_fully_allocated: "Each receipt must be fully split into what it paid for. If not, re-run allocation below.",
   charges_over_allocated: "No fee line may receive more than its net amount. If any do, re-run allocation below.",
   enrolled_without_plan: "These students are in a class but have no fee lines. Assign fees from the fee structure or open their fee plan.",
@@ -183,7 +183,7 @@ export function ReconciliationView() {
           <p className="mt-3 text-footnote text-muted">
             Current rule:{" "}
             <b className="text-ink-2">
-              {settings?.allocation_order === "current_first" ? "this year first, then previous years" : "oldest fees first"}
+              {settings?.allocation_order === "current_first" ? "this year first, then past years" : "oldest fees first"}
             </b>
             {admin && (
               <>

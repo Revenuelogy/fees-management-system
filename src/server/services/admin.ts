@@ -44,7 +44,7 @@ export async function updateAllocationRule(viewer: Viewer, rule: SchoolSettings[
     return {
       message:
         rule === "oldest_first"
-          ? "Saved. Every payment has been re-matched: previous years' dues are now cleared first."
+          ? "Saved. Every payment has been re-matched: past year due is now cleared first."
           : "Saved. Every payment has been re-matched: current-session fees are now cleared first.",
     };
   });

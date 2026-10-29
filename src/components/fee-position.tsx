@@ -12,7 +12,7 @@ type Shown = "total_fee" | "received" | "balance" | "due_now" | "old_balance" | 
 
 /**
  * Every total of the year in two rows, each figure named so it reads on its own: this year's fees (total, received,
- * remaining, due till today) with a bar, then the same including previous years (what is still unpaid from previous
+ * remaining, due till today) with a bar, then the same including past years (what is still unpaid from previous
  * years, the total fees and what remains with them, and everything due till today). `links` opens the page behind
  * a figure. The numbers come from fee_position().
  */
@@ -55,21 +55,21 @@ export function FeePositionFigures({ f, links = {} }: { f: FeePosition; links?: 
         />
       </div>
 
-      <Row title="Including previous years">
+      <Row title="Including past years">
         <Tile
           word="old_balance"
           value={f.old_balance}
           href={links.old_balance}
-          sub={f.old_opening > 0 ? `${rupeesShort(f.old_opening)} when the year started · ${rupeesShort(f.old_received)} received` : "nothing left from previous years"}
+          sub={f.old_opening > 0 ? `${rupeesShort(f.old_opening)} when the year started · ${rupeesShort(f.old_received)} received` : "nothing left from past years"}
           tone={f.old_balance > 0 ? "text-serious-ink" : undefined}
         />
-        <Tile word="total_fee_all" value={f.total_fee_all} href={links.total_fee_all} sub={`this year + ${rupeesShort(f.old_opening)} from previous years`} />
-        <Tile word="balance_all" value={f.balance_all} href={links.balance_all} sub={`remaining this year + ${rupeesShort(f.old_balance)} previous years`} />
+        <Tile word="total_fee_all" value={f.total_fee_all} href={links.total_fee_all} sub={`this year + ${rupeesShort(f.old_opening)} from past years`} />
+        <Tile word="balance_all" value={f.balance_all} href={links.balance_all} sub={`remaining this year + ${rupeesShort(f.old_balance)} past years`} />
         <Tile
           word="to_recover"
           value={f.to_recover}
           href={links.to_recover}
-          sub={`due till today + previous years · ${plural(f.students_due, "student")}`}
+          sub={`due till today + past years · ${plural(f.students_due, "student")}`}
           tone={f.to_recover > 0 ? "text-critical-ink" : "text-good-ink"}
           strong={f.to_recover > 0}
         />

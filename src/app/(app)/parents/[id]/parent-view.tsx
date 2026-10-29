@@ -133,7 +133,7 @@ export function ParentView({ id }: { id: string }) {
           <Fig icon={Wallet} color="blue" label={t.prev_opening > 0 ? MONEY.total_fee_all.label : MONEY.total_fee.label} value={rupeesShort(supposed)}>
             {t.prev_opening > 0 ? (
               <>
-                {rupeesShort(t.expected)} this year + {rupeesShort(t.prev_opening)} from previous years
+                {rupeesShort(t.expected)} this year + {rupeesShort(t.prev_opening)} from past years
               </>
             ) : (
               d.session?.name
@@ -151,8 +151,8 @@ export function ParentView({ id }: { id: string }) {
             value={rupeesShort(t.total_pending)}
             tone={t.total_pending > 0 ? "text-critical-ink" : "text-good-ink"}
           >
-            {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} due till today (incl. previous years)</> : "Nothing due till today"}
-            {t.prev_pending > 0 && <> · {rupeesShort(t.prev_pending)} of it from previous years</>}
+            {t.total_overdue > 0 ? <>{rupeesShort(t.total_overdue)} due till today (incl. past years)</> : "Nothing due till today"}
+            {t.prev_pending > 0 && <> · {rupeesShort(t.prev_pending)} of it from past years</>}
           </Fig>
           <Fig icon={Clock} color="indigo" label="Last payment" value={lp ? rupeesShort(lp.amount) : "Never paid"} tone={lp ? undefined : "text-critical-ink"}>
             {lp ? (
@@ -169,7 +169,7 @@ export function ParentView({ id }: { id: string }) {
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, with each child's previous years' dues` : undefined}>
+          <Card title="Children" subtitle={d.session ? `Fees in ${d.session.name}, with each child's past year due` : undefined}>
             {d.children.length === 0 ? (
               <Empty title="No children linked">
                 {writer ? (
@@ -209,7 +209,7 @@ export function ParentView({ id }: { id: string }) {
                       <Meter value={c.paid_pct} className="mt-2.5" color={c.total_overdue > 0 ? "bg-series-1" : "bg-good"} track="bg-surface" />
                       <p className="mt-1.5 text-caption text-muted">
                         {rupeesShort(c.pending)} remaining this year
-                        {c.total_overdue > 0 && <> · {rupeesShort(c.total_overdue)} total due incl. previous years</>}
+                        {c.total_overdue > 0 && <> · {rupeesShort(c.total_overdue)} total due incl. past years</>}
                       </p>
                       {writer && c.total_pending > 0 && (
                         <div className="mt-3">
@@ -257,7 +257,7 @@ export function ParentView({ id }: { id: string }) {
                       <span className="text-ink-2">· {pay.full_name}</span>
                       <span className="block text-caption text-muted">
                         {MODE_LABELS[pay.mode]}
-                        {pay.arrears > 0 && <> · {rupees(pay.arrears)} went to previous years&apos; dues</>}
+                        {pay.arrears > 0 && <> · {rupees(pay.arrears)} went to past year due</>}
                         {pay.advance > 0 && <> · {rupees(pay.advance)} paid in advance</>}
                         {pay.cancelled && <span className="font-semibold text-critical-ink"> · cancelled</span>}
                         {pay.is_reversal && <span className="font-semibold text-ink-2"> · cancellation</span>}
@@ -360,7 +360,7 @@ export function ParentView({ id }: { id: string }) {
               <div>
                 <p className="text-caption font-medium text-muted">Records show</p>
                 <p className="mt-0.5 text-subhead text-ink">{HABIT[d.behaviour.profile]}</p>
-                {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Has dues from previous years carried into {d.session?.name ?? "this year"}</p>}
+                {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Has dues from past years carried into {d.session?.name ?? "this year"}</p>}
                 {d.behaviour.suggested && d.behaviour.suggested !== p.payment_behaviour && (
                   <p className="mt-1.5 inline-flex items-center gap-1.5 text-footnote text-accent">
                     <Sparkles className="size-3.5" aria-hidden /> Looks like “{BEHAVIOUR_LABELS[d.behaviour.suggested].label}”
@@ -395,7 +395,7 @@ export function ParentView({ id }: { id: string }) {
 
 
           {d.sessions.length > 0 && (
-            <Card title="By session" description="What is left to pay for each year. What is left from previous years is shown as previous years' dues.">
+            <Card title="By session" description="What is left to pay for each year. What is left from past years is shown as past year due.">
               <ul className="space-y-3">
                 {d.sessions.map((s) => (
                   <li key={s.session_id}>

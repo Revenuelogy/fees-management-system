@@ -27,16 +27,17 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
   The signed-in user is `public.current_user_id()` (the `app.user_id` setting of the transaction).
 - **One set of money words** everywhere (labels, tooltips, CSV headers, printouts, server messages): `MONEY` in
   `src/lib/glossary.ts`. Every word says what it is when read alone: Total fees this year, Received this year,
-  Remaining this year (= due till today + due later), Due till today, Due later, Previous years' dues, Received for
-  previous years, Total fees incl. previous years, Remaining incl. previous years, Total due incl. previous years
-  (= due till today + previous years' dues), Paid in advance, Days since last payment (`short` forms for tight
-  spaces). Status tags in `components/ui/status.tsx`: Paid up, Part paid, Nothing paid this year, Previous years'
+  Remaining this year (= due till today + due later), Due till today, Due later, Past year due, Received for
+  past years, Total fees incl. past years, Remaining incl. past years, Total due incl. past years
+  (= due till today + past year due), Paid in advance, Days since last payment (`short` forms for tight
+  spaces). Status tags in `components/ui/status.tsx`: Paid up, Part paid, Nothing paid this year, Past years'
   dues only, Free. Never show Pending, Overdue, Gap, Missing, Arrears, Old dues, Old balance, To recover or a bare
-  "Balance". No "This session / Including old dues" toggle: previous years' dues are their own figure or column.
+  "Balance". No "This session / Including old dues" toggle: past year due is its own figure or column.
   Whenever a part or a % is shown, show the total it is part of ("₹4.7 L received of ₹9.98 L"). The totals of
   a year for the school, a class or a section come from `fee_position()` (`/api/analytics/position`) and are drawn
-  by `FeePositionFigures` (`components/fee-position.tsx`). `installmentName()` / `oldBalanceLabel()` show
-  carried-forward installments as "Previous year (2025-26)".
+  by `FeePositionFigures` (`components/fee-position.tsx`). One installment and/or fee type for every student of a
+  class comes from `class_fee_lines()` (`/api/analytics/classes/[id]/lines`; the class page's Students card). `installmentName()` / `oldBalanceLabel()` show
+  carried-forward installments as "Past year (2025-26)".
 
 ## Layout
 - `src/app/(app)/…` signed-in screens. Each `page.tsx` is a thin server component (metadata, params, search

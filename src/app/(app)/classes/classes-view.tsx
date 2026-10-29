@@ -21,7 +21,7 @@ const STATUS: { key: keyof ClassSummaryRow["status"]; cls: string; label: string
 
 export function ClassesView() {
   const { session } = useApp();
-  // this year's figures only; each class's previous years' dues are shown as their own figure
+  // this year's figures only; each class's past year due is shown as its own figure
   const summary = useApi<ClassSummaryRow[]>(session ? apiUrl("/api/analytics/classes", { session: session.id }) : null);
   if (!session) return <NoSession />;
   if (!summary.data) return <Pending queries={[summary]} />;
@@ -73,7 +73,7 @@ export function ClassesView() {
                 <div className="text-right">
                   <p className="text-caption text-muted">{MONEY.due_now.label}</p>
                   <p className={`text-headline font-semibold tabular ${r.overdue > 0 ? "text-critical-ink" : "text-good-ink"}`}>{rupeesShort(r.overdue)}</p>
-                  {r.prev_pending > 0 && <p className="text-caption tabular text-serious-ink">+ {rupeesShort(r.prev_pending)} previous years</p>}
+                  {r.prev_pending > 0 && <p className="text-caption tabular text-serious-ink">+ {rupeesShort(r.prev_pending)} past years</p>}
                 </div>
               </div>
               <div className="mt-4">

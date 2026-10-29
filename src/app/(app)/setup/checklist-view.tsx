@@ -233,7 +233,7 @@ export function ChecklistView() {
           <p className="mt-4 border-t border-line pt-3 text-footnote text-muted">
             Moving from another system? Import{" "}
             <Link href="/setup/import?tab=dues" className="font-medium text-accent hover:underline">
-              previous years&apos; dues
+              past year due
             </Link>{" "}
             and{" "}
             <Link href="/setup/import?tab=payments" className="font-medium text-accent hover:underline">
