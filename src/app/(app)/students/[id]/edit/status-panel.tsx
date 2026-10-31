@@ -58,7 +58,7 @@ function withNotice(action: typeof withdrawStudent, onDone: Done): typeof withdr
 function WithdrawCard({ studentId, today, onDone }: { studentId: string; today: string; onDone: Done }) {
   const [state, onSubmit, pending] = useFormAction(withNotice(withdrawStudent, onDone));
   return (
-    <Card title="Mark as left" description="For a student who has left the school. Payments and past dues stay on record.">
+    <Card title="Mark as left" description="For a student who has left the school. Payments and unpaid fees stay on record.">
       <form onSubmit={onSubmit} className="space-y-3">
         <input type="hidden" name="id" value={studentId} />
         <Field label="Left on" htmlFor="left_on">

@@ -80,15 +80,15 @@ export const IMPORT_SPECS: Record<ImportKind, ImportSpec> = {
   },
   dues: {
     kind: "dues",
-    label: "Opening dues",
-    title: "Import opening dues",
+    label: "Past year due",
+    title: "Import past year due",
     intro:
-      "Unpaid amounts carried over from before you started using this app. Each row adds to the student's dues in that session (on its first installment), so importing the same file twice doubles the dues.",
+      "Unpaid amounts of earlier years, from before you started using this app. Each row adds to the student's fees in that session (on its first installment), so importing the same file twice doubles them.",
     columns: [
       { key: "admission_no", required: true, hint: "Student must already exist" },
       { key: "session", required: true, hint: "Session name, e.g. 2025-26" },
       { key: "amount", required: true, hint: "Rupees, e.g. 12500 or 12,500.50" },
-      { key: "fee_head", hint: "Defaults to “Previous Dues” (created if missing)" },
+      { key: "fee_head", hint: "Fee type; defaults to the school's carried-forward fee type (created if it does not exist)" },
       { key: "class", hint: "Enrols the student in that session if not enrolled yet" },
       { key: "section", hint: "Used with class; defaults to A" },
       { key: "note", hint: "" },
@@ -112,7 +112,7 @@ export const IMPORT_SPECS: Record<ImportKind, ImportSpec> = {
       { key: "receipt_no", hint: "Optional; a new number is given when blank" },
       { key: "reference_no", hint: "Cheque / UPI / transaction number" },
       { key: "session", hint: "Optional hint: session the payment was for" },
-      { key: "fee_head", hint: "Optional hint: fee head it was for" },
+      { key: "fee_head", hint: "Optional hint: fee type it was for" },
       { key: "installment", hint: "Optional hint: installment number" },
       { key: "remarks", hint: "" },
     ],

@@ -9,7 +9,7 @@ export const ClassBody = z.object({
 });
 
 export const FeeHeadBody = z.object({
-  name: requiredText("Enter a fee head name.", 100),
+  name: requiredText("Enter a fee type name.", 100),
   priority: z
     .number({ error: "Priority must be a whole number (0 or more)." })
     .int("Priority must be a whole number (0 or more).")

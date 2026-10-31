@@ -47,7 +47,7 @@ export async function addClass(_prev: ActionState, fd: FormData): Promise<Action
 function readHead(fd: FormData): { body: { name: string; priority: number; is_active: boolean } } | { error: string } {
   const name = str(fd, "name");
   const priority = intOrNull(str(fd, "priority"));
-  if (!name) return { error: "Enter a fee head name." };
+  if (!name) return { error: "Enter a fee type name." };
   if (priority === null || priority < 0) return { error: "Priority must be a whole number (0 or more)." };
   return { body: { name, priority, is_active: fd.get("is_active") === "on" } };
 }

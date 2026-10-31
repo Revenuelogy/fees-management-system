@@ -5,9 +5,11 @@ import { isDbError, type Db } from "@/server/db";
 import { notFound } from "@/server/http";
 import type {
   ClassDetail,
+  ClassFeeLines,
   ClassSummaryRow,
   CollectionTarget,
   Dashboard,
+  FeePosition,
   InstallmentDetail,
   InstallmentRow,
   MonthClassDetail,
@@ -64,6 +66,37 @@ export function balances(viewer: Viewer, sessionId: string, filter: { classId?: 
 export function classSummary(viewer: Viewer, sessionId: string, arrears: boolean) {
   return read(viewer, "class-summary", [sessionId, arrears], (db) =>
     db.rpc<ClassSummaryRow[] | null>("class_summary", { p_session: sessionId, p_include_arrears: arrears }).then((r) => r ?? []),
+  );
+}
+
+/** Every total of the year (this year, past years, both) for the school, a class or one section of it. */
+export function feePosition(viewer: Viewer, sessionId: string, classId: string | null, section: string | null) {
+  return orNotFound(
+    read(viewer, "fee-position", [sessionId, classId, section], (db) =>
+      db.rpc<FeePosition>("fee_position", { p_session: sessionId, p_class: classId ?? undefined, p_section: section ?? undefined }),
+    ),
+    /^Unknown/,
+  );
+}
+
+/** One installment and/or fee type (all fees when neither) for every student of a class (or one section). */
+export function classFeeLines(
+  viewer: Viewer,
+  sessionId: string,
+  classId: string,
+  f: { installmentId: string | null; feeHeadId: string | null; section: string | null },
+) {
+  return orNotFound(
+    read(viewer, "class-fee-lines", [sessionId, classId, f.installmentId, f.feeHeadId, f.section], (db) =>
+      db.rpc<ClassFeeLines>("class_fee_lines", {
+        p_session: sessionId,
+        p_class: classId,
+        p_installment: f.installmentId ?? undefined,
+        p_fee_head: f.feeHeadId ?? undefined,
+        p_section: f.section ?? undefined,
+      }),
+    ),
+    /^Unknown/,
   );
 }
 

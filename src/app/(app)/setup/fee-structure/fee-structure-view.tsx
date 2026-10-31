@@ -36,7 +36,7 @@ export function FeeStructureView({ sp }: { sp: SearchParams }) {
           What each class pays in <b className="text-ink">{session.name}</b>.
         </>
       }
-      info="Amounts per installment and fee head. Switch session in the top bar."
+      info="Amounts per installment and fee type. Switch session in the top bar."
     />
   );
 
@@ -45,8 +45,8 @@ export function FeeStructureView({ sp }: { sp: SearchParams }) {
       installments.length === 0
         ? { title: `${session.name} has no installments yet`, body: "Add the installments (due dates) first.", href: "/setup/sessions", label: "Sessions & installments" }
         : !selected
-          ? { title: "No classes yet", body: "Add your classes first.", href: "/setup/classes", label: "Classes & fee heads" }
-          : { title: "No fee heads yet", body: "Add fee heads such as Tuition Fee first.", href: "/setup/classes#fee-heads", label: "Classes & fee heads" };
+          ? { title: "No classes yet", body: "Add your classes first.", href: "/setup/classes", label: "Classes & fee types" }
+          : { title: "No fee types yet", body: "Add fee types such as Tuition Fee first.", href: "/setup/classes#fee-heads", label: "Classes & fee types" };
     return (
       <>
         {header}

@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SWRConfig, type SWRConfiguration } from "swr";
-import { LogOut } from "lucide-react";
+import { IndianRupee, LogOut, ShieldAlert } from "lucide-react";
 import { ApiError, signOut } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
 import { SESSION_COOKIE } from "@/lib/context";
-import { canWrite, isAdmin } from "@/lib/roles";
+import { canWrite, isAdmin, isCaller } from "@/lib/roles";
 import type { AcademicSession, AppRole, SchoolClass, SchoolSettings, Viewer } from "@/lib/types";
 import { Sidebar } from "@/components/layout/sidebar";
+import { CALLER_HOME, callerMayOpen } from "@/components/layout/nav";
 import { SessionSwitcher } from "@/components/layout/session-switcher";
 import { StudentSearch } from "@/components/layout/student-search";
 import { Avatar } from "@/components/ui/avatar";
@@ -26,6 +28,8 @@ type AppContextValue = Bootstrap & {
   /** Admin or accountant */
   writer: boolean;
   admin: boolean;
+  /** Only phones families: no school totals, no money changes */
+  caller: boolean;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -77,9 +81,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** A caller who opens a screen that is not theirs (the API refuses its data as well). */
+function NoAccessHere() {
+  return (
+    <div className="mx-auto mt-10 max-w-md rounded-[28px] bg-surface p-8 text-center shadow-card">
+      <ShieldAlert className="mx-auto mb-3 size-8 text-muted" aria-hidden />
+      <h1 className="text-headline font-semibold text-ink">You don&rsquo;t have access to this page</h1>
+      <p className="mt-2 text-subhead text-ink-2">Callers see their call list, the families on it and open promises.</p>
+      <Link href={CALLER_HOME} className="mt-5 inline-flex h-11 items-center rounded-full bg-accent px-5 text-subhead font-semibold text-accent-ink">
+        Back to My calls
+      </Link>
+    </div>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   const boot = useApi<Bootstrap>("/api/bootstrap");
   const [chosenId, setChosenId] = useState<string | null>(() => readCookie(SESSION_COOKIE));
+  const pathname = usePathname();
+  const router = useRouter();
+  const callerRole = isCaller(boot.data?.viewer.role);
+  // a caller lands on their call list, not on Home
+  useEffect(() => {
+    if (callerRole && pathname === "/") router.replace(CALLER_HOME);
+  }, [callerRole, pathname, router]);
 
   if (!boot.data) {
     return (
@@ -107,8 +132,10 @@ function Shell({ children }: { children: React.ReactNode }) {
     },
     writer,
     admin: isAdmin(role),
+    caller: callerRole,
   };
   const name = viewer.full_name || viewer.email || "Staff";
+  const blocked = callerRole && pathname !== "/" && !callerMayOpen(pathname);
 
   return (
     <AppContext.Provider value={value}>
@@ -119,7 +146,17 @@ function Shell({ children }: { children: React.ReactNode }) {
             <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 pl-14 pr-3 sm:pr-6 lg:pl-8">
               <StudentSearch className="min-w-0 max-w-[420px] flex-1" canCollect={writer} />
               <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-                <SessionSwitcher sessions={sessions} activeId={session?.id ?? null} onChange={value.setSessionId} />
+                {/* on a phone the sidebar is a menu: keep Collect fee one tap away on every page */}
+                {writer && (
+                  <Link
+                    href="/collect"
+                    aria-label="Collect fee"
+                    className="inline-flex h-9 items-center gap-1 rounded-full bg-accent px-3 text-footnote font-semibold text-accent-ink lg:hidden"
+                  >
+                    <IndianRupee className="size-3.5" strokeWidth={2.4} /> Collect
+                  </Link>
+                )}
+                {!callerRole && <SessionSwitcher sessions={sessions} activeId={session?.id ?? null} onChange={value.setSessionId} />}
                 <div className="hidden items-center gap-2.5 md:flex">
                   <Avatar name={name} size="sm" />
                   <div className="leading-tight">
@@ -139,7 +176,9 @@ function Shell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
-          <main className="mx-auto max-w-[1320px] px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8 print:max-w-none print:p-0">{children}</main>
+          <main className="mx-auto max-w-[1320px] px-4 pb-16 pt-6 sm:px-6 sm:pt-8 lg:px-8 print:max-w-none print:p-0">
+            {blocked ? <NoAccessHere /> : callerRole && pathname === "/" ? null : children}
+          </main>
         </div>
       </div>
     </AppContext.Provider>

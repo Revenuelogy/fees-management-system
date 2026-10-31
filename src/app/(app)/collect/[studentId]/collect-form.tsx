@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, Building2, Check, CreditCard, FileCheck2, MoreHorizontal, Smartphone } from "lucide-react";
+import { Banknote, Building2, Check, CreditCard, FileCheck2, MoreHorizontal, PhoneCall, Smartphone, Sparkles } from "lucide-react";
 import { collectPayment } from "./actions";
 import type { ActionState } from "@/lib/action-state";
 import type { DueLine, PaymentMode } from "@/lib/types";
@@ -14,8 +14,20 @@ import { Badge } from "@/components/ui/badge";
 import { StackedBar, Legend } from "@/components/ui/bars";
 import { KIND_LEGEND } from "@/components/ui/alloc";
 import { cn } from "@/lib/cn";
+import { installmentName, oldBalanceLabel } from "@/lib/glossary";
 
 type SessionLite = { id: string; start: string; end: string; name: string };
+
+/** A recent call to the family or an activity of the student that may have brought the payment in. */
+export type PaymentSourceOption = {
+  /** "call:<id>" or "activity:<participant id>" */
+  value: string;
+  kind: "call" | "activity";
+  title: string;
+  detail: string;
+  /** calls: the call date; activities: the start date (receipts before it cannot be counted) */
+  since: string;
+};
 
 /** Default allocation rule, mirroring the database engine (used for the preview; the DB stores what you confirm). */
 function autoAllocate(amount: number, dues: DueLine[], order: "oldest_first" | "current_first", paySessionId: string | null) {
@@ -53,6 +65,8 @@ export function CollectForm({
   order,
   sessions,
   recent,
+  sources = [],
+  suggested = "",
 }: {
   studentId: string;
   dues: DueLine[];
@@ -61,6 +75,10 @@ export function CollectForm({
   order: "oldest_first" | "current_first";
   sessions: SessionLite[];
   recent: { id: string; receipt_no: string; paid_on: string; amount: number; cancelled: boolean }[];
+  /** recent calls and the student's activities: the cashier ticks the one that brought the payment in */
+  sources?: PaymentSourceOption[];
+  /** the option to tick by default (a recent fee call or a running promise), or "" */
+  suggested?: string;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(collectPayment, {});
   const router = useRouter();
@@ -75,6 +93,8 @@ export function CollectForm({
   const [manual, setManual] = useState(false);
   const [lines, setLines] = useState<Record<string, string>>({});
   const [showNote, setShowNote] = useState(false);
+  // null: the suggestion (it may arrive after the form is shown)
+  const [picked, setPicked] = useState<string | null>(null);
 
   const paySession = sessions.find((s) => paidOn >= s.start && paidOn <= s.end) ?? null;
   const paySessionStart = paySession?.start ?? "";
@@ -83,6 +103,8 @@ export function CollectForm({
   const overdueLines = dues.filter((d) => d.is_overdue);
   const totalOverdue = overdueLines.reduce((a, d) => a + d.remaining, 0);
   const modeInfo = MODES.find((m) => m.value === mode)!;
+  const sourceOptions = sources.filter((o) => o.since <= paidOn);
+  const source = picked ?? (sourceOptions.some((o) => o.value === suggested) ? suggested : "");
 
   const allocation = useMemo(() => {
     if (!manual) return autoAllocate(amount, dues, order, paySession?.id ?? null);
@@ -139,26 +161,26 @@ export function CollectForm({
       <section className="rounded-[var(--radius-card)] bg-surface shadow-card">
         <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5 sm:px-6">
           <div>
-            <h2 className="text-headline font-semibold text-ink">Open dues</h2>
+            <h2 className="text-headline font-semibold text-ink">Fees due</h2>
             <p className="mt-0.5 text-footnote text-ink-2">
-              <span className="font-semibold text-ink">{rupees(totalDue)}</span> unpaid
+              <span className="font-semibold text-ink">{rupees(totalDue)}</span> remaining
               {totalOverdue > 0 && (
                 <>
-                  {" "}· <span className="font-semibold text-critical-ink">{rupees(totalOverdue)}</span> overdue
+                  {" "}· <span className="font-semibold text-critical-ink">{rupees(totalOverdue)}</span> due till today
                 </>
               )}
-              {advance > 0 && <> · {rupees(advance)} advance held</>}
+              {advance > 0 && <> · {rupees(advance)} paid in advance</>}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {totalOverdue > 0 && (
               <Button type="button" size="sm" onClick={() => fillManual(overdueLines)}>
-                Pay overdue
+                Pay what is due till today
               </Button>
             )}
             {totalDue > 0 && (
               <Button type="button" size="sm" onClick={() => fillManual(dues)}>
-                Pay everything
+                Pay everything remaining
               </Button>
             )}
           </div>
@@ -191,11 +213,11 @@ export function CollectForm({
               </button>
             ))}
           </div>
-          <span className="text-caption text-muted">{manual ? "Type what each fee gets" : order === "oldest_first" ? "Oldest dues are cleared first" : "This session is cleared first"}</span>
+          <span className="text-caption text-muted">{manual ? "Type what each fee gets" : order === "oldest_first" ? "Oldest fees are cleared first" : "This session is cleared first"}</span>
         </div>
 
         {dues.length === 0 ? (
-          <p className="px-6 py-14 text-center text-subhead text-ink-2">No dues. Anything collected now is kept as an advance.</p>
+          <p className="px-6 py-14 text-center text-subhead text-ink-2">No fees due. Anything collected now is kept as paid in advance.</p>
         ) : (
           <div className="space-y-3 p-5 sm:p-6">
             {groups.map((g) => {
@@ -220,10 +242,15 @@ export function CollectForm({
                     </button>
                     <span className={cn("size-2 rounded-full", dot)} aria-hidden />
                     <span className="text-subhead font-semibold text-ink">
-                      {g.session} · {g.inst}
+                      {kind === "arrears" ? oldBalanceLabel(g.session, g.inst) : `${g.session} · ${installmentName(g.inst)}`}
                     </span>
-                    {kind === "arrears" && <Badge tone="serious">Old dues</Badge>}
-                    {g.overdue ? <Badge tone="critical">Overdue</Badge> : <Badge>Due {fmtDate(g.due)}</Badge>}
+                    {kind === "arrears" ? (
+                      <Badge tone="serious">Past year</Badge>
+                    ) : g.overdue ? (
+                      <Badge tone="critical">Due till today</Badge>
+                    ) : (
+                      <Badge>Due {fmtDate(g.due)}</Badge>
+                    )}
                     <span className="ml-auto text-subhead tabular">
                       {allocatedHere > 0 && <span className="mr-2 font-semibold text-accent">{rupees(allocatedHere)}</span>}
                       <span className={allocatedHere > 0 ? "text-muted" : "font-semibold text-ink"}>{rupees(pendingTotal)}</span>
@@ -318,6 +345,48 @@ export function CollectForm({
             <Field label="Date" htmlFor="paid_on">
               <Input id="paid_on" name="paid_on" type="date" max={today} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required />
             </Field>
+            {sourceOptions.length > 0 && (
+              <fieldset>
+                <legend className="mb-1.5 text-footnote font-medium text-ink-2">What brought this payment in?</legend>
+                <input type="hidden" name="source" value={source} />
+                <div className="space-y-1.5" role="radiogroup" aria-label="What brought this payment in">
+                  {[...sourceOptions, { value: "", kind: null, title: "Nothing in particular", detail: "The family came on its own", since: "" }].map((o) => {
+                    const active = o.value === source;
+                    const Icon = o.kind === "call" ? PhoneCall : o.kind === "activity" ? Sparkles : Check;
+                    return (
+                      <button
+                        key={o.value || "none"}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setPicked(o.value)}
+                        className={cn(
+                          "flex w-full items-start gap-2.5 rounded-xl px-3 py-2 text-left transition-colors",
+                          active ? "bg-accent-soft ring-1 ring-accent" : "bg-fill-2 hover:bg-fill",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full",
+                            active ? "bg-accent text-accent-ink" : "bg-surface text-muted",
+                          )}
+                          aria-hidden
+                        >
+                          <Icon className="size-3" strokeWidth={2.5} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={cn("block text-subhead font-medium", active ? "text-accent" : "text-ink")}>{o.title}</span>
+                          <span className="block text-caption text-muted">{o.detail}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {suggested && picked === null && source === suggested && (
+                  <p className="mt-1.5 text-caption text-muted">Ticked because of the recent call. Change it if the family came for another reason.</p>
+                )}
+              </fieldset>
+            )}
             {showNote ? (
               <Field label="Remarks" htmlFor="remarks">
                 <Textarea id="remarks" name="remarks" rows={2} autoFocus />
@@ -334,8 +403,8 @@ export function CollectForm({
               <StackedBar
                 segments={[
                   { value: split.current, className: "bg-series-1", label: "This year", display: rupees(split.current) },
-                  { value: split.arrears, className: "bg-series-2", label: "Old dues", display: rupees(split.arrears) },
-                  { value: split.advance, className: "bg-series-3", label: "Advance", display: rupees(split.advance) },
+                  { value: split.arrears, className: "bg-series-2", label: "Past years", display: rupees(split.arrears) },
+                  { value: split.advance, className: "bg-series-3", label: "Paid in advance", display: rupees(split.advance) },
                 ]}
               />
               <Legend
@@ -350,8 +419,8 @@ export function CollectForm({
                 <span className="text-ink-2">Balance after</span>
                 <span className="font-semibold tabular">{rupees(Math.max(0, totalDue - Math.min(amount, totalDue)))}</span>
               </div>
-              {totalDue > 0 && <p className="mt-0.5 text-right text-caption text-muted">clears {pct((100 * Math.min(amount, totalDue)) / totalDue, 0)} of the balance</p>}
-              {manual && unallocated > 0 && <p className="mt-1 text-caption text-muted">{rupees(unallocated)} not assigned goes to the oldest dues or advance.</p>}
+              {totalDue > 0 && <p className="mt-0.5 text-right text-caption text-muted">clears {pct((100 * Math.min(amount, totalDue)) / totalDue, 0)} of what remains</p>}
+              {manual && unallocated > 0 && <p className="mt-1 text-caption text-muted">{rupees(unallocated)} not assigned goes to the oldest fees, or is kept as paid in advance.</p>}
             </div>
           )}
 

@@ -4,7 +4,7 @@ import { api, submit } from "@/lib/api/client";
 import type { ActionState } from "@/lib/action-state";
 import type { AppRole } from "@/lib/types";
 
-const ROLES: AppRole[] = ["admin", "accountant", "principal", "teacher"];
+const ROLES: AppRole[] = ["admin", "accountant", "principal", "caller", "teacher"];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Result = { message: string };

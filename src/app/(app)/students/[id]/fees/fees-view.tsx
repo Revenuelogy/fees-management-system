@@ -134,13 +134,13 @@ export function FeesView({ id, sp }: { id: string; sp: SearchParams }) {
       <KpiGrid cols={5}>
         <Kpi label={`Charged in ${session.name}`} value={rupeesShort(totals.gross)} sub={`${lines.length} fee lines · before concession`} />
         <Kpi label="Concession" value={rupeesShort(totals.concession)} sub={totals.gross > 0 ? `${Math.round((100 * totals.concession) / totals.gross)}% of charged` : "—"} />
-        <Kpi label="Expected (year)" value={rupeesShort(totals.net)} sub="After concession" />
-        <Kpi label="Paid" value={rupeesShort(totals.paid)} tone={totals.net > 0 && totals.paid >= totals.net ? "good" : "default"} sub="Allocated to these lines" />
+        <Kpi label="Total fees this year" value={rupeesShort(totals.net)} sub="After concession" />
+        <Kpi label="Received" value={rupeesShort(totals.paid)} tone={totals.net > 0 && totals.paid >= totals.net ? "good" : "default"} sub="Allocated to these lines" />
         <Kpi
-          label="Remaining"
+          label="Remaining this year"
           value={rupeesShort(totals.remaining)}
           tone={totals.overdue > 0 ? "critical" : "default"}
-          sub={totals.overdue > 0 ? `${rupees(totals.overdue)} already overdue` : "Nothing overdue"}
+          sub={totals.overdue > 0 ? `${rupees(totals.overdue)} due till today` : "Nothing due till today"}
         />
       </KpiGrid>
 
@@ -148,14 +148,14 @@ export function FeesView({ id, sp }: { id: string; sp: SearchParams }) {
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-footnote text-ink-2">
           {advance !== 0 && (
             <span>
-              Advance held (not matched to any fee line): <b className="tabular text-ink">{rupees(advance)}</b>
+              Paid in advance (not matched to any fee line yet): <b className="tabular text-ink">{rupees(advance)}</b>
             </span>
           )}
           {otherSessions
             .filter((o) => o.remaining > 0)
             .map((o) => (
               <span key={o.session.id}>
-                Remaining in{" "}
+                Left to pay in{" "}
                 <Link href={o.session.id === active.id ? base : withParams(base, { session: o.session.id })} className="font-medium text-accent hover:underline">
                   {o.session.name}
                 </Link>
@@ -168,7 +168,7 @@ export function FeesView({ id, sp }: { id: string; sp: SearchParams }) {
       <Card
         className="mt-4"
         title={`Fee lines · ${session.name}`}
-        description="Edit an amount or concession inline. Payments are re-matched to dues automatically after every change."
+        description="Edit an amount or concession inline. Payments are re-matched to the fees automatically after every change."
       >
         {installments.length === 0 ? (
           <Empty title={`No installments in ${session.name}`}>Add installments to the session in Setup → Sessions & installments.</Empty>

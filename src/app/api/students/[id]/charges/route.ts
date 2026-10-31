@@ -5,7 +5,7 @@ import { id, optionalText, paise } from "@/server/validate";
 
 const Body = z.object({
   installment_id: id("Choose an installment."),
-  fee_head_id: id("Choose a fee head."),
+  fee_head_id: id("Choose a fee type."),
   amount: paise("Enter an amount greater than zero (₹)."),
   concession: paise("Enter a valid concession (₹).").min(0, "Enter a valid concession (₹).").default(0),
   note: optionalText(500),

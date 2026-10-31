@@ -18,12 +18,18 @@ export function friendlyError(error: { message?: string; code?: string; details?
     if (msg.includes("admission_no")) return "A student with this admission number already exists.";
     if (msg.includes("academic_sessions_name")) return "A session with this name already exists.";
     if (msg.includes("classes_name")) return "A class with this name already exists.";
-    if (msg.includes("fee_heads_name")) return "A fee head with this name already exists.";
+    if (msg.includes("fee_heads_name")) return "A fee type with this name already exists.";
     if (msg.includes("installments_session_id_number")) return "That installment number already exists in this session.";
+    if (msg.includes("parents_phone_key")) return "Another parent profile already has this phone number.";
     return "This record already exists.";
   }
   if (error.code === "23P01" || msg.includes("academic_sessions_no_overlap")) return "Session dates overlap with another session.";
   if (error.code === "23503") return "This record is still in use and cannot be removed.";
   if (error.code === "23514") return "One of the values is not allowed. Check amounts and dates.";
+  // a few SQL messages predate the glossary: say them in its words
+  const head = /^Unknown fee head "(.*)"$/.exec(msg);
+  if (head) return `Unknown fee type "${head[1]}".`;
+  const twice = /^This student already has a "(.*)" charge on that installment\./.exec(msg);
+  if (twice) return `This student already has a "${twice[1]}" fee on that installment. Use a separate fee type for past year due.`;
   return msg || "Something went wrong.";
 }

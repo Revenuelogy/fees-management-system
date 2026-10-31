@@ -109,7 +109,7 @@ export function FeeHeadRow({ head }: { head: FeeHeadInfo }) {
     <form onSubmit={onSubmit} className={`${GRID} py-2`}>
       <input type="hidden" name="fee_head_id" value={head.id} />
       <div className="min-w-0">
-        <Input name="name" defaultValue={head.name} required aria-label="Fee head name" />
+        <Input name="name" defaultValue={head.name} required aria-label="Fee type name" />
         <p className="mt-0.5 truncate text-caption text-muted">{usage || "Not used yet"}</p>
       </div>
       <div className={NUM_CELL}>
@@ -143,8 +143,8 @@ export function FeeHeadRow({ head }: { head: FeeHeadInfo }) {
           variant="ghost"
           disabled={pending}
           aria-label={`Delete ${head.name}`}
-          title={used ? "Cannot delete: this fee head is in use" : "Delete fee head"}
-          data-confirm={`Delete the fee head ${head.name}?`}
+          title={used ? "Cannot delete: this fee type is in use" : "Delete fee type"}
+          data-confirm={`Delete the fee type ${head.name}?`}
         >
           <Trash2 className="size-4" aria-hidden />
         </Button>
@@ -158,11 +158,11 @@ export function AddFeeHeadRow({ nextPriority }: { nextPriority: number }) {
   const { state, pending, onSubmit, formRef } = useFormAction(addFeeHead, { resetOnSuccess: true });
   return (
     <form ref={formRef} onSubmit={onSubmit} className={`${GRID} mt-1 border-t border-dashed border-line-strong pt-3`}>
-      <Input name="name" placeholder="New fee head, e.g. Lab Fee" required aria-label="New fee head name" />
+      <Input name="name" placeholder="New fee type, e.g. Lab Fee" required aria-label="New fee type name" />
       <div className={NUM_CELL}>
-        <Input key={nextPriority} name="priority" defaultValue={nextPriority} inputMode="numeric" aria-label="New fee head priority" className="text-right" />
+        <Input key={nextPriority} name="priority" defaultValue={nextPriority} inputMode="numeric" aria-label="New fee type priority" className="text-right" />
       </div>
-      <ActiveToggle defaultChecked label="New fee head is active" />
+      <ActiveToggle defaultChecked label="New fee type is active" />
       <div className="justify-self-end">
         <Button type="submit" size="sm" disabled={pending}>
           <Plus className="size-4" aria-hidden /> {pending ? "Adding…" : "Add"}

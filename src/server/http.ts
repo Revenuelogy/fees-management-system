@@ -2,7 +2,7 @@ import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { friendlyError } from "@/lib/action-state";
-import { canWrite, isAdmin, isStaff } from "@/lib/roles";
+import { canCall, canWrite, isAdmin, isCaller, isStaff } from "@/lib/roles";
 import { AUTH_COOKIE, viewerForToken, type Viewer } from "@/server/auth/session";
 import { isDbError } from "@/server/db";
 
@@ -45,9 +45,14 @@ export function errorResponse(e: unknown): NextResponse {
   return json({ error: "Something went wrong." }, { status: 500 });
 }
 
-type Access = "signed-in" | "staff" | "writer" | "admin";
+/**
+ * Who may call a route: anybody signed in; `caller` = the calling screens (staff and callers); `staff` = staff who
+ * see school-wide figures (not callers); `writer` = admin or accountant; `admin`.
+ */
+type Access = "signed-in" | "caller" | "staff" | "writer" | "admin";
 
 const DENIED: Record<Exclude<Access, "signed-in">, string> = {
+  caller: "Your account is waiting for access. An administrator needs to give it a role.",
   staff: "Your account is waiting for access. An administrator needs to give it a role.",
   writer: "Only an admin or accountant can do this.",
   admin: "Only an admin can do this.",
@@ -55,9 +60,17 @@ const DENIED: Record<Exclude<Access, "signed-in">, string> = {
 
 function allowed(access: Access, viewer: Viewer) {
   if (access === "signed-in") return true;
+  if (access === "caller") return canCall(viewer.role);
   if (access === "staff") return isStaff(viewer.role);
   if (access === "writer") return canWrite(viewer.role);
   return isAdmin(viewer.role);
+}
+
+function denied(access: Access, viewer: Viewer) {
+  // callers have a role: they are refused, not sent to "waiting for access"
+  if (isCaller(viewer.role)) return new ApiError(403, "You don't have access to this page.", "forbidden");
+  const noRole = access === "staff" || access === "caller";
+  return new ApiError(403, DENIED[access as Exclude<Access, "signed-in">], noRole ? "no_role" : "forbidden");
 }
 
 /**
@@ -99,9 +112,7 @@ export function api<P = Record<string, never>>(access: Access, fn: Handler<P>) {
         if (req.cookies.has(AUTH_COOKIE)) res.cookies.delete(AUTH_COOKIE);
         return res;
       }
-      if (!allowed(access, viewer)) {
-        throw new ApiError(403, DENIED[access as Exclude<Access, "signed-in">], access === "staff" ? "no_role" : "forbidden");
-      }
+      if (!allowed(access, viewer)) throw denied(access, viewer);
       const result = await fn({ req, params: await ctx.params, viewer });
       return result instanceof Response ? result : json(result ?? { ok: true });
     } catch (e) {
