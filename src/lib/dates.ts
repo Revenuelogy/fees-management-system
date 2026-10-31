@@ -55,3 +55,10 @@ export function addMonthsIso(iso: string, delta: number): string {
   const last = new Date(Date.UTC(ny, nm, 0)).getUTCDate();
   return `${ny}-${pad(nm)}-${pad(Math.min(d, last))}`;
 }
+
+/** Whole days from `from` to `to` (negative when `to` is earlier). */
+export function daysBetween(from: string, to: string): number {
+  const [y1, m1, d1] = from.split("-").map(Number);
+  const [y2, m2, d2] = to.split("-").map(Number);
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000);
+}

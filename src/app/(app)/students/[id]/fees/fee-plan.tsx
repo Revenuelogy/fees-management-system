@@ -84,12 +84,12 @@ function InstallmentStatus({ lines, dueDate }: { lines: PlanLine[]; dueDate: str
   if (overdue)
     return (
       <Badge tone="critical" title={`Due ${fmtDate(dueDate)}`}>
-        <AlertTriangle className="size-3.5" aria-hidden /> {t.paid > 0 ? "Partly paid · overdue" : "Overdue"}
+        <AlertTriangle className="size-3.5" aria-hidden /> {t.paid > 0 ? "Part paid · due till today" : "Due till today"}
       </Badge>
     );
   return (
     <Badge tone={t.paid > 0 ? "warning" : "neutral"}>
-      <Clock className="size-3.5" aria-hidden /> {t.paid > 0 ? "Partly paid" : "Upcoming"}
+      <Clock className="size-3.5" aria-hidden /> {t.paid > 0 ? "Part paid · due later" : "Due later"}
     </Badge>
   );
 }
@@ -117,11 +117,11 @@ export function FeePlan({
         <table className="w-full min-w-[760px] border-collapse text-left text-subhead">
           <thead className="bg-surface-2 text-caption uppercase tracking-wide text-muted">
             <tr>
-              <th scope="col" className="px-3 py-2 font-medium">Fee head</th>
+              <th scope="col" className="px-3 py-2 font-medium">Fee type</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Amount</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Concession</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Net</th>
-              <th scope="col" className="px-3 py-2 text-right font-medium">Paid</th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">Received</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Remaining</th>
               <th scope="col" className="px-3 py-2 text-right font-medium"><span className="sr-only">Actions</span></th>
             </tr>
@@ -368,7 +368,7 @@ function AddLineForm({
             ))}
           </Select>
         </Field>
-        <Field label="Fee head" htmlFor="add-head">
+        <Field label="Fee type" htmlFor="add-head">
           <Select id="add-head" name="fee_head_id" required defaultValue="">
             <option value="" disabled>
               Choose…

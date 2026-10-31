@@ -164,7 +164,7 @@ export function PromoteForm({
         {noStructure.size > 0 && generate && (
           <p className="mt-1.5">
             <Badge tone="warning">No fee structure</Badge> {listJoin([...noStructure])} {noStructure.size === 1 ? "has" : "have"} no amounts in{" "}
-            {toName} yet, so {noStructure.size === 1 ? "its" : "their"} students get no charges until you set the structure and apply it.
+            {toName} yet, so {noStructure.size === 1 ? "its" : "their"} students get no fees assigned until you set the structure and apply it.
           </p>
         )}
       </div>
@@ -178,7 +178,7 @@ export function PromoteForm({
           className="mt-0.5 size-4 accent-[var(--accent)]"
         />
         <span>
-          Generate charges in {toName} from its fee structure
+          Assign fees in {toName} from its fee structure
           <span className="block text-caption text-muted">You can also do this later from the fee structure page.</span>
         </span>
       </label>

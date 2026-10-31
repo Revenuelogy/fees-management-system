@@ -5,27 +5,38 @@ Fee collection, receipts and a deep analysis layer that answers one question for
 class or student is holding it back, at the level of session, month, installment, class and single student.
 
 Built with **Next.js 16** (App Router) and **PostgreSQL** (any PostgreSQL 13+ server: local, Docker, RDS,
-Cloud SQL, Neon, Supabase…). Admin-only today, with staff roles (accountant, principal, class teacher) already
-modelled.
+Cloud SQL, Neon, Supabase…). Staff sign in with a role: admin, accountant, principal or caller (class teacher is
+reserved for later).
+
+Every page uses the same plain money words (see *How the numbers work*): **Total fees this year**, **Received this
+year**, **Remaining this year**, **Due till today**, **Due later**, **Past year due**, **Total fees incl. previous
+years**, **Remaining incl. past years** and **Total due incl. past years** (= due till today + past year due).
 
 ## What you can do
 
 | Area | Screen | What it shows |
 | --- | --- | --- |
-| Analysis | **Dashboard** (`/`) | Session expected, received, pending, due-to-date gap, previous dues recovered; class-wise pending with share of total; class-wise collection %; monthly trend (monthly and cumulative); top defaulters (by amount or days silent); students by fee status; pending by fee head; payment modes. Toggle *current session only* / *including previous dues*. |
-| | **Monthly** (`/monthly`) | Any month: expected (due this month, optional carry-over and previous dues), received month-to-date, still to come and the daily run-rate needed, students who paid / did not pay, what the money paid for (current year vs previous dues vs advance), daily and cumulative charts, class contribution, payment modes. Past months use the same layout; closed months are frozen snapshots. |
-| | **Month › class** (`/monthly/2026-09/<class>`) | Every student of the class in that month: paid this month, *what it paid for* (session, installment, fee head), % of their outstanding balance it cleared, balance after, status. Paid / not-paid filter. Totals match the month page. |
-| | **Installments** (`/installments`) | Expected vs received vs gap per installment, on time / late / missing, collection targets ("90% of fees due by 31 Dec") with the list of students who would close the gap. |
-| | **Installment detail** (`/installments/2`) | Gap by class (with share of gap), gap by student group (paid full / >½ / <½ / nothing), the smallest set of students holding 50% of the gap ("who to call first"), timing of payments vs due date, late catch-up. |
-| | **Classes** / **Class view** | The dashboard scoped to one class (and section): KPIs, status counts, month strip (click into month › class), installment strip, paid-% bands, student table. |
-| | **Student 360** (`/students/<id>`) | In plain words: what they were supposed to pay, what they paid, where the recent payment went (current year or old dues), what remains. Installment ladder, payment history with allocation and % of balance cleared, dues by session, payment habit, notes and promised dates. |
-| Fees | **Collect fee** (`/collect`) | Type-ahead search (name, admission no, father, phone; Ctrl+K anywhere). Shows open dues oldest first; automatic allocation preview or choose exactly what the payment covers; cash / UPI / cheque / bank / card with references; saves and opens the receipt. |
-| | **Receipt** (`/payments/<id>`) | Printable receipt (single or parent + office copy), amount in words, what each rupee paid for, balance before/after. Cancel with a reason (creates a reversing entry, original stays on record). |
-| | **Payments & receipts** | Register by date range with split current / previous dues / advance, mode totals, search by receipt or cheque/UTR, CSV export. |
-| | **Pending fees** | Everyone who owes money; overdue-only, previous-dues and left-students views; filter by class, section, status; CSV and print. |
-| | **Owner summary** | One page: KPIs, this month, class-wise pending, top 10 defaulters, month-by-month. Print / save as PDF, share on WhatsApp or email. |
-| Setup | Sessions & installments, classes & fee heads, fee structure grid, promote students to the next session, CSV imports (students, opening dues, historical payments). |
-| Admin | School settings and allocation rule, staff & roles, reconciliation checks, re-run allocation, close/reopen months, audit log. |
+| Analysis | **Home** (`/`) | The whole school on one screen, numbers first, for the owner or principal opening the app each day. **Fees** for the year in two rows: this year (total fees, received, remaining, due till today, with one bar split into received / due till today / due later) and including past years (past year due, total fees incl. past years, remaining incl. past years, total due incl. past years). **What happened** today, yesterday, in the last 7 or 30 days: the money that came in (against the period before) and where it came from (after a call, from an activity, paid on their own; this year / past years / paid in advance), the calls made (picked up, promises to pay, money after calls, and today's list: families to call, broken promises, promises due today), the activities running (students taking part, money because of them, the best ones). **School**: students, families, classes and students by status. **Classes**: each class's share of its total fees received, received of total, and what is due till today (red under 30%, amber to 49%, green from 50%). Every figure opens the page behind it; each card loads on its own. |
+| | **Months** (`/monthly`) | Any month: the fees due this month (or everything due so far), received this month and due till today, each class's % of what was due this month and of how much, students who paid / owe fees and paid nothing this month, what the money paid for (this year / past years / paid in advance), daily and running-total charts, class contribution, payment modes. Past months use the same layout; closed months are frozen snapshots. |
+| | **Month › class** (`/monthly/2026-09/<class>`) | Every student of the class in that month: received this month, *what it paid for* (session, installment, fee type), % of what they had left that it cleared, what is left now, status. Paid / not-paid filter. Totals match the month page. |
+| | **Installments** (`/installments`) | Each installment's total, received and what is left (due till today once its date has passed, due later before that), received on time / late / remaining, collection targets ("90% of fees due by 31 Dec") with the students who would make up the shortfall. |
+| | **Installment detail** (`/installments/2`) | What is left by class (out of each class's total), by student group (paid full / >½ / <½ / nothing), the smallest set of students holding half of it ("call these first"), when payments came compared with the due date, late catch-up. |
+| | **Classes** / **Class view** | Each class's received of total fees, remaining this year, due till today and past year due; one class (or section): every total of the year (this year, past years, both together), students by status, each installment's total / received / what is left, month strip (click into month › class), paid-% bands, and the students: every student's totals (filter by status, by *has past year due*, by section), or pick an installment and/or a fee type to see, student by student, what they must pay for it, what was received and what remains (with the class's totals for it). |
+| | **Student 360** (`/students/<id>`) | In plain words: total fees (incl. past years when there are some), received, last payment and where it went ("It went to last year's dues"), remaining. Installment ladder, payment history with what each receipt paid for, fees by session, payment habit, notes and promised dates. |
+| Fees | **Collect fee** (`/collect`, also in the phone top bar) | Type-ahead search (name, admission no, father, phone; Ctrl+K anywhere). Shows the fees due, oldest first; automatic allocation preview or choose exactly what the payment covers (*Pay what is due till today* / *Pay everything remaining*); cash / UPI / cheque / bank / card with references; saves and opens the receipt. |
+| | **Receipt** (`/payments/<id>`) | Printable receipt (single or parent + office copy), amount in words, what each rupee paid for, what was left to pay before/after. Cancel with a reason (creates a reversing entry, original stays on record). |
+| | **Payments & receipts** | Register by date range split into this year / past years / paid in advance, mode totals, search by receipt or cheque/UTR, CSV export. |
+| | **Fees due** (`/pending`) | Everyone with fees due: total fees this year, remaining this year or due till today, past year due as their own column, total due incl. past years, days since last payment; has-past-year-due and left-school views; filter by class, section, status; CSV and print. |
+| | **Owner report** (`/reports/summary`) | One page: every total of the year (this year, past years, both together), this month, remaining by class (with each class's total), top 10 by due till today, month by month. Print / save as PDF, share on WhatsApp or email. |
+| Recovery | **Parents** (`/parents`) | Every family as one parent profile (found by phone number, so brothers and sisters share it) with the children's fees added up: total fees this year, remaining, due till today, past year due, total due incl. past years, days since last payment, family status, last call and open promise. Total due grouped by payment habit and by economic condition. |
+| | **Parent 360** (`/parents/<id>`) | The family in one place, the important part on the first screen: who they are (status, payment habit, means, best time, the last call and the latest promise), total fees / received / remaining (incl. past years when there are some) / last payment, each child with their totals, and what the staff know about the family (concerns, what matters to them, how they behave). Below: the call history with how each promise turned out, every receipt, how reliably they keep promises, payment habit (recorded next to what the records show), fees by year and activities. **Log a call** opens the call form in a panel from the right. |
+| | **Recovery dashboard** (`/recovery`) | For today, yesterday, 7 or 30 days (the default), the school year or any dates: the money received and what brought it in (a call, an activity, or the family on its own), compared with the period before; money per day by source; the recovery work going on (calls made, money after calls, activities running, money from activities); which activity brought the most. The call analytics are on Calls. |
+| | **Calls** (`/calls`), for admin, accountant and principal | **Overview** for today, yesterday, 7 or 30 days: calls made (against the period before), picked up, promised to pay, promises kept, money that came in after calls; calls per day; how the calls went and what families said; **does calling make a difference** (share of families we spoke to who paid against the other families with fees due); promises and how they turned out; who called the most; what the calls were about. **Callers**: every caller's effort (calls, families, days calling, calls a day) next to the result (picked up, promises kept, money after their calls, money per call). **Today's list**: the list below, with *Give to…* on each family. **Assign families**: give any family, on the day's list or not, to a caller for today or a later day with a note; see each caller's families for any day and take families off. |
+| | **Calls** (`/calls`), for callers | The daily call list, made fresh every day and ordered by priority, each family with its main reason (broke a promise, asked to call today, large amount due, never paid, no payment for 2 months, past year due…) and the total due. Each caller takes a batch (*Give me 10 families*) or picks families, gets the families the office gives them (first on the list, marked *Given by …* with the note), and sees **my list** (to call / done), **everyone to call** (with who took whom) and **called today** (every call, about anything). My calls today / yesterday / 7 / 30 days: calls, picked up, not reached, promises, money that came in after them. Also promises falling due, who is off the list and why, and what each caller did today. **Family call page** (`/calls/<parent>`): one-tap dial, why the family is on the list, and everything about the family read-only (family, each child's total fees / remaining / due till today / past year due, installments, receipts, promises, activities with the family's response, call history, notes) next to the call form with *Save & next family*. |
+| | **Find a family** (`/find`), **Promises** (`/promises`) | Search families by a parent's or child's name, admission number or phone; every open promise, soonest date first. Made for callers, open to all staff. |
+| | **Activities** (`/activities`) | Every student activity (extra English practice, a club, a trip for students whose fees are paid…) with a verdict (working well / some effect / not working), the fees received because of it, "N of M families paid", responses, and when it runs ("Starts in 15 days", "Ended 26 Oct"); also by class and by student. **Activity** (`/activities/<id>`): add a class or students, record each family's response and count receipts for it. On a student's profile, **Recovery activities** starts an activity for that student alone or adds them to a running one. |
+| Setup | Sessions & installments, classes & fee types, fee structure grid and assigning fees to students, promote students to the next session, CSV imports (students, past year due, historical payments). |
+| Admin | School settings, allocation rule and promise grace days, staff & roles, reconciliation checks, re-run allocation, close/reopen months, audit log. |
 
 Every table can be sorted, searched and exported to CSV (Excel) with the filters written into the file.
 
@@ -33,41 +44,96 @@ Every table can be sorted, searched and exported to CSV (Excel) with the filters
 
 Two tables feed every number, which is why the parts always add up to the totals:
 
-* **`student_charges`** – what each student must pay, per installment and fee head, after concessions (*expected*).
-* **`allocations`** – what each payment paid for (*received*). A payment of ₹10,000 can become ₹4,000
-  against 2025-26 arrears and ₹6,000 against Installment 1 of 2026-27.
+* **`student_charges`** – what each student must pay, per installment and fee type, after concessions (*total fees*).
+* **`allocations`** – what each payment paid for (*Received*). A payment of ₹10,000 can become ₹4,000
+  against the 2025-26 dues and ₹6,000 against Installment 1 of 2026-27.
 
-| Term | Meaning |
+The money words, the same on every page, tooltip, CSV export and printout (`src/lib/glossary.ts`). Each says what it
+is when read on its own:
+
+| Word | Meaning |
 | --- | --- |
 | Session | One academic year, normally 1 April – 31 March (e.g. 2026-27). |
-| Expected | Charges of the session after concessions. *Due-to-date expected* counts only installments whose due date has passed. |
-| Received | Money allocated to those charges (whenever it was paid). |
-| Pending | Expected − received. *Overdue* is the same for installments already due. |
-| Previous dues | Unpaid charges of earlier sessions. *Opening* = unpaid on the first day of the session; *recovered* = paid since. |
-| Advance | Money not yet matched to any charge (applied automatically when new charges appear). |
+| Total fees this year | What students must pay for this year (fees of the session after concessions). |
+| Received this year | Money received against this year's fees (whenever it was paid). |
+| Remaining this year | This year's fees not received yet: due till today + due later. |
+| Due till today | This year's installments whose due date has passed and are not paid. |
+| Due later | This year's installments whose due date has not come yet. |
+| Past year due | Fees of past years still unpaid. *Received for past years* = paid during this year. |
+| Total fees incl. past years | This year's fees + what was left unpaid from past years when this year started. |
+| Remaining incl. past years | Remaining this year + past year due. |
+| Total due incl. past years | Due till today + past year due. |
+| Paid in advance | Money not yet matched to any fee (used automatically as new fees are assigned). |
 
-**Fee status** (live, per student): *Paid up* (nothing due to date), *Partial*, *Not paying* (nothing paid
-against this session), *Arrears only* (this session clear, old dues remain), *Concession / free*.
+Past year due are always their own figure or column, never added silently into a this-year figure, and every
+part or % on screen is shown with the total it belongs to. The school's, a class's or a section's totals all come
+from `fee_position()`.
+
+**Status tags** (live, per student, the same on every page; hover or tap one for its meaning): *Paid up*
+(green: nothing due till today and nothing left from past years), *Part paid* (blue), *Nothing paid this
+year* (red), *Only past year due* (amber: this year fully paid, past years still unpaid), *Free* (grey).
 
 ### Payment allocation rule
 
 Applied to each payment in date order, and re-run automatically whenever charges, concessions or rules change:
 
 1. Lines chosen at the counter ("choose what it pays for") or saved from the automatic preview.
-2. Hints on imported receipts (session / fee head / installment named by the old ERP).
-3. Default rule (Settings): **oldest dues first** – previous sessions, then the earliest installment,
-   then fee heads in priority order; or **current session first**, then the oldest dues.
-4. Anything above all dues is held as an **advance**.
+2. Hints on imported receipts (session / fee type / installment named by the old ERP).
+3. Default rule (Settings): **oldest fees first** – past year due, then the earliest installment,
+   then fee types in priority order; or **this year first**, then past years.
+4. Anything above all fees is held as **paid in advance**.
 
 Payments are append-only. Cancelling a receipt adds a reversing entry dated today, so a closed month never
 changes; the correction shows in the month it was made. Imported receipts without hints are marked
 *inferred* so you know the split came from the rule rather than the receipt.
 
+### Fee recovery
+
+* **Families.** A parent profile is keyed by a unique phone number (digits only; `+91` and a leading 0 are
+  ignored). A student is linked to the profile of their phone number when they are added, imported or their number
+  changes; a new number creates a profile named after the father (or mother). Two profiles of one family can be
+  merged (the other number becomes the alternate phone, so later admissions with it join too), and a student
+  admitted under another number can be moved into the family by hand. On the profile, staff who can edit change
+  any detail in place: click it or its pencil (Enter saves, Esc cancels), pick payment habit, economic condition,
+  relation and how they deal with the school from a list, and add an empty detail from its "+" chip; **Manage
+  family** keeps adding a sibling, merging and deleting. Family amounts are the children's
+  `student_balances` added up (remaining, due till today and past year due; *total due* = due till today + past year due).
+* **Promises.** A call (or a student note) can carry a date and an amount the family promised to pay by. It is
+  **kept** when the family (any child) pays the amount (or anything, when no amount was given) between the call and
+  the date plus the *grace days* in Settings (default 1: promised for the 18th, paid on the 19th is kept),
+  **partly kept** when less arrived, **broken** when nothing did, and **waiting** until then.
+* **Calls.** Every call says what it was about: fees, the student's studies or report, a parent-teacher meeting,
+  a parent's question, or something else. What the family said about fees and a promise are recorded on fee calls.
+* **Daily call list.** Worked out afresh every day from the rules in Settings: every family with at least the
+  minimum total due (default ₹500, due till today + past year due), except families who paid in the last *N* days (default 30: a
+  family that paid ₹15,000 two weeks ago is not called even if it still owes ₹35,000), families waiting for a promise
+  (until the promised date plus the grace days) and families called recently (after a fee call that got through,
+  *days between calls*, default 7; after one that did not, the next day; or the date they asked to be called on).
+  A broken promise puts the family back the day after its deadline, whatever it paid before. Priority: broken
+  promises and call-backs first, then the larger amounts due, the longer time since the last payment and
+  past year due; families who can pay
+  (economic condition, payment habit) move up and families that cannot be reached move down. Callers take families
+  from it (a fee call made today also puts the family on the caller's list); untaken families stay for anyone.
+* **Giving families to callers.** Admin, accountant and principal can give any family, on the day's list or not, to
+  anyone who makes calls, for today or a day in the next 60 days, with a note. That day the family is first on the
+  caller's list ("Given by …"), whatever the rules would say; the caller (or the office) can take it off again.
+* **What brought a payment in.** At the fee counter the accountant ticks the call (to the family, in the last 30
+  days) or the activity (of the student) that brought the payment in; a fee call that got through in the last week,
+  or whose promise is still running, is ticked by default. It can be changed on the receipt. Each receipt counts
+  for one thing. These ticks split the money on the recovery dashboard into *after a call*, *from an activity* and *paid on
+  their own*, and give each caller and each activity the money it brought in.
+* **Does calling make a difference.** Of the families we spoke to about fees in the period, the share that paid on
+  or after the call; of the other families with fees due (the minimum total due now, or who paid fees that were due in
+  the period), the share that paid fees that were due.
+* **Activities.** An activity is *working well* when half or more of its families with fees due (paid since it
+  started, or something due till today) paid because of it (a receipt counted for it) or its target is reached; *some effect* from a quarter;
+  *not working* below that; *too early* in its first week while nothing is counted.
+
 ### Consistency checks
 
-`Admin › Reconciliation` runs these live for any session: sum of class pending = school pending; sum of
-monthly received = session received; installment received + previous dues + advance = total received;
-every payment fully allocated; no charge over-collected; enrolled students without a fee plan.
+`Admin › Reconciliation` runs these live for any session: sum of class balances = school balance; sum of
+monthly received = session received; installments received + received for past years + paid in advance = total
+received; every payment fully allocated; no fee line over-collected; enrolled students without fees assigned.
 
 ## How it is built
 
@@ -99,14 +165,18 @@ Browser (React screens)  ──fetch JSON──▶  REST API  src/app/api/**/rou
 | Area | Endpoints |
 | --- | --- |
 | Sign in | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `GET /api/bootstrap` (viewer, sessions, classes, settings) |
-| Analytics | `GET /api/analytics/dashboard`, `defaulters`, `balances`, `classes`, `classes/[id]`, `months/[month]` (+ `/payments`, `/non-payers`, `/classes/[classId]`), `installments`, `installments/[number]`, `reconciliation` |
+| Home | `GET /api/analytics/position?session[&class&section]` (every total of the year), `GET /api/home/fees?session`, `GET /api/home/today`, `GET /api/home/classes?session`, `GET /api/recovery?from&to` (one per card) |
+| Analytics | `GET /api/analytics/dashboard`, `defaulters`, `balances`, `classes`, `classes/[id]` (+ `/lines?installment&fee_head`: one installment or fee type per student), `months/[month]` (+ `/payments`, `/non-payers`, `/classes/[classId]`), `installments`, `installments/[number]`, `reconciliation` |
 | Students | `GET/POST /api/students`, `GET /api/students/search`, `GET/PUT/DELETE /api/students/[id]`, `…/360`, `…/dues`, `…/fees`, `…/withdraw`, `…/reactivate`, `…/notes`, `…/charges`, `…/charges/generate`, `…/concessions`, `…/opening-dues` |
-| Money | `GET/POST /api/payments`, `GET /api/payments/[id]`, `POST /api/payments/[id]/cancel`, `GET/POST /api/targets`, `GET/DELETE /api/targets/[id]` |
+| Money | `GET/POST /api/payments` (a payment can be counted for a call or an activity), `GET /api/payments/[id]`, `POST /api/payments/[id]/cancel`, `PUT /api/payments/[id]/source`, `GET/POST /api/targets`, `GET/DELETE /api/targets/[id]` |
+| Recovery | `GET /api/recovery?from&to` (money and what brought it in, calls made, activities), `GET /api/calls` (today's list), `POST /api/calls/take`, `POST /api/calls/release`, `GET /api/calls/analytics?from&to`, `GET /api/calls/assignments?date`, `POST /api/calls/assign`, `POST /api/calls/unassign`, `GET/POST /api/parents`, `POST /api/parents/link`, `GET/PUT/PATCH/DELETE /api/parents/[id]` (PATCH = one detail) (+ `/children`, `/merge`, `/calls`, `/calls/[callId]`), `GET/POST /api/activities`, `GET/PUT/DELETE /api/activities/[id]` (+ `/participants`, `/participants/[participantId]`), `GET /api/students/[id]/recovery`, `GET /api/families/search?q`, `GET /api/promises`, `PUT /api/settings/call-rules` |
 | Setup | `/api/sessions` (+ `/[id]`, `/current`, `/installments`), `/api/installments/[id]`, `/api/classes`, `/api/fee-heads`, `/api/fee-structure` (+ `/copy`, `/apply`), `/api/promote`, `POST /api/imports/[kind]`, `GET /api/setup/checklist`, `GET /api/setup/classes` |
-| Admin | `/api/settings` (+ `/allocation-rule`), `/api/staff` (+ `/[id]`, `/[id]/password`), `POST /api/admin/reallocate`, `POST /api/months/[month]/close` and `/reopen`, `GET /api/admin/snapshots`, `GET /api/admin/audit` |
+| Admin | `/api/settings` (+ `/allocation-rule`, `/promise-grace`), `/api/staff` (+ `/[id]`, `/[id]/password`), `POST /api/admin/reallocate`, `POST /api/months/[month]/close` and `/reopen`, `GET /api/admin/snapshots`, `GET /api/admin/audit` |
 
 Money is integer paise in every request and response; dates are `YYYY-MM-DD`. Errors come back as
-`{ "error": "…" }` with a status code (400 invalid, 401 not signed in, 403 role, 404, 409 conflict).
+`{ "error": "…" }` with a status code (400 invalid, 401 not signed in, 403 role, 404, 409 conflict). A caller
+gets 403 from every endpoint except the calling ones (the call list, a family, a student's profile, Find a
+family, Promises, logging a call, notes, activity responses).
 
 ## Running it locally
 
@@ -121,11 +191,12 @@ docker run -d --name fees-db -p 5432:5432 \
 ```bash
 npm install
 cp .env.example .env.local    # set DATABASE_URL
-npm run db:reset              # creates the schema + loads demo data (2 sessions, ~340 students)
+npm run db:reset              # creates the schema + loads demo data (2 sessions, ~340 students, calls and activities)
 npm run dev                   # http://localhost:3000
 ```
 
-Demo login: **admin@school.test** / **admin12345**.
+Demo login: **admin@school.test** / **admin12345**. The same password signs in **neha@school.test**
+(accountant), **ravi@school.test** (principal) and **pooja@school.test** (caller, 8 families on today's list).
 
 Database scripts (they read `DATABASE_URL` from the environment or `.env.local`):
 
@@ -134,7 +205,7 @@ Database scripts (they read `DATABASE_URL` from the environment or `.env.local`)
 | `npm run db:migrate` | Applies new files from `db/migrations`, in order, once each (tracked in `schema_migrations`). |
 | `npm run db:seed` | Loads the demo data (local only). |
 | `npm run db:reset` | Drops everything, migrates and seeds. Refuses non-local databases unless you add `-- --force`. |
-| `npm run db:test` | pgTAP tests for the allocation engine, security and reconciliation (needs the `pgtap` extension, e.g. `apt install postgresql-17-pgtap`). |
+| `npm run db:test` | pgTAP tests for the allocation engine, security, reconciliation, fee recovery, the Caller role and the Home figures (needs the `pgtap` extension, e.g. `apt install postgresql-17-pgtap`). |
 | `npm run db:create-user -- --email … --password … [--name …] [--role …]` | Creates a login. The first login on a new database becomes admin. |
 | `npm run db:set-password -- --email … --password …` | Sets a new password from the command line. |
 
@@ -159,8 +230,8 @@ Other checks: `npm run typecheck`, `npm run lint`.
    a load balancer each keeps its own cache; writes clear it on the instance that handled them and the others
    catch up within `CACHE_TTL_SECONDS` (set it lower, or to 0, if that matters).
 5. Sign in and follow *Setup checklist*: create the session with its installments → classes and fee
-   heads → fee structure → import or add students (with class) → generate charges → import opening dues
-   and old receipts if you have them → start collecting.
+   types → fee structure → import or add students (with class) → assign fees to students → import the old
+   balance and old receipts if you have them → start collecting.
 
 After updating the code, run `npm run db:migrate` again before starting the new version.
 
@@ -178,8 +249,9 @@ select public.grant_app_access('fees_app');   -- as the schema owner; repeat aft
 | Role | Access |
 | --- | --- |
 | Admin (owner / director) | Everything, including settings, staff, closing months and re-running allocation. |
-| Accountant | Collect fees, cancel receipts, edit students and fee data, imports, reconciliation. |
-| Principal | Read-only analytics, class and student views. |
+| Accountant | Collect fees, cancel receipts, edit students and fee data, imports, reconciliation, parent profiles, student activities, what brought a payment in. Calls parents. |
+| Principal | Sees Home, the reports and every class, student and parent view (read-only), and the call analytics. Calls parents from the daily list and gives families to callers. Cannot change fees. |
+| Caller | Only calls families: lands on *My calls* (`/calls`, My list open) and sees just My calls, Find a family and Promises. Takes families from the list, logs calls, adds notes, records a family's response to an activity, and sees each family's full profile and each student's profile read-only. No Home, reports or school totals, no collecting or changing fees, no editing students or parents, no exports, no Setup or Settings. A blocked page shows "You don't have access to this page" with a link back to My calls, and the API and the SQL functions refuse the action as well. |
 | Class teacher | Reserved for a later release (own class only); currently no data access. |
 
 Access is checked by the API on every request and again inside every SQL function (and by row-level security
@@ -192,19 +264,23 @@ after 7 days without use (30 days at most), and signing out ends the session on 
 
 ```
 db/
-  migrations/   schema + RLS, allocation engine, operations, analytics, app access
+  migrations/   schema + RLS, allocation engine, operations, analytics, app access, fee recovery, daily calls,
+                the Caller role, Home, dashboards and giving families to callers, fee position
   seed.sql      deterministic demo data (local only)
   tests/        pgTAP tests (npm run db:test)
 scripts/db.mjs  migrate / seed / reset / test / create-user / set-password
 src/
   app/api/      the REST API (route handlers)
-  app/(app)/    signed-in screens (dashboard, monthly, installments, classes, students,
-                collect, payments, pending, reports, setup, settings, admin); each page renders a
+  app/(app)/    signed-in screens (home, monthly, installments, classes, students, collect, payments,
+                pending = Fees due, reports, parents, recovery, calls, find, promises, activities, setup,
+                settings, admin);
+                each page renders a
                 client view that loads its data from the API
   app/login     sign in
   server/       backend only: database pool, auth, cache, validation, services
   components/   UI kit, charts, layout (app shell, sidebar, search, session switcher)
-  lib/          shared types, formatting (money is integer paise), roles; lib/api = browser API client
+  lib/          shared types, formatting (money is integer paise), roles, glossary (the money words);
+                lib/api = browser API client
 ```
 
 See `AGENTS.md` for coding conventions.

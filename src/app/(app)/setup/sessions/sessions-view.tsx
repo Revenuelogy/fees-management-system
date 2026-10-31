@@ -33,7 +33,7 @@ export function SessionsView() {
       <PageHeader
         title="Sessions & installments"
         description="Academic years and the dates fees fall due."
-        info="Each session has its own installments. Names and due dates can change at any time; an installment can only be removed while nobody is billed against it."
+        info="Each session has its own installments. Names and due dates can change at any time; an installment can only be removed while no student has fees assigned on it."
         actions={
           <LinkButton href="#new-session" variant="primary">
             <Plus className="size-4" aria-hidden /> New session

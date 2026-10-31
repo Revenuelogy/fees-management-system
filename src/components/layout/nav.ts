@@ -10,7 +10,7 @@ export const NAV: NavGroup[] = [
   {
     label: "Overview",
     items: [
-      { href: "/", label: "Dashboard", icon: "LayoutGrid", color: "blue" },
+      { href: "/", label: "Home", icon: "LayoutGrid", color: "blue" },
       { href: "/monthly", label: "Months", icon: "CalendarDays", color: "red" },
       { href: "/installments", label: "Installments", icon: "Layers", color: "indigo" },
       { href: "/classes", label: "Classes", icon: "School", color: "teal" },
@@ -20,9 +20,18 @@ export const NAV: NavGroup[] = [
     label: "Money",
     items: [
       { href: "/payments", label: "Payments", icon: "Receipt", color: "green" },
-      { href: "/pending", label: "Pending fees", icon: "Hourglass", color: "orange" },
+      { href: "/pending", label: "Fees due", icon: "Hourglass", color: "orange" },
       { href: "/students", label: "Students", icon: "Users", color: "blue" },
       { href: "/reports/summary", label: "Owner report", icon: "FileText", color: "gray" },
+    ],
+  },
+  {
+    label: "Recovery",
+    items: [
+      { href: "/recovery", label: "Recovery dashboard", icon: "TrendingUp", color: "green" },
+      { href: "/calls", label: "Calls", icon: "PhoneCall", color: "blue" },
+      { href: "/activities", label: "Activities", icon: "Sparkles", color: "teal" },
+      { href: "/parents", label: "Parents", icon: "UsersRound", color: "indigo" },
     ],
   },
   {
@@ -33,6 +42,26 @@ export const NAV: NavGroup[] = [
     ],
   },
 ];
+
+/** A caller's menu: their calls, finding a family, and open promises. */
+export const CALLER_NAV: NavGroup[] = [
+  {
+    label: "Calling",
+    items: [
+      { href: "/calls", label: "My calls", icon: "PhoneCall", color: "blue" },
+      { href: "/find", label: "Find a family", icon: "Search", color: "indigo" },
+      { href: "/promises", label: "Promises", icon: "CalendarClock", color: "teal" },
+    ],
+  },
+];
+
+/** Where a caller lands, and the screens a caller may open (the API refuses everything else as well). */
+export const CALLER_HOME = "/calls?tab=mine";
+const CALLER_PATHS = [/^\/calls(\/[0-9a-f-]{36})?$/, /^\/find$/, /^\/promises$/, /^\/students\/[0-9a-f-]{36}$/, /^\/parents\/[0-9a-f-]{36}$/];
+
+export function callerMayOpen(pathname: string) {
+  return CALLER_PATHS.some((re) => re.test(pathname));
+}
 
 export const SETUP_TABS = [
   { href: "/setup", label: "Checklist" },

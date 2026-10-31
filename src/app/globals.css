@@ -247,8 +247,21 @@ body {
 .animate-rise {
   animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+/* a panel sliding in from the right (Drawer) */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+.animate-drawer {
+  animation: drawer-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise {
+  .animate-rise,
+  .animate-drawer {
     animation: none;
   }
 }

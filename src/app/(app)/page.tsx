@@ -1,7 +1,7 @@
-import { DashboardView } from "./dashboard-view";
+import { HomeView } from "./home-view";
 
-export const metadata = { title: "Dashboard" };
+export const metadata = { title: "Home" };
 
-export default async function DashboardPage({ searchParams }: PageProps<"/">) {
-  return <DashboardView sp={await searchParams} />;
+export default async function HomePage({ searchParams }: PageProps<"/">) {
+  return <HomeView sp={await searchParams} />;
 }

@@ -178,7 +178,7 @@ export async function deleteInstallment(viewer: Viewer, id: string) {
     ]);
     if (chg) {
       throw fail(
-        `${inst.name} cannot be deleted: ${plural(chg, "student charge is", "student charges are")} billed against it. Rename it or change its due date instead.`,
+        `${inst.name} cannot be deleted: ${plural(chg, "student fee line is", "student fee lines are")} assigned on it. Rename it or change its due date instead.`,
       );
     }
     if (hint) throw fail(`${inst.name} cannot be deleted: ${plural(hint, "imported payment refers", "imported payments refer")} to it.`);
@@ -257,7 +257,7 @@ export async function addFeeHead(viewer: Viewer, input: FeeHeadInput) {
 export async function updateFeeHead(viewer: Viewer, id: string, input: FeeHeadInput) {
   return write(viewer, async (db) => {
     const before = await db.one<{ priority: number }>("select priority from public.fee_heads where id = $1", [id]);
-    if (!before) throw notFound("That fee head no longer exists.");
+    if (!before) throw notFound("That fee type no longer exists.");
     // a new priority re-runs payment allocation for every student (database trigger)
     await db.query("update public.fee_heads set name = $2, priority = $3, is_active = $4 where id = $1", [id, input.name, input.priority, input.is_active]);
     return { message: before.priority !== input.priority ? "Saved. Payment allocation was re-run for every student." : "Saved." };
@@ -267,7 +267,7 @@ export async function updateFeeHead(viewer: Viewer, id: string, input: FeeHeadIn
 export async function deleteFeeHead(viewer: Viewer, id: string) {
   return write(viewer, async (db) => {
     const head = await db.one<{ name: string }>("select name from public.fee_heads where id = $1", [id]);
-    if (!head) throw notFound("That fee head no longer exists.");
+    if (!head) throw notFound("That fee type no longer exists.");
     const [chg, fs, pay, alloc] = await Promise.all([
       db.count("select 1 from public.student_charges where fee_head_id = $1", [id]),
       db.count("select 1 from public.fee_structures where fee_head_id = $1", [id]),
@@ -395,7 +395,7 @@ export async function applyStructure(viewer: Viewer, sessionId: string, classId:
     return {
       message:
         n === 0
-          ? `Nothing to change in ${target}: no student was missing a charge${overwrite ? " or had a different amount" : ""}.`
+          ? `Nothing to change in ${target}: every student already had these fees${overwrite ? " at the same amounts" : ""}.`
           : `Applied to ${target}: ${plural(n, "charge line")} added${overwrite ? ", updated or removed" : ""}.`,
     };
   });

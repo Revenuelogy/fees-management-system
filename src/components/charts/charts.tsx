@@ -28,7 +28,12 @@ function ChartTooltip({
   label,
   series,
   footer,
-}: Partial<TooltipContentProps<number, string>> & { series: SeriesKey[]; footer?: (row: Record<string, unknown>) => string | null }) {
+  format = rupees,
+}: Partial<TooltipContentProps<number, string>> & {
+  series: SeriesKey[];
+  footer?: (row: Record<string, unknown>) => string | null;
+  format?: (v: number) => string;
+}) {
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload as Record<string, unknown>;
   return (
@@ -41,7 +46,7 @@ function ChartTooltip({
               <span className={s.shape === "line" ? "h-[3px] w-3 rounded-full" : "size-2 rounded-full"} style={{ background: s.color }} aria-hidden />
               {s.label}
             </span>
-            <span className="font-semibold tabular text-ink">{rupees(Number(row?.[s.key] ?? 0))}</span>
+            <span className="font-semibold tabular text-ink">{format(Number(row?.[s.key] ?? 0))}</span>
           </li>
         ))}
       </ul>
@@ -86,13 +91,13 @@ function ViewToggle<T extends string>({ value, options, onChange }: { value: T; 
 }
 
 /**
- * Month-by-month collection across a session.
- * Monthly: scheduled (neutral column) beside received (stacked by what it paid for).
- * Cumulative: running totals of scheduled vs received.
+ * Month-by-month money received across a session.
+ * Monthly: installments due (neutral column) beside received (stacked by what it paid for: this year, past years,
+ * paid in advance; a part with nothing in it is left out of the legend).
+ * Cumulative: running totals of installments due vs received.
  */
 export function CollectionTrendChart({
   data,
-  includeArrears,
   hrefBase,
   hrefSuffix = "",
   height = 260,
@@ -109,7 +114,6 @@ export function CollectionTrendChart({
     cum_received?: number;
     is_future?: boolean;
   }[];
-  includeArrears: boolean;
   hrefBase?: string;
   hrefSuffix?: string;
   height?: number;
@@ -119,19 +123,17 @@ export function CollectionTrendChart({
   const [view, setView] = useState<"monthly" | "cumulative">("monthly");
   const hasCumulative = data.some((d) => d.cum_expected !== undefined);
 
+  const hasOld = data.some((d) => d.arrears > 0);
+  const hasAdvance = data.some((d) => d.advance > 0);
   const monthly: SeriesKey[] = [
-    { key: "expected", label: "Due", color: "var(--series-track)", shape: "rect" },
+    { key: "expected", label: "Installments due", color: "var(--series-track)", shape: "rect" },
     { key: "current", label: "This year", color: "var(--series-1)", shape: "rect" },
-    ...(includeArrears
-      ? ([
-          { key: "arrears", label: "Old dues", color: "var(--series-2)", shape: "rect" },
-          { key: "advance", label: "Advance", color: "var(--series-3)", shape: "rect" },
-        ] as SeriesKey[])
-      : []),
+    ...(hasOld ? [{ key: "arrears", label: "Past years", color: "var(--series-2)", shape: "rect" } as SeriesKey] : []),
+    ...(hasAdvance ? [{ key: "advance", label: "Paid in advance", color: "var(--series-3)", shape: "rect" } as SeriesKey] : []),
   ];
   const cumulative: SeriesKey[] = [
-    { key: "cum_expected", label: "Due so far", color: "var(--ink-2)", shape: "line" },
-    { key: "cum_current", label: "Collected so far", color: "var(--series-1)", shape: "line" },
+    { key: "cum_expected", label: "Installments due so far", color: "var(--ink-2)", shape: "line" },
+    { key: "cum_current", label: "Received so far", color: "var(--series-1)", shape: "line" },
   ];
   const rows = data.map((d) => ({ ...d, tooltipLabel: d.label, cum_current: d.is_future ? null : d.cum_current }));
   const onClick = (e: unknown) => {
@@ -168,9 +170,9 @@ export function CollectionTrendChart({
                 content={(p) => <ChartTooltip {...(p as TooltipContentProps<number, string>)} series={monthly} footer={() => (hrefBase ? "Click to open this month" : null)} />}
               />
               <Bar dataKey="expected" fill="var(--series-track)" maxBarSize={18} radius={[6, 6, 6, 6]} isAnimationActive={false} />
-              <Bar dataKey="current" stackId="r" fill="var(--series-1)" maxBarSize={18} radius={includeArrears ? [0, 0, 6, 6] : [6, 6, 6, 6]} isAnimationActive={false} />
-              {includeArrears && <Bar dataKey="arrears" stackId="r" fill="var(--series-2)" maxBarSize={18} isAnimationActive={false} />}
-              {includeArrears && <Bar dataKey="advance" stackId="r" fill="var(--series-3)" maxBarSize={18} radius={[6, 6, 0, 0]} isAnimationActive={false} />}
+              <Bar dataKey="current" stackId="r" fill="var(--series-1)" maxBarSize={18} radius={hasOld || hasAdvance ? [0, 0, 6, 6] : [6, 6, 6, 6]} isAnimationActive={false} />
+              {hasOld && <Bar dataKey="arrears" stackId="r" fill="var(--series-2)" maxBarSize={18} radius={hasAdvance ? [0, 0, 0, 0] : [6, 6, 0, 0]} isAnimationActive={false} />}
+              {hasAdvance && <Bar dataKey="advance" stackId="r" fill="var(--series-3)" maxBarSize={18} radius={[6, 6, 0, 0]} isAnimationActive={false} />}
             </ComposedChart>
           ) : (
             <ComposedChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -6 }} onClick={onClick} style={{ cursor: hrefBase ? "pointer" : undefined }}>
@@ -208,8 +210,8 @@ export function DailyCollectionChart({
   const gid = useId().replace(/:/g, "");
   const [view, setView] = useState<"daily" | "cumulative">("daily");
   const canCumulate = data.some((d) => d.cumulative !== undefined);
-  const daily: SeriesKey[] = [{ key: "amount", label: "Collected", color: "var(--series-1)", shape: "rect" }];
-  const cum: SeriesKey[] = [{ key: "cumulative", label: "Collected so far", color: "var(--series-1)", shape: "line" }];
+  const daily: SeriesKey[] = [{ key: "amount", label: "Received", color: "var(--series-1)", shape: "rect" }];
+  const cum: SeriesKey[] = [{ key: "cumulative", label: "Received so far", color: "var(--series-1)", shape: "line" }];
   const rows = data.map((d) => ({
     ...d,
     cumulative: d.is_future ? null : d.cumulative,
@@ -219,7 +221,7 @@ export function DailyCollectionChart({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <ChartLegend items={view === "daily" ? daily : [...cum, ...(target ? [{ key: "t", label: "Expected", color: "var(--ink-2)", shape: "line" as const }] : [])]} />
+        <ChartLegend items={view === "daily" ? daily : [...cum, ...(target ? [{ key: "t", label: "Installments due this month", color: "var(--ink-2)", shape: "line" as const }] : [])]} />
         {canCumulate && (
           <ViewToggle
             value={view}
@@ -275,4 +277,95 @@ export function CumulativeChart({
   height?: number;
 }) {
   return <DailyCollectionChart data={data.map((d) => ({ ...d, amount: 0, count: 0 }))} target={target} height={height} />;
+}
+
+/**
+ * Money received per day (week, month), stacked by what brought it in: a call, an activity, or the family paid on
+ * its own (neutral). Blue / teal / track from the validated palette; orange stays reserved for past year due.
+ */
+export function RecoverySourceChart({
+  data,
+  height = 240,
+}: {
+  data: { label: string; tooltipLabel: string; calls: number; activities: number; direct: number }[];
+  height?: number;
+}) {
+  const series: SeriesKey[] = [
+    { key: "calls", label: "After a call", color: "var(--series-1)", shape: "rect" },
+    { key: "activities", label: "From an activity", color: "var(--series-3)", shape: "rect" },
+    { key: "direct", label: "Paid on their own", color: "var(--series-track)", shape: "rect" },
+  ];
+  return (
+    <div>
+      <div className="mb-4">
+        <ChartLegend items={series} />
+      </div>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -6 }} barCategoryGap="22%">
+            <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+            <XAxis dataKey="label" {...X_AXIS} interval="preserveStartEnd" minTickGap={12} />
+            <YAxis {...Y_AXIS} tickFormatter={(v) => compactAxis(Number(v))} />
+            <Tooltip
+              cursor={{ fill: "var(--fill-2)", radius: 6 }}
+              content={(p) => (
+                <ChartTooltip
+                  {...(p as TooltipContentProps<number, string>)}
+                  series={series}
+                  footer={(r) => `Total ${rupees(Number(r.calls ?? 0) + Number(r.activities ?? 0) + Number(r.direct ?? 0))}`}
+                />
+              )}
+            />
+            <Bar dataKey="calls" stackId="m" fill="var(--series-1)" maxBarSize={22} isAnimationActive={false} />
+            <Bar dataKey="activities" stackId="m" fill="var(--series-3)" maxBarSize={22} isAnimationActive={false} />
+            <Bar dataKey="direct" stackId="m" fill="var(--series-track)" maxBarSize={22} radius={[5, 5, 0, 0]} isAnimationActive={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/** Calls per day (week, month): picked up (blue) on top of the ones that did not get through (neutral). */
+export function CallsTrendChart({
+  data,
+  height = 200,
+}: {
+  data: { label: string; tooltipLabel: string; connected: number; not_reached: number }[];
+  height?: number;
+}) {
+  const series: SeriesKey[] = [
+    { key: "connected", label: "Picked up", color: "var(--series-1)", shape: "rect" },
+    { key: "not_reached", label: "Not reached", color: "var(--series-track)", shape: "rect" },
+  ];
+  const count = (v: number) => `${v} ${v === 1 ? "call" : "calls"}`;
+  return (
+    <div>
+      <div className="mb-4">
+        <ChartLegend items={series} />
+      </div>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }} barCategoryGap="22%">
+            <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+            <XAxis dataKey="label" {...X_AXIS} interval="preserveStartEnd" minTickGap={12} />
+            <YAxis {...Y_AXIS} allowDecimals={false} />
+            <Tooltip
+              cursor={{ fill: "var(--fill-2)", radius: 6 }}
+              content={(p) => (
+                <ChartTooltip
+                  {...(p as TooltipContentProps<number, string>)}
+                  series={series}
+                  format={count}
+                  footer={(r) => count(Number(r.connected ?? 0) + Number(r.not_reached ?? 0))}
+                />
+              )}
+            />
+            <Bar dataKey="connected" stackId="c" fill="var(--series-1)" maxBarSize={22} isAnimationActive={false} />
+            <Bar dataKey="not_reached" stackId="c" fill="var(--series-track)" maxBarSize={22} radius={[5, 5, 0, 0]} isAnimationActive={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
 }
