@@ -1,14 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, IndianRupee, Pencil, Phone, PhoneCall, Sparkles, Wallet } from "lucide-react";
+import { useState, useTransition } from "react";
+import { AlertTriangle, CheckCircle2, Clock, IndianRupee, Phone, PhoneCall, Plus, Sparkles, Users, Wallet } from "lucide-react";
 import { apiUrl } from "@/lib/api/client";
 import { useApi } from "@/lib/api/hooks";
 import { cn } from "@/lib/cn";
 import { MODE_LABELS, fmtDate, pct, ratioPct, rupees, rupeesShort } from "@/lib/format";
-import { ATTITUDE_LABELS, BEHAVIOUR_LABELS, ECONOMIC_LABELS, OUTCOME_LABELS, RELATION_LABELS, RESPONSE_LABELS, TIMING_LABELS, fmtPhone } from "@/lib/recovery";
-import type { Parent360 } from "@/lib/types";
+import {
+  ATTITUDES,
+  ATTITUDE_LABELS,
+  BEHAVIOURS,
+  BEHAVIOUR_LABELS,
+  ECONOMIC,
+  ECONOMIC_LABELS,
+  OUTCOME_LABELS,
+  RELATIONS,
+  RELATION_LABELS,
+  RESPONSE_LABELS,
+  TIMING_LABELS,
+  fmtPhone,
+  type Behaviour,
+} from "@/lib/recovery";
+import type { ActionState } from "@/lib/action-state";
+import type { Parent, Parent360 } from "@/lib/types";
 import { MONEY } from "@/lib/glossary";
 import { useApp } from "@/components/layout/app-shell";
 import { Pending } from "@/components/ui/page-state";
@@ -16,7 +31,8 @@ import { Breadcrumbs } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
-import { FormSuccess } from "@/components/ui/form";
+import { FormError, FormSuccess } from "@/components/ui/form";
+import { ADD_CHIP, InlineChoice, InlineText, type InlineOption } from "@/components/ui/inline-edit";
 import { Drawer } from "@/components/ui/drawer";
 import { FeeStatusBadge } from "@/components/ui/status";
 import { Meter } from "@/components/ui/bars";
@@ -27,6 +43,7 @@ import { Empty } from "@/components/ui/empty";
 import { BehaviourBadge, EconomicBadge, ParticipantBadge, PromiseBadge, PromiseLine } from "@/components/recovery";
 import { CallForm } from "../call-form";
 import { CallHistory } from "../call-history";
+import { saveParentField, type ParentDetail } from "../actions";
 
 const HABIT = {
   early: "Pays before the due date",
@@ -36,12 +53,19 @@ const HABIT = {
   no_history: "Nothing paid against fees yet",
 } as const;
 
+const BEHAVIOUR_OPTIONS = BEHAVIOURS.map((v) => ({ value: v, label: BEHAVIOUR_LABELS[v].label, hint: BEHAVIOUR_LABELS[v].hint }));
+const ECONOMIC_OPTIONS = ECONOMIC.map((v) => ({ value: v, label: ECONOMIC_LABELS[v] }));
+const ATTITUDE_OPTIONS = ATTITUDES.map((v) => ({ value: v, label: ATTITUDE_LABELS[v] }));
+const RELATION_OPTIONS = RELATIONS.map((v) => ({ value: v, label: RELATION_LABELS[v] }));
+const ATTITUDE_TONE = { cooperative: "good", neutral: "neutral", demanding: "serious", difficult: "critical" } as const;
+
 export function ParentView({ id }: { id: string }) {
   const { session, writer, viewer } = useApp();
   const res = useApi<Parent360>(apiUrl(`/api/parents/${id}`, { session: session?.id }));
   const [logOpen, setLogOpen] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   if (!res.data) return <Pending queries={[res]} />;
+  const saver = (field: ParentDetail) => (value: string | null) => saveParentField(id, field, value);
   const d = res.data;
   const p = d.parent;
   const t = d.totals;
@@ -63,12 +87,22 @@ export function ParentView({ id }: { id: string }) {
           <Avatar name={p.name} size="xl" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-title1 font-bold text-ink">{p.name}</h1>
+              <InlineText value={p.name} label="Name" canEdit={writer} onSave={saver("name")} maxLength={200} inline inputClassName="h-11 text-title3 font-semibold">
+                <h1 className="text-title1 font-bold text-ink">{p.name}</h1>
+              </InlineText>
               <FeeStatusBadge status={t?.family_status} />
-              <BehaviourBadge value={p.payment_behaviour} />
-              <EconomicBadge value={p.economic_status} />
+              <InlineChoice value={p.payment_behaviour} label="Payment habit" options={BEHAVIOUR_OPTIONS} canEdit={writer} onSave={saver("payment_behaviour")}>
+                <BehaviourBadge value={p.payment_behaviour} />
+              </InlineChoice>
+              <InlineChoice value={p.economic_status} label="Economic condition" options={ECONOMIC_OPTIONS} canEdit={writer} onSave={saver("economic_status")}>
+                <EconomicBadge value={p.economic_status} />
+              </InlineChoice>
               {p.attitude && p.attitude !== "neutral" && (
-                <Badge tone={p.attitude === "difficult" ? "critical" : p.attitude === "demanding" ? "serious" : "good"}>{ATTITUDE_LABELS[p.attitude]}</Badge>
+                <InlineChoice value={p.attitude} label="Deals with the school" options={ATTITUDE_OPTIONS} canEdit={writer} onSave={saver("attitude")}>
+                  <Badge tone={ATTITUDE_TONE[p.attitude]} title="Deals with the school">
+                    {ATTITUDE_LABELS[p.attitude]}
+                  </Badge>
+                </InlineChoice>
               )}
             </div>
             <p className="mt-1 text-subhead text-ink-2">
@@ -115,8 +149,8 @@ export function ParentView({ id }: { id: string }) {
               Call page
             </LinkButton>
             {writer && (
-              <LinkButton href={`/parents/${id}/edit`}>
-                <Pencil className="size-4" /> Edit
+              <LinkButton href={`/parents/${id}/edit`} variant="plain" className="px-1" title="Add a brother or sister, merge with another profile or delete it">
+                <Users className="size-4" /> Manage family
               </LinkButton>
             )}
           </div>
@@ -200,7 +234,7 @@ export function ParentView({ id }: { id: string }) {
                         </div>
                         <FeeStatusBadge status={c.fee_status} />
                       </div>
-                      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+                      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
                         <ChildFig label={MONEY.total_fee.short} value={c.expected} />
                         <ChildFig label={MONEY.received.short} value={c.received} tone="text-good-ink" />
                         <ChildFig label={MONEY.due_now.short} value={c.overdue} tone={c.overdue > 0 ? "text-critical-ink" : undefined} />
@@ -272,34 +306,7 @@ export function ParentView({ id }: { id: string }) {
         </div>
 
         <div className="space-y-5">
-          <Card title="About the family" actions={writer ? <Link href={`/parents/${id}/edit`} className="text-footnote font-medium text-accent">Edit</Link> : undefined}>
-            <dl className="space-y-3 text-subhead">
-              {[
-                ["Economic condition", p.economic_status ? ECONOMIC_LABELS[p.economic_status] : null],
-                ["Deals with the school", p.attitude ? ATTITUDE_LABELS[p.attitude] : null],
-                ["Main concern about the child", p.concerns],
-                ["What matters most to them", p.priorities],
-                ["How they behave / what they talk about", p.behaviour_notes],
-                ["Best time to call", p.best_time_to_call],
-                ["Remarks", p.remarks],
-                ["Email", p.email],
-                ["Address", p.address],
-              ]
-                .filter(([, v]) => v)
-                .map(([k, v]) => (
-                  <div key={k as string}>
-                    <dt className="text-caption font-medium text-muted">{k}</dt>
-                    <dd className="mt-0.5 whitespace-pre-wrap text-ink">{v}</dd>
-                  </div>
-                ))}
-              {!p.economic_status && !p.concerns && !p.behaviour_notes && !p.priorities && (
-                <p className="text-footnote text-muted">
-                  Nothing recorded yet. Note their economic condition, concerns and how they behave, so whoever calls next has the context.
-                </p>
-              )}
-            </dl>
-          </Card>
-
+          <AboutFamily p={p} canEdit={writer} />
 
           <Card title="Keeps promises?" description="Promises from calls and student notes. Kept = paid (the promised amount, if one was given) by the date plus the grace days.">
             {r.made === 0 ? (
@@ -351,7 +358,16 @@ export function ParentView({ id }: { id: string }) {
             <div className="space-y-3">
               <div>
                 <p className="text-caption font-medium text-muted">Staff say</p>
-                {p.payment_behaviour ? (
+                {writer ? (
+                  <InlineChoice
+                    value={p.payment_behaviour}
+                    label="Payment habit"
+                    options={BEHAVIOUR_OPTIONS}
+                    canEdit
+                    onSave={saver("payment_behaviour")}
+                    className="mt-1 text-headline font-semibold text-ink"
+                  />
+                ) : p.payment_behaviour ? (
                   <p className="mt-0.5 text-headline font-semibold text-ink">{BEHAVIOUR_LABELS[p.payment_behaviour].label}</p>
                 ) : (
                   <p className="mt-0.5 text-subhead text-ink-2">Not recorded yet</p>
@@ -362,14 +378,7 @@ export function ParentView({ id }: { id: string }) {
                 <p className="mt-0.5 text-subhead text-ink">{HABIT[d.behaviour.profile]}</p>
                 {d.behaviour.carried_forward && <p className="text-footnote text-serious-ink">Has dues from past years carried into {d.session?.name ?? "this year"}</p>}
                 {d.behaviour.suggested && d.behaviour.suggested !== p.payment_behaviour && (
-                  <p className="mt-1.5 inline-flex items-center gap-1.5 text-footnote text-accent">
-                    <Sparkles className="size-3.5" aria-hidden /> Looks like “{BEHAVIOUR_LABELS[d.behaviour.suggested].label}”
-                    {writer && (
-                      <Link href={`/parents/${id}/edit?habit=${d.behaviour.suggested}`} className="font-semibold underline-offset-4 hover:underline">
-                        Use it
-                      </Link>
-                    )}
-                  </p>
+                  <Suggestion parentId={id} habit={d.behaviour.suggested} canEdit={writer} />
                 )}
               </div>
               {d.behaviour.profile !== "no_history" && (
@@ -453,6 +462,125 @@ export function ParentView({ id }: { id: string }) {
           }}
         />
       </Drawer>
+    </div>
+  );
+}
+
+type Detail = { key: ParentDetail; label: string } & (
+  | { kind: "text"; multiline?: boolean; type?: "tel" | "email"; max: number; placeholder?: string; hint?: string; show?: (v: string) => string }
+  | { kind: "choice"; options: readonly InlineOption[]; clearable?: boolean }
+);
+
+/** Every detail of the profile, in this order; each is edited in place on the parent page. */
+const DETAILS: Detail[] = [
+  { key: "phone", label: "Phone", kind: "text", type: "tel", max: 30, show: fmtPhone, hint: "The children who have the old number get the new one too." },
+  { key: "alt_phone", label: "Other phone", kind: "text", type: "tel", max: 30, show: fmtPhone },
+  { key: "relation", label: "Relation to the children", kind: "choice", options: RELATION_OPTIONS, clearable: false },
+  { key: "occupation", label: "Occupation", kind: "text", max: 200, placeholder: "e.g. Shopkeeper, farmer, teacher" },
+  { key: "economic_status", label: "Economic condition", kind: "choice", options: ECONOMIC_OPTIONS },
+  { key: "attitude", label: "Deals with the school", kind: "choice", options: ATTITUDE_OPTIONS },
+  { key: "best_time_to_call", label: "Best time to call", kind: "text", max: 200, placeholder: "e.g. After 7 pm, Sunday morning" },
+  { key: "concerns", label: "Main concern about the child", kind: "text", multiline: true, max: 2000, placeholder: "e.g. Worried about maths marks" },
+  { key: "priorities", label: "What matters most to them", kind: "text", multiline: true, max: 2000, placeholder: "e.g. Discipline, spoken English" },
+  {
+    key: "behaviour_notes",
+    label: "How they behave / what they talk about",
+    kind: "text",
+    multiline: true,
+    max: 4000,
+    placeholder: "e.g. Polite, always asks about the school bus",
+  },
+  { key: "remarks", label: "Remarks", kind: "text", multiline: true, max: 2000 },
+  { key: "email", label: "Email", kind: "text", type: "email", max: 254 },
+  { key: "address", label: "Address", kind: "text", multiline: true, max: 1000 },
+];
+
+/**
+ * The family's details. Staff who can edit click a value or its pencil to change it, pick from a list for the
+ * choices, and add an empty detail from the "+" chips underneath. Everyone else sees the details that are filled in.
+ */
+function AboutFamily({ p, canEdit }: { p: Parent; canEdit: boolean }) {
+  const [adding, setAdding] = useState<ParentDetail | null>(null);
+  const valueOf = (k: ParentDetail) => p[k] as string | null;
+  const save = (k: ParentDetail) => (value: string | null) => saveParentField(p.id, k, value);
+  const rows = DETAILS.filter((f) => valueOf(f.key) || adding === f.key);
+  const empty = canEdit ? DETAILS.filter((f) => !valueOf(f.key) && adding !== f.key) : [];
+  const noNotes = !p.economic_status && !p.concerns && !p.behaviour_notes && !p.priorities;
+
+  return (
+    <Card title="About the family" description={canEdit ? "Click any detail or its pencil to change it. Choices open a list; picking one saves it." : undefined}>
+      <dl className="space-y-3 text-subhead">
+        {rows.map((f) => (
+          <div key={f.key}>
+            <dt className="text-caption font-medium text-muted">{f.label}</dt>
+            <dd className="mt-0.5 text-ink">
+              {f.kind === "text" ? (
+                <InlineText
+                  value={valueOf(f.key)}
+                  label={f.label}
+                  canEdit={canEdit}
+                  onSave={save(f.key)}
+                  multiline={f.multiline}
+                  type={f.type}
+                  maxLength={f.max}
+                  placeholder={f.placeholder}
+                  hint={f.hint}
+                  startEditing={adding === f.key}
+                  onClose={() => setAdding(null)}
+                  textClassName="whitespace-pre-wrap"
+                >
+                  {f.show && valueOf(f.key) ? f.show(valueOf(f.key)!) : undefined}
+                </InlineText>
+              ) : (
+                <InlineChoice value={valueOf(f.key)} label={f.label} options={f.options} clearable={f.clearable} canEdit={canEdit} onSave={save(f.key)} />
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {noNotes && (
+        <p className="mt-3 text-footnote text-muted">Note their economic condition, concerns and how they behave, so whoever calls next has the context.</p>
+      )}
+      {empty.length > 0 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-caption font-medium text-muted">Add a detail</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {empty.map((f) =>
+              f.kind === "choice" ? (
+                <InlineChoice key={f.key} value={null} label={f.label} options={f.options} canEdit onSave={save(f.key)} />
+              ) : (
+                <button key={f.key} type="button" onClick={() => setAdding(f.key)} className={ADD_CHIP}>
+                  <Plus className="size-3" aria-hidden /> {f.label}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/** "Looks like …" from the payment records, with a button that records it as the family's payment habit. */
+function Suggestion({ parentId, habit, canEdit }: { parentId: string; habit: Behaviour; canEdit: boolean }) {
+  const [pending, start] = useTransition();
+  const [state, setState] = useState<ActionState>({});
+  return (
+    <div className="mt-1.5">
+      <p className="inline-flex flex-wrap items-center gap-1.5 text-footnote text-accent">
+        <Sparkles className="size-3.5" aria-hidden /> Looks like “{BEHAVIOUR_LABELS[habit].label}”
+        {canEdit && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => start(async () => setState(await saveParentField(parentId, "payment_behaviour", habit)))}
+            className="font-semibold underline-offset-4 hover:underline disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Use it"}
+          </button>
+        )}
+      </p>
+      <FormError message={state.error} />
     </div>
   );
 }

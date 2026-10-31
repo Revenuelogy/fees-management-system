@@ -4,7 +4,7 @@ import type { Viewer } from "@/server/auth/session";
 import { audit, read, write } from "@/server/data";
 import { isDbError, type Db } from "@/server/db";
 import { ApiError, badRequest, notFound } from "@/server/http";
-import type { CallBody, ParentFields } from "@/server/schemas/recovery";
+import { parentFieldValue, type CallBody, type ParentField, type ParentFields } from "@/server/schemas/recovery";
 import { orNotFound } from "@/server/services/analytics";
 import { fmtDate, rupees } from "@/lib/format";
 import type { Parent, Parent360, ParentBalance } from "@/lib/types";
@@ -87,34 +87,56 @@ export async function update(viewer: Viewer, id: string, p: ParentInput, updateC
   return write(viewer, async (db) => {
     const before = await db.one<Parent>("select * from public.parents where id = $1 for update", [id]);
     if (!before) throw notFound("This parent no longer exists.");
-    const existing = await byPhone(db, p.phone);
-    if (existing && existing.id !== id) throw duplicate(existing);
-    try {
-      await db.query(
-        `update public.parents
-            set phone = public.normalize_phone($2), alt_phone = public.normalize_phone($3),
-                ${FIELDS.map((f, i) => `${f} = $${i + 4}`).join(", ")}
-          where id = $1`,
-        [id, p.phone, p.alt_phone, ...FIELDS.map((f) => p[f])],
-      );
-    } catch (e) {
-      if (isDbError(e) && e.code === "23505") throw new ApiError(409, "Another parent profile already has this phone number.");
-      throw e;
-    }
-    const after = await db.one<{ phone: string }>("select phone from public.parents where id = $1", [id]);
-    let moved = 0;
-    if (after && after.phone !== before.phone && updateChildrenPhone) {
-      const rows = await db.query(
-        "update public.students set phone = $2 where parent_id = $1 and public.normalize_phone(phone) = $3 returning id",
-        [id, p.phone, before.phone],
-      );
-      moved = rows.length;
-    }
-    await audit(db, "update_parent", "parents", id, { name: p.name, phone_from: before.phone, phone: after?.phone });
-    return {
-      message: moved > 0 ? `Saved. The new number was also set on ${moved} ${moved === 1 ? "child" : "children"}.` : "Saved.",
-    };
+    return save(db, id, before, p, updateChildrenPhone);
   });
+}
+
+/** Save one field of a profile (edited in place on the parent page); everything else stays as it is. */
+export async function updateField(viewer: Viewer, id: string, field: ParentField, value: unknown, updateChildrenPhone: boolean) {
+  const v = parentFieldValue(field, value);
+  return write(viewer, async (db) => {
+    const before = await db.one<Parent>("select * from public.parents where id = $1 for update", [id]);
+    if (!before) throw notFound("This parent no longer exists.");
+    const p: ParentInput = {
+      name: before.name, phone: before.phone, relation: before.relation, alt_phone: before.alt_phone, email: before.email,
+      address: before.address, occupation: before.occupation, economic_status: before.economic_status,
+      payment_behaviour: before.payment_behaviour, attitude: before.attitude, best_time_to_call: before.best_time_to_call,
+      concerns: before.concerns, priorities: before.priorities, behaviour_notes: before.behaviour_notes, remarks: before.remarks,
+      [field]: v,
+    };
+    return save(db, id, before, p, updateChildrenPhone);
+  });
+}
+
+/** Write a profile (inside the caller's transaction): the phone must not belong to another family. */
+async function save(db: Db, id: string, before: Parent, p: ParentInput, updateChildrenPhone: boolean) {
+  const existing = await byPhone(db, p.phone);
+  if (existing && existing.id !== id) throw duplicate(existing);
+  try {
+    await db.query(
+      `update public.parents
+          set phone = public.normalize_phone($2), alt_phone = public.normalize_phone($3),
+              ${FIELDS.map((f, i) => `${f} = $${i + 4}`).join(", ")}
+        where id = $1`,
+      [id, p.phone, p.alt_phone, ...FIELDS.map((f) => p[f])],
+    );
+  } catch (e) {
+    if (isDbError(e) && e.code === "23505") throw new ApiError(409, "Another parent profile already has this phone number.");
+    throw e;
+  }
+  const after = await db.one<{ phone: string }>("select phone from public.parents where id = $1", [id]);
+  let moved = 0;
+  if (after && after.phone !== before.phone && updateChildrenPhone) {
+    const rows = await db.query(
+      "update public.students set phone = $2 where parent_id = $1 and public.normalize_phone(phone) = $3 returning id",
+      [id, p.phone, before.phone],
+    );
+    moved = rows.length;
+  }
+  await audit(db, "update_parent", "parents", id, { name: p.name, phone_from: before.phone, phone: after?.phone });
+  return {
+    message: moved > 0 ? `Saved. The new number was also set on ${moved} ${moved === 1 ? "child" : "children"}.` : "Saved.",
+  };
 }
 
 /** Delete a profile that has no children and no call history (otherwise merge it into the right one). */

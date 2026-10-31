@@ -83,7 +83,9 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
   `NoAccessHere` on any page `callerMayOpen()` refuses. Everyone else gets the staff Calls view (`staff-calls.tsx`:
   Overview, Callers, Today's list with "Give to…", Assign families). The family call page (`calls/[parentId]`) shows the
   family read-only (`family-profile.tsx`) beside the call form; on `/parents/[id]` the call form opens in a
-  `Drawer` (`components/ui/drawer.tsx`); a caller's student profile has no Fee plan, Edit
+  `Drawer` (`components/ui/drawer.tsx`) and writers edit every detail in place (pencil / list, one field per
+  `PATCH /api/parents/[id]`, `saveParentField()`); "Manage family" (`/parents/[id]/edit`) keeps the full form,
+  adding a sibling, merge and delete; a caller's student profile has no Fee plan, Edit
   or Collect. Demo caller: `pooja@school.test`. Shared badges live in
   `src/components/recovery.tsx`; the call form and call history in `src/app/(app)/parents/`; pages: `/recovery`
   (dashboard), `/calls`, `/activities`.
@@ -97,7 +99,8 @@ Next.js 16 (App Router, Turbopack, `src/`), plain PostgreSQL 13+ through `pg`, T
   toggles), `Button/LinkButton` (pills), `Badge`, `FeeStatusBadge`, `Field/Input/Select/Textarea/
   FormError/FormSuccess`, `BarList/StackedBar/Legend/Meter`, `Ring/Donut`, `Avatar`, `AllocLines`, `Empty`,
   `DataTable` (client; declarative columns with `type: person|action|money|pct|date|status|alloc|…`, link
-  templates like `/students/{student_id}`, search, filters, totals, CSV export with filter notes), `page-state`.
+  templates like `/students/{student_id}`, search, filters, totals, CSV export with filter notes), `page-state`,
+  `InlineText/InlineChoice` (click-to-edit a value with a pencil, or pick from a list; `onSave` returns `ActionState`).
 - Design language (Apple-style, `src/app/globals.css`): `#F5F5F7` canvas, white borderless cards with soft
   shadow, Inter Variable with the type scale `text-display/large/title1/title2/title3/headline/body/
   subhead/footnote/caption`. Lead each page with a visual (figure, ring, bar), not paragraphs; put

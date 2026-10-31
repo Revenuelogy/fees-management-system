@@ -29,6 +29,19 @@ function readParent(formData: FormData) {
   };
 }
 
+/** The details of a profile that can be edited in place on the parent page. */
+export type ParentDetail = keyof ReturnType<typeof readParent>;
+
+/** Save one detail of a profile, edited in place (empty text clears it; name and phone cannot be empty). */
+export function saveParentField(parentId: string, field: ParentDetail, value: string | null): Promise<ActionState> {
+  const v = value?.trim() ? value.trim() : null;
+  if ((field === "name" || field === "phone") && !v) return Promise.resolve({ error: field === "name" ? "Enter the parent's name." : "Enter a phone number." });
+  if ((field === "phone" || field === "alt_phone") && v && phoneDigits(v) === null) {
+    return Promise.resolve({ error: "Enter a phone number with 6 to 15 digits." });
+  }
+  return submit(() => api.patch<Result>(`/api/parents/${parentId}`, { field, value: v }), withMessage);
+}
+
 /** Create (no id) or update (id) a parent profile. */
 export async function saveParent(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const id = text(formData, "id");

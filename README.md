@@ -93,7 +93,10 @@ changes; the correction shows in the month it was made. Imported receipts withou
   ignored). A student is linked to the profile of their phone number when they are added, imported or their number
   changes; a new number creates a profile named after the father (or mother). Two profiles of one family can be
   merged (the other number becomes the alternate phone, so later admissions with it join too), and a student
-  admitted under another number can be moved into the family by hand. Family amounts are the children's
+  admitted under another number can be moved into the family by hand. On the profile, staff who can edit change
+  any detail in place: click it or its pencil (Enter saves, Esc cancels), pick payment habit, economic condition,
+  relation and how they deal with the school from a list, and add an empty detail from its "+" chip; **Manage
+  family** keeps adding a sibling, merging and deleting. Family amounts are the children's
   `student_balances` added up (remaining, due till today and past year due; *total due* = due till today + past year due).
 * **Promises.** A call (or a student note) can carry a date and an amount the family promised to pay by. It is
   **kept** when the family (any child) pays the amount (or anything, when no amount was given) between the call and
@@ -166,7 +169,7 @@ Browser (React screens)  ──fetch JSON──▶  REST API  src/app/api/**/rou
 | Analytics | `GET /api/analytics/dashboard`, `defaulters`, `balances`, `classes`, `classes/[id]` (+ `/lines?installment&fee_head`: one installment or fee type per student), `months/[month]` (+ `/payments`, `/non-payers`, `/classes/[classId]`), `installments`, `installments/[number]`, `reconciliation` |
 | Students | `GET/POST /api/students`, `GET /api/students/search`, `GET/PUT/DELETE /api/students/[id]`, `…/360`, `…/dues`, `…/fees`, `…/withdraw`, `…/reactivate`, `…/notes`, `…/charges`, `…/charges/generate`, `…/concessions`, `…/opening-dues` |
 | Money | `GET/POST /api/payments` (a payment can be counted for a call or an activity), `GET /api/payments/[id]`, `POST /api/payments/[id]/cancel`, `PUT /api/payments/[id]/source`, `GET/POST /api/targets`, `GET/DELETE /api/targets/[id]` |
-| Recovery | `GET /api/recovery?from&to` (money and what brought it in, calls made, activities), `GET /api/calls` (today's list), `POST /api/calls/take`, `POST /api/calls/release`, `GET /api/calls/analytics?from&to`, `GET /api/calls/assignments?date`, `POST /api/calls/assign`, `POST /api/calls/unassign`, `GET/POST /api/parents`, `POST /api/parents/link`, `GET/PUT/DELETE /api/parents/[id]` (+ `/children`, `/merge`, `/calls`, `/calls/[callId]`), `GET/POST /api/activities`, `GET/PUT/DELETE /api/activities/[id]` (+ `/participants`, `/participants/[participantId]`), `GET /api/students/[id]/recovery`, `GET /api/families/search?q`, `GET /api/promises`, `PUT /api/settings/call-rules` |
+| Recovery | `GET /api/recovery?from&to` (money and what brought it in, calls made, activities), `GET /api/calls` (today's list), `POST /api/calls/take`, `POST /api/calls/release`, `GET /api/calls/analytics?from&to`, `GET /api/calls/assignments?date`, `POST /api/calls/assign`, `POST /api/calls/unassign`, `GET/POST /api/parents`, `POST /api/parents/link`, `GET/PUT/PATCH/DELETE /api/parents/[id]` (PATCH = one detail) (+ `/children`, `/merge`, `/calls`, `/calls/[callId]`), `GET/POST /api/activities`, `GET/PUT/DELETE /api/activities/[id]` (+ `/participants`, `/participants/[participantId]`), `GET /api/students/[id]/recovery`, `GET /api/families/search?q`, `GET /api/promises`, `PUT /api/settings/call-rules` |
 | Setup | `/api/sessions` (+ `/[id]`, `/current`, `/installments`), `/api/installments/[id]`, `/api/classes`, `/api/fee-heads`, `/api/fee-structure` (+ `/copy`, `/apply`), `/api/promote`, `POST /api/imports/[kind]`, `GET /api/setup/checklist`, `GET /api/setup/classes` |
 | Admin | `/api/settings` (+ `/allocation-rule`, `/promise-grace`), `/api/staff` (+ `/[id]`, `/[id]/password`), `POST /api/admin/reallocate`, `POST /api/months/[month]/close` and `/reopen`, `GET /api/admin/snapshots`, `GET /api/admin/audit` |
 

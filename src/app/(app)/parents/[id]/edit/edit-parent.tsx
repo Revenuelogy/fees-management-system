@@ -37,7 +37,7 @@ function Editor({ id, sp }: { id: string; sp: SearchParams }) {
 
   return (
     <>
-      <PageHeader title={d.parent.name} crumbs={[{ label: "Parents", href: "/parents" }, { label: d.parent.name, href: `/parents/${id}` }, { label: "Edit" }]} />
+      <PageHeader title={d.parent.name} crumbs={[{ label: "Parents", href: "/parents" }, { label: d.parent.name, href: `/parents/${id}` }, { label: "Manage family" }]} />
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <ParentForm parent={d.parent} habit={BEHAVIOURS.includes(habit as Behaviour) ? (habit as Behaviour) : undefined} />

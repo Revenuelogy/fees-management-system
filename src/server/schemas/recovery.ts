@@ -47,6 +47,22 @@ export const ParentUpdateBody = ParentFields.extend({
   update_children_phone: z.boolean().default(true),
 });
 
+export type ParentField = keyof typeof ParentFields.shape;
+const PARENT_FIELDS = Object.keys(ParentFields.shape) as [ParentField, ...ParentField[]];
+
+/** One field of a profile, edited in place on the parent page; the value is checked by parentFieldValue(). */
+export const ParentFieldBody = z.object({
+  field: z.enum(PARENT_FIELDS, { error: "That detail cannot be edited here." }),
+  value: z.unknown(),
+  update_children_phone: z.boolean().default(true),
+});
+
+/** Check one field's value with the same rules as the full profile form (throws a ZodError, sent back as a 400). */
+export function parentFieldValue<F extends ParentField>(field: F, value: unknown) {
+  const one = ParentFields.pick({ [field]: true } as { [K in ParentField]?: true });
+  return (one.parse({ [field]: value }) as Record<string, unknown>)[field] as z.output<typeof ParentFields>[F];
+}
+
 export const CallBody = z
   .object({
     purpose: z.enum(PURPOSES, { error: "Choose what the call was about." }).default("fees"),
